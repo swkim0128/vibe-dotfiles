@@ -1,0 +1,5 @@
+{
+  "name": "vibe-config",
+  "version": "1.0.0",
+  "description": "개인 Vibe Coding 환경 설정 플러그인 (macOS 알림, IPC 워크플로우)"
+}
