@@ -5,6 +5,24 @@
 # ── AI ──────────────────────────────────────────────
 🤖 Claude Code: 현재 프로젝트 분석 | claude -p '이 프로젝트의 구조와 핵심 로직을 분석해서 요약해줘'
 
+# ── Git ──────────────────────────────────────────────
+📦 Lazygit | lg
+
+# ── 시스템 모니터링 ───────────────────────────────────
+🖥️  시스템 모니터링 | btop
+💾 디스크 사용량 | duf
+📁 폴더 크기 분석 | dust .
+ℹ️  시스템 정보 | fastfetch
+
+# ── 백업 ─────────────────────────────────────────────
+💾 현재 설정 백업 (vibe-dotfiles) | ~/Project/vibe-dotfiles/backup.sh
+
+# ── Vibe Tools ───────────────────────────────────────
+📋 Vibe 치트시트 보기 | vhelp
+🗂️  프로젝트 세션 전환 (Sessionizer) | ~/.config/vibe-tools/tmux-sessionizer.sh
+🤖 Claude 프롬프트 팝업 | ~/.config/vibe-tools/claude-skills.sh
+🔚 현재 Vibe 세션 종료 후 para 복귀 | vibe done
+
 # ── Tmux ─────────────────────────────────────────────
 🛠️  Tmux 설정 새로고침 | tmux source-file ~/.tmux.conf
 

@@ -33,4 +33,69 @@ return {
       require "configs.conform"
     end,
   },
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      'nvim-tree/nvim-web-devicons'
+    },
+    ft = { "markdown" },
+    opts = {
+      -- 기본 설정만으로도 매우 예쁩니다!
+
+      -- 1. 제목 (Headings) 설정: Nerd Font 아이콘 적용 및 여백
+      heading = {
+        sign = true,
+        icons = { '󰲡 ', '󰲣 ', '󰲥 ', '󰲧 ', '󰲩 ', '󰲫 ' },
+        width = 'block', -- 배경을 화면 우측 끝까지 꽉 채움
+
+        -- [1] 단계별 좌우 여백: H1이 가장 넓고 H4부터는 여백 없음
+        left_pad  = { 3, 2, 1, 0, 0, 0 },
+        right_pad = { 3, 2, 1, 0, 0, 0 },
+
+        -- [2] 단계별 테두리 렌더링 켜기 (H1, H2만 상하 확장을 적용)
+        border = { true, true, false, false, false, false },
+        border_virtual = true,
+
+        -- [3] 상단 두께: H1과 H2에만 배경색으로 채워진 위쪽 블록 추가
+        above = { '▄', '▄', '', '', '', '' },
+
+        -- [4] 하단 두께: H1에만 아래쪽 블록 추가 (가장 거대해짐)
+        below = { '▀', '', '', '', '', '' },
+      },
+
+      -- 2. 코드 블록 (Code Blocks) 설정: 화면을 꽉 채우는 배경색 적용
+      code = {
+        sign = false,
+        width = 'block', -- 코드 블록이 텍스트 길이에 맞춰지지 않고 끝까지 채워짐
+        right_pad = 1,
+        disable_background = { 'diff' },
+      },
+
+      -- 3. 글머리 기호 (Bullets): 들여쓰기 뎁스별로 다른 아이콘 적용
+      bullet = {
+        icons = { '●', '○', '◆', '◇' },
+        right_pad = 1,
+      },
+
+      -- 4. 체크박스 (Checkboxes): 할 일(TODO) 관리를 위한 직관적인 아이콘
+      checkbox = {
+        unchecked = { icon = '󰄱 ' }, -- 빈 체크박스 [ ]
+        checked   = { icon = '󰱒 ' }, -- 완료된 체크박스 [x]
+        custom = {
+          -- 진행 중인 작업 [-] 입력 시 시계 아이콘으로 변환
+          progress = { raw = '[-]', rendered = '󰥔 ', highlight = 'RenderMarkdownWarn' },
+        },
+      },
+
+      -- 5. 인용구 (Blockquotes) 및 표 (Tables)
+      quote = {
+        icon = '┃',
+      },
+      table = {
+        style = 'round', -- 표의 모서리를 둥글게(╭, ╮, ╰, ╯) 처리
+        cell = 'padded',
+      },
+    },
+  },
 }

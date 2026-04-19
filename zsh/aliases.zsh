@@ -11,7 +11,8 @@ export EDITOR="nvim"
 alias lg="lazygit"
 
 # ── Vibe Coding ───────────────────────────────────────
-alias vhelp="nvim -R ~/.config/vibe-tools/cheatsheet.md"
+alias vhelp='glow -p ~/.config/vibe-tools/cheatsheet.md'
+alias vibe="~/.config/vibe-tools/vibe.sh"
 
 # ── Ctrl+F: 커스텀 명령어 팝업 ────────────────────────
 bindkey -s '^f' '~/.config/vibe-tools/my-tools.sh\n'
