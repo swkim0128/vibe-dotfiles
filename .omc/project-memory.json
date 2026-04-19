@@ -66,6 +66,37 @@
       ]
     }
   },
-  "hotPaths": [],
+  "hotPaths": [
+    {
+      "path": "setup.sh",
+      "accessCount": 9,
+      "lastAccessed": 1776617063982,
+      "type": "file"
+    },
+    {
+      "path": "zsh/aliases.zsh",
+      "accessCount": 3,
+      "lastAccessed": 1776615663582,
+      "type": "file"
+    },
+    {
+      "path": "vibe-tools/tmux-sessionizer.sh",
+      "accessCount": 2,
+      "lastAccessed": 1776615325342,
+      "type": "file"
+    },
+    {
+      "path": "backup.sh",
+      "accessCount": 2,
+      "lastAccessed": 1776617009816,
+      "type": "file"
+    },
+    {
+      "path": "vibe-tools/sessionizer-paths.txt",
+      "accessCount": 1,
+      "lastAccessed": 1776615140935,
+      "type": "file"
+    }
+  ],
   "userDirectives": []
 }
