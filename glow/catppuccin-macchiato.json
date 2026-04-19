@@ -1,0 +1,31 @@
+{
+  "document": {
+    "margin": 2,
+    "color": "#CAD3F5"
+  },
+  "block_quote": {
+    "indent": 1,
+    "indent_token": "┃ ",
+    "color": "#8AADF4"
+  },
+  "heading": {
+    "bold": true,
+    "color": "#F5A97F"
+  },
+  "h1": {
+    "color": "#181926",
+    "background_color": "#8AADF4",
+    "bold": true,
+    "padding": 1,
+    "prefix": " "
+  },
+  "code_block": {
+    "margin": 1,
+    "color": "#A5ADCB"
+  },
+  "table": {
+    "center_separator": "┼",
+    "column_separator": "│",
+    "row_separator": "─"
+  }
+}

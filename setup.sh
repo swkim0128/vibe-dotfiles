@@ -147,7 +147,13 @@ ln -sf "$DOTFILES/vibe-tools/claude-config/hooks"         "$HOME/.claude/hooks"
 ln -sf "$DOTFILES/vibe-tools/claude-plugin"               "$HOME/.claude/plugins/cache/personal/vibe-config"
 success "Claude Code 설정 및 플러그인 연결 완료"
 
-# ── 10. Zsh aliases 자동 등록 ────────────────────────────────────────────────
+# ── 10. Claude 사용자 스킬 복원 ──────────────────────────────────────────────
+info "Claude 사용자 스킬 복원 중..."
+mkdir -p "$HOME/.claude/skills"
+rsync -a --delete "$DOTFILES/claude-skills/" "$HOME/.claude/skills/"
+success "Claude 사용자 스킬 복원 완료"
+
+# ── 11. Zsh aliases 자동 등록 ────────────────────────────────────────────────
 info "Zsh aliases 등록 확인 중..."
 ALIASES_SOURCE="source \"$DOTFILES/zsh/aliases.zsh\""
 if ! grep -qF "$ALIASES_SOURCE" "$HOME/.zshrc" 2>/dev/null; then
@@ -159,7 +165,7 @@ else
   success "~/.zshrc 에 이미 aliases.zsh 가 등록되어 있습니다."
 fi
 
-# ── 11. Git Delta 설정 ───────────────────────────────────────────────────────
+# ── 12. Git Delta 설정 ───────────────────────────────────────────────────────
 info "Git Delta 설정 중..."
 git config --global core.pager delta
 git config --global interactive.diffFilter "delta --color-only"
@@ -168,7 +174,7 @@ git config --global delta.side-by-side true
 git config --global delta.line-numbers true
 success "Git Delta 설정 완료"
 
-# ── 12. Vibe Claude Plugin ───────────────────────────────────────────────────
+# ── 13. Vibe Claude Plugin ───────────────────────────────────────────────────
 PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
 PLUGIN_REPO="[YOUR_PLUGIN_REPO_URL]"
 
@@ -189,7 +195,14 @@ else
   warn "install.sh 없음 — 플러그인 설치 건너뜀"
 fi
 
-# ── 13. Tmux 설정 리로드 ─────────────────────────────────────────────────────
+# ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────
+info "Glow 설정 적용 중..."
+mkdir -p "$HOME/Library/Preferences/glow"
+ln -sf "$DOTFILES/glow/glow.yml"                    "$HOME/Library/Preferences/glow/glow.yml"
+ln -sf "$DOTFILES/glow/catppuccin-macchiato.json"   "$HOME/Library/Preferences/glow/catppuccin-macchiato.json"
+success "Glow 설정 연결 완료"
+
+# ── 15. Tmux 설정 리로드 ─────────────────────────────────────────────────────
 if command -v tmux &>/dev/null && tmux info &>/dev/null 2>&1; then
   tmux source-file "$HOME/.tmux.conf" 2>/dev/null && \
     success "tmux 설정 즉시 리로드 완료" || \

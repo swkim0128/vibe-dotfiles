@@ -106,7 +106,11 @@ backup_dir "$HOME/.claude/plugins/cache/personal/vibe-config" "$DOTFILES/vibe-to
 info "Vibe Tools 백업 중..."
 backup_dir "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 
-# ── 7. Zsh ───────────────────────────────────────────────────────────────────
+# ── 7. Claude 사용자 스킬 ────────────────────────────────────────────────────
+info "Claude 사용자 스킬 백업 중..."
+backup_dir "$HOME/.claude/skills" "$DOTFILES/claude-skills"
+
+# ── 8. Zsh ───────────────────────────────────────────────────────────────────
 info "Zsh 설정 백업 중..."
 backup_file "$HOME/.zshrc" "$DOTFILES/zsh/.zshrc"
 
