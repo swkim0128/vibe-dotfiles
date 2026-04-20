@@ -147,11 +147,20 @@ ln -sf "$DOTFILES/vibe-tools/claude-config/hooks"         "$HOME/.claude/hooks"
 ln -sf "$DOTFILES/vibe-tools/claude-plugin"               "$HOME/.claude/plugins/cache/personal/vibe-config"
 success "Claude Code 설정 및 플러그인 연결 완료"
 
-# ── 10. Claude 사용자 스킬 복원 ──────────────────────────────────────────────
+# ── 10. Claude 사용자 스킬 복원 (기존 스킬 보존) ────────────────────────────
 info "Claude 사용자 스킬 복원 중..."
 mkdir -p "$HOME/.claude/skills"
-rsync -a --delete "$DOTFILES/claude-skills/" "$HOME/.claude/skills/"
-success "Claude 사용자 스킬 복원 완료"
+
+# 기존 스킬이 있으면 타임스탬프 백업 (rsync 사고 대비 안전망)
+if [[ -n "$(ls -A "$HOME/.claude/skills" 2>/dev/null)" ]]; then
+  SKILLS_BACKUP="$HOME/.claude/skills.bak.$(date +%Y%m%d_%H%M%S)"
+  cp -a "$HOME/.claude/skills" "$SKILLS_BACKUP"
+  info "기존 스킬 백업 완료 → $SKILLS_BACKUP"
+fi
+
+# dotfiles 스킬을 머지 (--delete 미사용: 로컬에서 생성된 사용자 스킬은 그대로 보존)
+rsync -a "$DOTFILES/claude-skills/" "$HOME/.claude/skills/"
+success "Claude 사용자 스킬 복원 완료 (로컬 스킬 병합 보존)"
 
 # ── 11. Zsh aliases 자동 등록 ────────────────────────────────────────────────
 info "Zsh aliases 등록 확인 중..."

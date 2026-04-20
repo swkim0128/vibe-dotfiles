@@ -21,7 +21,7 @@ done < <(grep -v '^\s*#' "$PATHS_FILE" | grep -v '^\s*$' | sed "s|~|$HOME|g")
 # ---------------------------------------------------------
 # [3] fzf로 프로젝트 폴더 선택
 # ---------------------------------------------------------
-selected=$(find "${paths[@]}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null \
+selected=$(find "${paths[@]}" -mindepth 1 -maxdepth 3 -type d -not -path '*/.*' 2>/dev/null \
   | fzf --prompt="📂 프로젝트 선택 > " --height=100% --layout=reverse --border=rounded)
 
 if [[ -z $selected ]]; then
