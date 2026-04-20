@@ -15,6 +15,12 @@
         "source": "git",
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
+    },
+    "personal": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/eunsol/Project/vibe-claude-plugin"
+      }
     }
   },
   "alwaysThinkingEnabled": true

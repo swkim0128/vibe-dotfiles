@@ -265,6 +265,18 @@ PERSONAL_PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
 if [[ -d "$PERSONAL_PLUGIN_DIR" && -f "$PERSONAL_PLUGIN_DIR/install.sh" ]]; then
   info "개인 플러그인 설치 중..."
   bash "$PERSONAL_PLUGIN_DIR/install.sh"
+
+  # personal 마켓플레이스 등록 및 플러그인 설치
+  if command -v claude &>/dev/null; then
+    if ! claude plugin marketplace list 2>/dev/null | grep -q "personal"; then
+      claude plugin marketplace add "$PERSONAL_PLUGIN_DIR" --scope user 2>/dev/null && \
+        success "personal 마켓플레이스 등록 완료" || warn "personal 마켓플레이스 등록 실패"
+    else
+      success "personal 마켓플레이스 이미 등록됨"
+    fi
+    claude plugin install vibe-config@personal --scope user 2>/dev/null && \
+      success "vibe-config@personal 설치 완료" || info "vibe-config@personal 이미 설치됨"
+  fi
 else
   warn "vibe-claude-plugin 없음 — 별도 클론 후 install.sh 실행 필요"
   warn "  git clone <repo-url> $PERSONAL_PLUGIN_DIR && bash $PERSONAL_PLUGIN_DIR/install.sh"
