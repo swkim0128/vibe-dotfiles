@@ -87,7 +87,7 @@ FORMULAS=(
   btop dust duf fastfetch
   neovim tmux tmuxinator
   zoxide lazygit navi starship mise
-  yazi gh jq thefuck
+  yazi gh jq thefuck glow
 )
 for formula in "${FORMULAS[@]}"; do
   if ! brew list --formula "$formula" &>/dev/null 2>&1; then
