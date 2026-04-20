@@ -98,4 +98,21 @@ return {
       },
     },
   },
+
+  -- nvim-tree: 긴 파일명이 잘리지 않도록 폭 가변 확장
+  {
+    "nvim-tree/nvim-tree.lua",
+    opts = {
+      view = {
+        width = {
+          min = 30,   -- 최소 폭
+          max = -1,   -- 최장 파일명에 맞춰 자동 확장 (제한 없음)
+          padding = 1,
+        },
+      },
+      renderer = {
+        full_name = true, -- 그래도 잘리는 경우 전체 이름 팝업 표시
+      },
+    },
+  },
 }

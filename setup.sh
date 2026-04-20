@@ -18,6 +18,47 @@ info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC}   $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+# 심볼릭 링크 실경로 해석
+real_path() {
+  if command -v realpath &>/dev/null; then
+    realpath "$1" 2>/dev/null || echo "$1"
+  else
+    python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$1" 2>/dev/null || echo "$1"
+  fi
+}
+
+# safe_link <target> <source>
+# 타겟이 이미 source를 가리키는 링크면 스킵,
+# 다른 링크/실파일/실폴더이면 타임스탬프 백업 후 링크 교체.
+safe_link() {
+  local target="$1"
+  local source="$2"
+  local ts
+  ts="$(date +%Y%m%d_%H%M%S)"
+
+  if [[ ! -e "$source" ]]; then
+    warn "소스 없음: $source — 링크 건너뜀"
+    return
+  fi
+
+  if [[ -L "$target" ]]; then
+    local resolved
+    resolved=$(real_path "$target")
+    if [[ "$resolved" == "$(real_path "$source")" ]]; then
+      success "$target — 이미 연결됨"
+      return
+    fi
+    mv "$target" "${target}.bak.${ts}"
+    warn "기존 링크 백업 → ${target}.bak.${ts}"
+  elif [[ -e "$target" ]]; then
+    mv "$target" "${target}.bak.${ts}"
+    warn "기존 파일/폴더 백업 → ${target}.bak.${ts}"
+  fi
+
+  ln -s "$source" "$target"
+  success "$target → $source"
+}
+
 echo ""
 echo "============================================================"
 echo "  🚀 Vibe Dotfiles 설치 시작"
@@ -110,19 +151,12 @@ fi
 
 # ── 6. Tmux 심볼릭 링크 ──────────────────────────────────────────────────────
 info "Tmux 설정 적용 중..."
-ln -sf "$DOTFILES/tmux/.tmux.conf" "$HOME/.tmux.conf"
-success "~/.tmux.conf → $DOTFILES/tmux/.tmux.conf"
+safe_link "$HOME/.tmux.conf" "$DOTFILES/tmux/.tmux.conf"
 
 # ── 7. Vibe Tools ────────────────────────────────────────────────────────────
 info "Vibe Tools 적용 중..."
 mkdir -p "$HOME/.config"
-# 기존 디렉토리가 실제 폴더이면 제거 후 심볼릭 링크로 교체
-if [[ -d "$HOME/.config/vibe-tools" && ! -L "$HOME/.config/vibe-tools" ]]; then
-  warn "기존 ~/.config/vibe-tools/ 디렉토리를 ~/.config/vibe-tools.bak 으로 백업합니다."
-  mv "$HOME/.config/vibe-tools" "$HOME/.config/vibe-tools.bak"
-fi
-ln -sf "$DOTFILES/vibe-tools" "$HOME/.config/vibe-tools"
-success "~/.config/vibe-tools → $DOTFILES/vibe-tools"
+safe_link "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 
 # 스크립트 실행 권한 보장
 chmod +x "$DOTFILES/vibe-tools/"*.sh
@@ -132,20 +166,14 @@ chmod +x "$DOTFILES/vibe-tools/claude-plugin/hooks/mac-notify.sh"
 # ── 8. Neovim (NvChad) Lua 설정 ──────────────────────────────────────────────
 info "Neovim lua 설정 적용 중..."
 mkdir -p "$HOME/.config/nvim"
-if [[ -d "$HOME/.config/nvim/lua" && ! -L "$HOME/.config/nvim/lua" ]]; then
-  warn "기존 ~/.config/nvim/lua/ 디렉토리를 백업합니다."
-  mv "$HOME/.config/nvim/lua" "$HOME/.config/nvim/lua.bak"
-fi
-ln -sf "$DOTFILES/nvim/lua" "$HOME/.config/nvim/lua"
-success "~/.config/nvim/lua → $DOTFILES/nvim/lua"
+safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
 # ── 9. Claude Code 설정 심볼릭 링크 ─────────────────────────────────────────
 info "Claude Code 설정 심볼릭 링크 적용 중..."
 mkdir -p "$HOME/.claude/plugins/cache/personal"
-ln -sf "$DOTFILES/vibe-tools/claude-config/settings.json" "$HOME/.claude/settings.json"
-ln -sf "$DOTFILES/vibe-tools/claude-config/hooks"         "$HOME/.claude/hooks"
-ln -sf "$DOTFILES/vibe-tools/claude-plugin"               "$HOME/.claude/plugins/cache/personal/vibe-config"
-success "Claude Code 설정 및 플러그인 연결 완료"
+safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
+safe_link "$HOME/.claude/hooks"         "$DOTFILES/vibe-tools/claude-config/hooks"
+safe_link "$HOME/.claude/plugins/cache/personal/vibe-config" "$DOTFILES/vibe-tools/claude-plugin"
 
 # ── 10. Claude 사용자 스킬 복원 (기존 스킬 보존) ────────────────────────────
 info "Claude 사용자 스킬 복원 중..."
@@ -176,40 +204,47 @@ fi
 
 # ── 12. Git Delta 설정 ───────────────────────────────────────────────────────
 info "Git Delta 설정 중..."
-git config --global core.pager delta
-git config --global interactive.diffFilter "delta --color-only"
-git config --global delta.navigate true
-git config --global delta.side-by-side true
-git config --global delta.line-numbers true
-success "Git Delta 설정 완료"
+current_pager=$(git config --global --get core.pager 2>/dev/null || echo "")
+if [[ -z "$current_pager" ]]; then
+  git config --global core.pager delta
+  git config --global interactive.diffFilter "delta --color-only"
+  git config --global delta.navigate true
+  git config --global delta.side-by-side true
+  git config --global delta.line-numbers true
+  success "Git Delta 설정 완료"
+elif [[ "$current_pager" == "delta" ]]; then
+  success "Git Delta 이미 설정됨 — 유지"
+else
+  warn "기존 git core.pager='$current_pager' 감지 — 덮어쓰지 않고 Delta 설정 건너뜀 (원하면 수동 적용)"
+fi
 
 # ── 13. Vibe Claude Plugin ───────────────────────────────────────────────────
 PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
 PLUGIN_REPO="[YOUR_PLUGIN_REPO_URL]"
 
 info "Vibe Claude Plugin 확인 중..."
-if [[ ! -d "$PLUGIN_DIR" ]]; then
+if [[ "$PLUGIN_REPO" == "[YOUR_PLUGIN_REPO_URL]" ]]; then
+  warn "Vibe Claude Plugin 저장소 URL 미설정 — 섹션 건너뜀 (필요 시 setup.sh에서 PLUGIN_REPO 변수 지정)"
+elif [[ ! -d "$PLUGIN_DIR" ]]; then
   info "플러그인 레포지토리 클론 중..."
   git clone "$PLUGIN_REPO" "$PLUGIN_DIR"
   success "vibe-claude-plugin 클론 완료"
+  if [[ -f "$PLUGIN_DIR/install.sh" ]]; then
+    info "플러그인 설치 중..."
+    bash "$PLUGIN_DIR/install.sh"
+    success "vibe-claude-plugin 설치 완료"
+  else
+    warn "install.sh 없음 — 플러그인 설치 건너뜀"
+  fi
 else
   success "vibe-claude-plugin 이미 존재함 — 건너뜀"
-fi
-
-if [[ -f "$PLUGIN_DIR/install.sh" ]]; then
-  info "플러그인 설치 중..."
-  bash "$PLUGIN_DIR/install.sh"
-  success "vibe-claude-plugin 설치 완료"
-else
-  warn "install.sh 없음 — 플러그인 설치 건너뜀"
 fi
 
 # ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────
 info "Glow 설정 적용 중..."
 mkdir -p "$HOME/Library/Preferences/glow"
-ln -sf "$DOTFILES/glow/glow.yml"                    "$HOME/Library/Preferences/glow/glow.yml"
-ln -sf "$DOTFILES/glow/catppuccin-macchiato.json"   "$HOME/Library/Preferences/glow/catppuccin-macchiato.json"
-success "Glow 설정 연결 완료"
+safe_link "$HOME/Library/Preferences/glow/glow.yml"                  "$DOTFILES/glow/glow.yml"
+safe_link "$HOME/Library/Preferences/glow/catppuccin-macchiato.json" "$DOTFILES/glow/catppuccin-macchiato.json"
 
 # ── 15. Tmux 설정 리로드 ─────────────────────────────────────────────────────
 if command -v tmux &>/dev/null && tmux info &>/dev/null 2>&1; then

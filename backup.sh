@@ -71,7 +71,8 @@ backup_dir() {
   fi
 
   mkdir -p "$dst"
-  rsync -a --delete "${src%/}/" "$dst/"
+  # --delete 미사용: 업무 PC 백업이 개인 dotfiles의 파일을 지우지 않도록 머지 복사
+  rsync -a "${src%/}/" "$dst/"
   success "$src/ → $dst/"
 }
 
@@ -111,8 +112,15 @@ info "Claude 사용자 스킬 백업 중..."
 backup_dir "$HOME/.claude/skills" "$DOTFILES/claude-skills"
 
 # ── 8. Zsh ───────────────────────────────────────────────────────────────────
-info "Zsh 설정 백업 중..."
-backup_file "$HOME/.zshrc" "$DOTFILES/zsh/.zshrc"
+# .zshrc는 환경별 비밀(토큰/VPN/회사 프록시 등)이 섞이기 쉬우므로 기본 OFF.
+# 백업이 필요하면 BACKUP_ZSHRC=1 ./backup.sh 로 명시적 실행.
+if [[ "${BACKUP_ZSHRC:-0}" == "1" ]]; then
+  info "Zsh 설정 백업 중..."
+  backup_file "$HOME/.zshrc" "$DOTFILES/zsh/.zshrc"
+  warn ".zshrc에 민감정보가 포함될 수 있습니다 — 커밋 전 반드시 내용 검토 (git diff)"
+else
+  warn "Zsh 설정 백업 건너뜀 (민감정보 유출 방지). 필요하면: BACKUP_ZSHRC=1 ./backup.sh"
+fi
 
 # ── 완료 ──────────────────────────────────────────────────────────────────────
 echo ""
