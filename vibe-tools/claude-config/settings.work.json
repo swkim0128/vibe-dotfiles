@@ -7,13 +7,29 @@
     "context7@claude-plugins-official": true,
     "Notion@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
-    "vibe-config@personal": true
+    "vibe-config@personal": true,
+    "analyze@cc-claude": true,
+    "backend@cc-claude": true,
+    "beginner@cc-claude": true,
+    "cc-utils@cc-claude": true,
+    "context-architect@cc-claude": true,
+    "enterprise-base@cc-claude": true,
+    "harness@cc-claude": true,
+    "plane-mcp@cc-claude": true,
+    "workflow@cc-claude": true,
+    "legacy@cc-claude": true
   },
   "extraKnownMarketplaces": {
     "omc": {
       "source": {
         "source": "git",
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
+      }
+    },
+    "cc-claude": {
+      "source": {
+        "source": "git",
+        "url": "[YOUR_CC_CLAUDE_MARKETPLACE_URL (cowave.kr)]"
       }
     }
   },

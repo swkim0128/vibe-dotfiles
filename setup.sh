@@ -170,8 +170,23 @@ safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
 # ── 9. Claude Code 설정 심볼릭 링크 ─────────────────────────────────────────
 info "Claude Code 설정 심볼릭 링크 적용 중..."
-safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
-safe_link "$HOME/.claude/hooks"         "$DOTFILES/vibe-tools/claude-config/hooks"
+
+echo ""
+echo "  환경을 선택하세요:"
+echo "  [p] 개인 환경 (기본)"
+echo "  [w] 회사 환경 (cc-claude 플러그인 포함)"
+read -r -p "  선택 (p/w, 기본값: p): " ENV_TYPE
+ENV_TYPE="${ENV_TYPE:-p}"
+
+if [[ "$ENV_TYPE" == "w" ]]; then
+  safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.work.json"
+  success "회사 환경 설정 적용"
+else
+  safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
+  success "개인 환경 설정 적용"
+fi
+
+safe_link "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
 
 # ── 10. Claude 사용자 스킬 복원 (기존 스킬 보존) ────────────────────────────
 info "Claude 사용자 스킬 복원 중..."
