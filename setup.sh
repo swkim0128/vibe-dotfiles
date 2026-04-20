@@ -170,10 +170,8 @@ safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
 # ── 9. Claude Code 설정 심볼릭 링크 ─────────────────────────────────────────
 info "Claude Code 설정 심볼릭 링크 적용 중..."
-mkdir -p "$HOME/.claude/plugins/cache/personal"
 safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
 safe_link "$HOME/.claude/hooks"         "$DOTFILES/vibe-tools/claude-config/hooks"
-safe_link "$HOME/.claude/plugins/cache/personal/vibe-config" "$DOTFILES/vibe-tools/claude-plugin"
 
 # ── 10. Claude 사용자 스킬 복원 (기존 스킬 보존) ────────────────────────────
 info "Claude 사용자 스킬 복원 중..."
@@ -219,25 +217,42 @@ else
 fi
 
 # ── 13. Vibe Claude Plugin ───────────────────────────────────────────────────
-PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
-PLUGIN_REPO="[YOUR_PLUGIN_REPO_URL]"
-
-info "Vibe Claude Plugin 확인 중..."
-if [[ "$PLUGIN_REPO" == "[YOUR_PLUGIN_REPO_URL]" ]]; then
-  warn "Vibe Claude Plugin 저장소 URL 미설정 — 섹션 건너뜀 (필요 시 setup.sh에서 PLUGIN_REPO 변수 지정)"
-elif [[ ! -d "$PLUGIN_DIR" ]]; then
-  info "플러그인 레포지토리 클론 중..."
-  git clone "$PLUGIN_REPO" "$PLUGIN_DIR"
-  success "vibe-claude-plugin 클론 완료"
-  if [[ -f "$PLUGIN_DIR/install.sh" ]]; then
-    info "플러그인 설치 중..."
-    bash "$PLUGIN_DIR/install.sh"
-    success "vibe-claude-plugin 설치 완료"
-  else
-    warn "install.sh 없음 — 플러그인 설치 건너뜀"
-  fi
+info "Claude Code 플러그인 설치 중..."
+if ! command -v claude &>/dev/null; then
+  warn "Claude Code 미설치 — 플러그인 설치 건너뜀"
 else
-  success "vibe-claude-plugin 이미 존재함 — 건너뜀"
+  # omc 마켓플레이스 등록
+  if ! claude plugin marketplace list 2>/dev/null | grep -q "omc"; then
+    claude plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode.git --name omc 2>/dev/null && \
+      success "omc 마켓플레이스 등록 완료" || warn "omc 마켓플레이스 등록 실패"
+  else
+    success "omc 마켓플레이스 이미 등록됨"
+  fi
+
+  # 마켓플레이스 플러그인 설치
+  CLAUDE_PLUGINS=(
+    "superpowers@claude-plugins-official"
+    "github@claude-plugins-official"
+    "playwright@claude-plugins-official"
+    "skill-creator@claude-plugins-official"
+    "context7@claude-plugins-official"
+    "Notion@claude-plugins-official"
+    "oh-my-claudecode@omc"
+  )
+  for plugin in "${CLAUDE_PLUGINS[@]}"; do
+    claude plugin install "$plugin" --scope user 2>/dev/null && \
+      success "$plugin 설치 완료" || info "$plugin 이미 설치됨"
+  done
+fi
+
+# 개인 플러그인 설치
+PERSONAL_PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
+if [[ -d "$PERSONAL_PLUGIN_DIR" && -f "$PERSONAL_PLUGIN_DIR/install.sh" ]]; then
+  info "개인 플러그인 설치 중..."
+  bash "$PERSONAL_PLUGIN_DIR/install.sh"
+else
+  warn "vibe-claude-plugin 없음 — 별도 클론 후 install.sh 실행 필요"
+  warn "  git clone <repo-url> $PERSONAL_PLUGIN_DIR && bash $PERSONAL_PLUGIN_DIR/install.sh"
 fi
 
 # ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────
