@@ -57,11 +57,9 @@ return {
         border = { true, true, false, false, false, false },
         border_virtual = true,
 
-        -- [3] 상단 두께: H1과 H2에만 배경색으로 채워진 위쪽 블록 추가
-        above = { '▄', '▄', '', '', '', '' },
-
-        -- [4] 하단 두께: H1에만 아래쪽 블록 추가 (가장 거대해짐)
-        below = { '▀', '', '', '', '', '' },
+        -- [3] 상/하단 테두리 문자 (단일 문자열 — 단계별 on/off 는 border 배열이 담당)
+        above = '▄',
+        below = '▀',
       },
 
       -- 2. 코드 블록 (Code Blocks) 설정: 화면을 꽉 채우는 배경색 적용

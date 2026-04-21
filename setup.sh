@@ -231,18 +231,26 @@ else
   warn "기존 git core.pager='$current_pager' 감지 — 덮어쓰지 않고 Delta 설정 건너뜀 (원하면 수동 적용)"
 fi
 
-# ── 13. Vibe Claude Plugin ───────────────────────────────────────────────────
+# ── 13. Claude Code 플러그인 ────────────────────────────────────────────────
 info "Claude Code 플러그인 설치 중..."
 if ! command -v claude &>/dev/null; then
   warn "Claude Code 미설치 — 플러그인 설치 건너뜀"
 else
-  # omc 마켓플레이스 등록
-  if ! claude plugin marketplace list 2>/dev/null | grep -q "omc"; then
-    claude plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode.git --name omc 2>/dev/null && \
-      success "omc 마켓플레이스 등록 완료" || warn "omc 마켓플레이스 등록 실패"
-  else
-    success "omc 마켓플레이스 이미 등록됨"
-  fi
+  # 마켓플레이스 등록 (이름|GitHub URL)
+  MARKETPLACES=(
+    "omc|https://github.com/Yeachan-Heo/oh-my-claudecode.git"
+    "personal|https://github.com/swkim0128/vibe-claude-plugin.git"
+  )
+  for entry in "${MARKETPLACES[@]}"; do
+    mp_name="${entry%%|*}"
+    mp_url="${entry##*|}"
+    if ! claude plugin marketplace list 2>/dev/null | grep -q "$mp_name"; then
+      claude plugin marketplace add "$mp_url" --name "$mp_name" 2>/dev/null && \
+        success "$mp_name 마켓플레이스 등록 완료" || warn "$mp_name 마켓플레이스 등록 실패"
+    else
+      success "$mp_name 마켓플레이스 이미 등록됨"
+    fi
+  done
 
   # 마켓플레이스 플러그인 설치
   CLAUDE_PLUGINS=(
@@ -253,6 +261,7 @@ else
     "context7@claude-plugins-official"
     "Notion@claude-plugins-official"
     "oh-my-claudecode@omc"
+    "vibe-config@personal"
   )
   for plugin in "${CLAUDE_PLUGINS[@]}"; do
     claude plugin install "$plugin" --scope user 2>/dev/null && \
@@ -260,26 +269,27 @@ else
   done
 fi
 
-# 개인 플러그인 설치
-PERSONAL_PLUGIN_DIR="$HOME/Project/vibe-claude-plugin"
-if [[ -d "$PERSONAL_PLUGIN_DIR" && -f "$PERSONAL_PLUGIN_DIR/install.sh" ]]; then
-  info "개인 플러그인 설치 중..."
-  bash "$PERSONAL_PLUGIN_DIR/install.sh"
-
-  # personal 마켓플레이스 등록 및 플러그인 설치
-  if command -v claude &>/dev/null; then
-    if ! claude plugin marketplace list 2>/dev/null | grep -q "personal"; then
-      claude plugin marketplace add "$PERSONAL_PLUGIN_DIR" --scope user 2>/dev/null && \
-        success "personal 마켓플레이스 등록 완료" || warn "personal 마켓플레이스 등록 실패"
-    else
-      success "personal 마켓플레이스 이미 등록됨"
+# vibe-config 플러그인 MCP 서버를 claude.json 에 병합 (캐시 경로 직접 참조)
+VIBE_CONFIG_CACHE="$HOME/.claude/plugins/cache/personal/vibe-config"
+MCP_CONFIG="$VIBE_CONFIG_CACHE/mcp/mcp-config.json"
+CLAUDE_JSON="$HOME/.claude/claude.json"
+if [[ -f "$MCP_CONFIG" ]]; then
+  if ! command -v jq &>/dev/null; then
+    warn "jq 없음 — vibe-config MCP 병합 건너뜀 (brew install jq 로 설치)"
+  else
+    MCP_COUNT=$(jq '.mcpServers | length' "$MCP_CONFIG" 2>/dev/null || echo 0)
+    if [[ "$MCP_COUNT" -gt 0 ]]; then
+      mkdir -p "$HOME/.claude"
+      if [[ -f "$CLAUDE_JSON" ]]; then
+        jq -s '.[0] * {"mcpServers": ((.[0].mcpServers // {}) + .[1].mcpServers)}' \
+          "$CLAUDE_JSON" "$MCP_CONFIG" > /tmp/claude_merged.json && \
+          mv /tmp/claude_merged.json "$CLAUDE_JSON"
+      else
+        jq '{mcpServers: .mcpServers}' "$MCP_CONFIG" > "$CLAUDE_JSON"
+      fi
+      success "vibe-config MCP 서버 ${MCP_COUNT}개 병합 완료"
     fi
-    claude plugin install vibe-config@personal --scope user 2>/dev/null && \
-      success "vibe-config@personal 설치 완료" || info "vibe-config@personal 이미 설치됨"
   fi
-else
-  warn "vibe-claude-plugin 없음 — 별도 클론 후 install.sh 실행 필요"
-  warn "  git clone <repo-url> $PERSONAL_PLUGIN_DIR && bash $PERSONAL_PLUGIN_DIR/install.sh"
 fi
 
 # ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────

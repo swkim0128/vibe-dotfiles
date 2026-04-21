@@ -25,13 +25,8 @@
         "source": "git",
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
-    },
-    "cc-claude": {
-      "source": {
-        "source": "git",
-        "url": "[YOUR_CC_CLAUDE_MARKETPLACE_URL (cowave.kr)]"
-      }
     }
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "model": "sonnet"
 }

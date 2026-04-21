@@ -82,10 +82,27 @@ else
         exit 1
     fi
 
+    # 경로 목록 읽기 + device:inode 기준 중복 제거
+    # (macOS case-insensitive FS 에서 ~/Project 와 ~/project 는 동일 inode 지만
+    #  pwd -P 는 사용자 입력 대소문자를 보존하므로 문자열 dedup 으로는 부족 → stat 으로 inode 비교)
     paths=()
+    seen=$'\n'
     while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        [[ -d "$line" ]] || continue
+        key=$(stat -f '%d:%i' "$line" 2>/dev/null || stat -c '%d:%i' "$line" 2>/dev/null)
+        [[ -z "$key" ]] && continue
+        case "$seen" in
+            *$'\n'"$key"$'\n'*) continue ;;
+        esac
+        seen="${seen}${key}"$'\n'
         paths+=("$line")
     done < <(grep -v '^\s*#' "$PATHS_FILE" | grep -v '^\s*$' | sed "s|~|$HOME|g")
+
+    if [[ ${#paths[@]} -eq 0 ]]; then
+        echo -e "\033[0;31m[오류]\033[0m 유효한 검색 경로가 없습니다: $PATHS_FILE"
+        exit 1
+    fi
 
     selected=$(find "${paths[@]}" -mindepth 1 -maxdepth 3 -type d -not -path '*/.*' 2>/dev/null \
       | fzf --prompt="📂 프로젝트 선택 > " --height=100% --layout=reverse --border=rounded)
