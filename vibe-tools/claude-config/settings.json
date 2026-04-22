@@ -10,7 +10,8 @@
     "skill-creator@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
-    "vibe-config@personal": true
+    "notion@claude-plugins-official": true,
+    "vibe-config@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
@@ -19,10 +20,11 @@
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
     },
-    "personal": {
+    "swkim0128": {
       "source": {
         "source": "git",
-        "url": "https://github.com/swkim0128/vibe-claude-plugin.git"
+        "url": "https://github.com/swkim0128/vibe-claude-plugin.git",
+        "path": "/Users/eunsol/Project/vibe-claude-plugin"
       }
     }
   },
