@@ -23,7 +23,7 @@ vibe-dotfiles/
 │   │   ├── settings.json     # 플러그인, hooks 설정
 │   │   └── hooks/
 │   │       └── mac-notify.sh # 작업 완료 macOS 알림
-│   └── claude-plugin/        # 개인 Claude Code 플러그인 (vibe-config@swkim0128)
+│   └── claude-plugin/        # 개인 Claude Code 플러그인 (vibe-config@personal)
 │       ├── package.json
 │       ├── hooks/hooks.json  # Stop/Notification 훅
 │       └── skills/claude-ipc/SKILL.md
@@ -81,7 +81,7 @@ setup.sh가 수행하는 작업:
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
 - `~/.claude/settings.json`, `~/.claude/hooks` 심볼릭 링크
-- `~/.claude/plugins/cache/swkim0128/vibe-config` 심볼릭 링크 (개인 플러그인)
+- `~/.claude/plugins/cache/personal/vibe-config` 심볼릭 링크 (개인 플러그인)
 - `~/.zshrc` 에 `aliases.zsh` source 라인 자동 추가
 
 ### 4단계 — NvChad 설치 (Neovim 처음 설정 시)
@@ -135,7 +135,7 @@ git push
 
 ---
 
-## 📦 Claude Code 개인 플러그인 (`vibe-config@swkim0128`)
+## 📦 Claude Code 개인 플러그인 (`vibe-config@personal`)
 
 설치 후 Claude Code를 재시작하면 자동으로 로드됩니다.
 

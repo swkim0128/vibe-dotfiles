@@ -124,7 +124,7 @@ fi
 info "Claude Code 확인 중..."
 if ! command -v claude &>/dev/null; then
   info "Claude Code 설치 중..."
-  brew install claude
+  brew install claude-code
   success "Claude Code 설치 완료"
 else
   success "Claude Code 이미 설치됨 ($(claude --version 2>/dev/null))"
@@ -239,13 +239,13 @@ else
   # 마켓플레이스 등록 (이름|GitHub URL)
   MARKETPLACES=(
     "omc|https://github.com/Yeachan-Heo/oh-my-claudecode.git"
-    "swkim0128|https://github.com/swkim0128/vibe-claude-plugin.git"
+    "personal|https://github.com/swkim0128/vibe-claude-plugin.git"
   )
   for entry in "${MARKETPLACES[@]}"; do
     mp_name="${entry%%|*}"
     mp_url="${entry##*|}"
     if ! claude plugin marketplace list 2>/dev/null | grep -q "$mp_name"; then
-      claude plugin marketplace add "$mp_url" --name "$mp_name" 2>/dev/null && \
+      claude plugin marketplace add "$mp_url" 2>/dev/null && \
         success "$mp_name 마켓플레이스 등록 완료" || warn "$mp_name 마켓플레이스 등록 실패"
     else
       success "$mp_name 마켓플레이스 이미 등록됨"
@@ -259,9 +259,8 @@ else
     "playwright@claude-plugins-official"
     "skill-creator@claude-plugins-official"
     "context7@claude-plugins-official"
-    "Notion@claude-plugins-official"
     "oh-my-claudecode@omc"
-    "vibe-config@swkim0128"
+    "vibe-config@personal"
   )
   for plugin in "${CLAUDE_PLUGINS[@]}"; do
     claude plugin install "$plugin" --scope user 2>/dev/null && \
@@ -270,7 +269,7 @@ else
 fi
 
 # vibe-config 플러그인 MCP 서버를 claude.json 에 병합 (캐시 경로 직접 참조)
-VIBE_CONFIG_CACHE="$HOME/.claude/plugins/cache/swkim0128/vibe-config"
+VIBE_CONFIG_CACHE="$HOME/.claude/plugins/cache/personal/vibe-config"
 MCP_CONFIG="$VIBE_CONFIG_CACHE/mcp/mcp-config.json"
 CLAUDE_JSON="$HOME/.claude/claude.json"
 if [[ -f "$MCP_CONFIG" ]]; then
