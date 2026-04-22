@@ -101,7 +101,7 @@ backup_dir "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
 
 # ── 5. Claude 개인 플러그인 (vibe-config) ────────────────────────────────────
 info "Claude 개인 플러그인 백업 중..."
-backup_dir "$HOME/.claude/plugins/cache/personal/vibe-config" "$DOTFILES/vibe-tools/claude-plugin"
+backup_dir "$HOME/.claude/plugins/cache/swkim0128/vibe-config" "$DOTFILES/vibe-tools/claude-plugin"
 
 # ── 6. Vibe Tools ────────────────────────────────────────────────────────────
 info "Vibe Tools 백업 중..."

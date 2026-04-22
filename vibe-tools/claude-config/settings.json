@@ -7,7 +7,7 @@
     "context7@claude-plugins-official": true,
     "Notion@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
-    "vibe-config@personal": true
+    "vibe-config@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
@@ -16,7 +16,7 @@
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
     },
-    "personal": {
+    "swkim0128": {
       "source": {
         "source": "directory",
         "path": "/Users/eunsol/Project/vibe-claude-plugin"
