@@ -2,7 +2,7 @@
 set -u
 
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
-PROMPT_DIR="$PLUGIN_CACHE/personal/vibe-config/prompts"
+PROMPT_DIR="$PLUGIN_CACHE/swkim0128/vibe-config/prompts"
 SKILL_DIR="$HOME/.claude/skills"
 
 # ITEMS 목록 캐시 — 플러그인 스킬 find 가 무거워 첫 실행 이후에는 재사용
