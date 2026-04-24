@@ -10,7 +10,9 @@
 
 > **상황:** `para` 세션에서 작업 노트를 읽고 새로운 태스크를 시작할 때
 
-- **행동:** 터미널에 `vibe start [프로젝트명] [작업명]` 입력
+- **메인 지휘소 세션 생성:** `vibe main` → `para` 세션 (nvim 70% + claude 30%)
+- **서브 프로젝트 세션 생성:** `vibe start <프로젝트명> <절대경로>` 입력
+- **fzf 탐색으로 세션 생성:** `Prefix + f` 또는 `vibe fzf`
 - **결과:** 타겟 프로젝트 폴더에 백그라운드 세션이 열리고 에디터와 AI가 대기 상태로 전환됨
 
 ### 2. 서브 에이전트 작업 위임 (Delegation)
@@ -47,10 +49,11 @@
 
 | 단축키 | 팝업 제목 | 기능 |
 |--------|-----------|------|
-| `Prefix + f` | Project Navigator | 프로젝트 fzf 선택 → nvim 70% + claude 30% 레이아웃 자동 구성 |
+| `Prefix + f` | Project Navigator | `vibe fzf` — fzf 프로젝트 탐색 → nvim 70% + claude 30% 레이아웃 자동 구성 |
 | `Prefix + C` | Claude Skills | 현재 세션의 Claude 패널에 스킬 프롬프트 자동 전송 |
 | `Prefix + M` | My Command Menu | 자주 쓰는 명령어 fzf 팝업 (`commands.txt` 기반) |
-| `Prefix + p` | Project Jumper | `~/Projects` 폴더 fzf 선택 → tmux 세션 생성/전환 |
+| `Prefix + p` | Para Jumper | `para` 세션으로 즉시 이동 (메인 지휘소) |
+| `Prefix + T` | Pane Rename | 현재 패널 이름 즉시 변경 |
 | `Prefix + Tab` | yazi | 현재 경로에서 yazi 파일 탐색기 50% 분할 오픈 |
 | `Prefix + ?` | Vibe Coding Cheat Sheet | 이 매뉴얼 팝업 (읽기 전용 nvim) |
 | `Ctrl + F` | My Command Menu | 셸에서 바로 명령어 팝업 실행 |
@@ -101,7 +104,7 @@ tmux list-panes -a -F '#{pane_id} #{session_name}:#{window_index}.#{pane_index} 
 | `Prefix + "` | 상하 분할 |
 | `Option + h/j/k/l` | 패널 이동 (prefix 없이) |
 | `Prefix + z` | 현재 패널 전체화면 토글 |
-| `Prefix + x` | 현재 패널 닫기 |
+| `Prefix + x` | 현재 세션 종료 후 para 복귀 (`vibe done`) |
 
 ### 패널 크기 조절
 
