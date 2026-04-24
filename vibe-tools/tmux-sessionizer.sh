@@ -116,7 +116,7 @@ else
     existing_sessions=$(tmux list-sessions -F "#S" 2>/dev/null | grep "^${base_name}" | tr '\n' ' ')
 
     if [[ -n $existing_sessions ]]; then
-        target=$(echo -e "🆕 [New Task Session]\n${existing_sessions// /\\n}" | grep -v '^$' \
+        target=$(echo -e "${existing_sessions// /\\n}\n🆕 [New Task Session]" | grep -v '^$' \
           | fzf --prompt="🎯 접속할 세션 선택 (또는 새 작업 생성) > " --height=40% --layout=reverse --border=rounded)
 
         if [[ -z $target ]]; then exit 0; fi
