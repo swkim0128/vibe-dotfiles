@@ -161,7 +161,6 @@ safe_link "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 # 스크립트 실행 권한 보장
 chmod +x "$DOTFILES/vibe-tools/"*.sh
 chmod +x "$DOTFILES/vibe-tools/claude-config/hooks/mac-notify.sh"
-chmod +x "$DOTFILES/vibe-tools/claude-plugin/hooks/mac-notify.sh"
 
 # ── 8. Neovim (NvChad) Lua 설정 ──────────────────────────────────────────────
 info "Neovim lua 설정 적용 중..."
@@ -236,11 +235,15 @@ info "Claude Code 플러그인 설치 중..."
 if ! command -v claude &>/dev/null; then
   warn "Claude Code 미설치 — 플러그인 설치 건너뜀"
 else
-  # 마켓플레이스 등록 (이름|GitHub URL)
+  # 마켓플레이스 등록 (이름|URL) — 공용 + 환경별
   MARKETPLACES=(
     "omc|https://github.com/Yeachan-Heo/oh-my-claudecode.git"
     "swkim0128|https://github.com/swkim0128/vibe-claude-plugin.git"
   )
+  # 업무 환경: 사내 cc-claude 마켓플레이스 추가 (외부망에선 접근 불가)
+  if [[ "$ENV_TYPE" == "w" ]]; then
+    MARKETPLACES+=("cc-claude|https://labs.cowave.kr/consumer-commerce-dev/cc-claude/marketplace.git")
+  fi
   for entry in "${MARKETPLACES[@]}"; do
     mp_name="${entry%%|*}"
     mp_url="${entry##*|}"
@@ -252,43 +255,54 @@ else
     fi
   done
 
-  # 마켓플레이스 플러그인 설치
-  CLAUDE_PLUGINS=(
+  # 공용 플러그인 (개인·업무 공통)
+  BASE_PLUGINS=(
     "superpowers@claude-plugins-official"
     "github@claude-plugins-official"
     "playwright@claude-plugins-official"
     "skill-creator@claude-plugins-official"
     "context7@claude-plugins-official"
     "oh-my-claudecode@omc"
-    "vibe-config@swkim0128"
+    "tmux-suite@swkim0128"
+    "git-suite@swkim0128"
+    "legacy-suite@swkim0128"
+    "task-mgmt@swkim0128"
+    "vibe-admin@swkim0128"
+    "notify@swkim0128"
   )
+  # 개인 환경 전용 플러그인
+  PERSONAL_PLUGINS=(
+    "notion@claude-plugins-official"
+  )
+  # 업무 환경 전용 플러그인 (사내 cc-claude 마켓플레이스)
+  WORK_PLUGINS=(
+    "analyze@cc-claude"
+    "backend@cc-claude"
+    "beginner@cc-claude"
+    "cc-utils@cc-claude"
+    "context-architect@cc-claude"
+    "enterprise-base@cc-claude"
+    "harness@cc-claude"
+    "plane-mcp@cc-claude"
+    "workflow@cc-claude"
+    "legacy@cc-claude"
+    "test@cc-claude"
+    "nworks@cc-claude"
+    "prompt-search@cc-claude"
+  )
+
+  # 환경에 맞는 플러그인 조합
+  CLAUDE_PLUGINS=("${BASE_PLUGINS[@]}")
+  if [[ "$ENV_TYPE" == "w" ]]; then
+    CLAUDE_PLUGINS+=("${WORK_PLUGINS[@]}")
+  else
+    CLAUDE_PLUGINS+=("${PERSONAL_PLUGINS[@]}")
+  fi
+
   for plugin in "${CLAUDE_PLUGINS[@]}"; do
     claude plugin install "$plugin" --scope user 2>/dev/null && \
       success "$plugin 설치 완료" || info "$plugin 이미 설치됨"
   done
-fi
-
-# vibe-config 플러그인 MCP 서버를 claude.json 에 병합 (캐시 경로 직접 참조)
-VIBE_CONFIG_CACHE="$HOME/.claude/plugins/cache/swkim0128/vibe-config"
-MCP_CONFIG="$VIBE_CONFIG_CACHE/mcp/mcp-config.json"
-CLAUDE_JSON="$HOME/.claude/claude.json"
-if [[ -f "$MCP_CONFIG" ]]; then
-  if ! command -v jq &>/dev/null; then
-    warn "jq 없음 — vibe-config MCP 병합 건너뜀 (brew install jq 로 설치)"
-  else
-    MCP_COUNT=$(jq '.mcpServers | length' "$MCP_CONFIG" 2>/dev/null || echo 0)
-    if [[ "$MCP_COUNT" -gt 0 ]]; then
-      mkdir -p "$HOME/.claude"
-      if [[ -f "$CLAUDE_JSON" ]]; then
-        jq -s '.[0] * {"mcpServers": ((.[0].mcpServers // {}) + .[1].mcpServers)}' \
-          "$CLAUDE_JSON" "$MCP_CONFIG" > /tmp/claude_merged.json && \
-          mv /tmp/claude_merged.json "$CLAUDE_JSON"
-      else
-        jq '{mcpServers: .mcpServers}' "$MCP_CONFIG" > "$CLAUDE_JSON"
-      fi
-      success "vibe-config MCP 서버 ${MCP_COUNT}개 병합 완료"
-    fi
-  fi
 fi
 
 # ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────

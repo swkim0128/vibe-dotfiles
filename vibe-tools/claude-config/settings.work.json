@@ -1,4 +1,8 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
+  },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "github@claude-plugins-official": true,
@@ -6,7 +10,6 @@
     "skill-creator@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
-    "vibe-config@personal": true,
     "analyze@cc-claude": true,
     "backend@cc-claude": true,
     "beginner@cc-claude": true,
@@ -16,7 +19,16 @@
     "harness@cc-claude": true,
     "plane-mcp@cc-claude": true,
     "workflow@cc-claude": true,
-    "legacy@cc-claude": true
+    "legacy@cc-claude": true,
+    "test@cc-claude": true,
+    "nworks@cc-claude": true,
+    "prompt-search@cc-claude": true,
+    "tmux-suite@swkim0128": true,
+    "git-suite@swkim0128": true,
+    "legacy-suite@swkim0128": true,
+    "task-mgmt@swkim0128": true,
+    "vibe-admin@swkim0128": true,
+    "notify@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
@@ -24,8 +36,13 @@
         "source": "git",
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
+    },
+    "swkim0128": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/swkim0128/vibe-claude-plugin.git"
+      }
     }
   },
-  "alwaysThinkingEnabled": true,
-  "model": "sonnet"
+  "alwaysThinkingEnabled": true
 }
