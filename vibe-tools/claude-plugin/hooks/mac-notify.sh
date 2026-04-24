@@ -1,1 +1,0 @@
-/Users/eunsol/.config/vibe-tools/claude-config/hooks/mac-notify.sh
