@@ -205,11 +205,14 @@ if ! tmux has-session -t "$session_name" 2>/dev/null; then
     # 윈도우 1: develop (nvim + claude)
     tmux new-session -d -s "$session_name" -n "develop" -c "$selected"
     tmux send-keys -t "${session_name}:develop" "nvim ." C-m
+    tmux select-pane -t "${session_name}:develop.1" -T "nvim"
     tmux split-window -h -p 30 -t "${session_name}:develop" -c "$selected"
     tmux send-keys -t "${session_name}:develop" "claude" C-m
+    tmux select-pane -t "${session_name}:develop.2" -T "claude"
 
     # 윈도우 2: 개발 작업용 터미널
     tmux new-window -t "$session_name" -n "$win2_name" -c "$selected"
+    tmux select-pane -t "${session_name}:${win2_name}.1" -T "terminal"
 
     # 첫 화면은 윈도우 1(develop)로 복귀 — 활성 패널은 직전의 claude pane 유지
     tmux select-window -t "${session_name}:develop"

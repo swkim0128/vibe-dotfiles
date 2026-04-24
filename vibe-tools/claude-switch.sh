@@ -141,6 +141,10 @@ PROJECT_PATH_ESC=$(printf '%q' "$PROJECT_PATH")
 tmux send-keys -t "$TARGET_PANE_ID" "cd $PROJECT_PATH_ESC" Enter
 tmux send-keys -t "$TARGET_PANE_ID" "claude" Enter
 
+# 패널 이름을 새 프로젝트명으로 갱신
+proj_basename=$(basename "$PROJECT_PATH")
+tmux select-pane -t "$TARGET_PANE_ID" -T "claude | $proj_basename"
+
 echo "✅ 전환 완료"
 echo "   타겟 패널 : $TARGET_PANE_ID ($TARGET_LABEL)"
 echo "   새 경로   : $PROJECT_PATH"
