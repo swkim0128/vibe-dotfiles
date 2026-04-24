@@ -11,7 +11,13 @@
     "context7@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
     "notion@claude-plugins-official": true,
-    "vibe-config@swkim0128": true
+    "tmux-suite@swkim0128": true,
+    "git-suite@swkim0128": true,
+    "legacy-suite@swkim0128": true,
+    "task-mgmt@swkim0128": true,
+    "vibe-admin@swkim0128": true,
+    "notify@swkim0128": true,
+    "notion-suite@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
