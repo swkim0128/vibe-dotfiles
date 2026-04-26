@@ -97,6 +97,20 @@ return {
     },
   },
 
+  {
+    "kdheepak/lazygit.nvim",
+    cmd = {
+      "LazyGit",
+      "LazyGitConfig",
+      "LazyGitCurrentFile",
+      "LazyGitFilter",
+      "LazyGitFilterCurrentFile",
+    },
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+    },
+  },
+
   -- nvim-tree: 긴 파일명이 잘리지 않도록 폭 가변 확장
   {
     "nvim-tree/nvim-tree.lua",
