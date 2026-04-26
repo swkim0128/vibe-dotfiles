@@ -5,9 +5,11 @@
 # 정렬 기준: "이 작업을 할 때 손이 가는 순서" — 자주 쓰는 상황 → 드문 상황
 
 # ── 🗂️  세션 시작/전환 ──────────────────────────────────
-🗂️  프로젝트 세션 전환 (fzf) | ~/.config/vibe-tools/vibe.sh fzf
+🏠 [지휘소] para 세션 생성 (Nvim + Main Claude 7:3) | ~/.config/vibe-tools/vibe.sh main
+🚀 [현장] 프로젝트 세션 생성 (Nvim + Sub Claude 7:3) | ~/.config/vibe-tools/vibe.sh start
+🔍 [탐색] fzf로 프로젝트 검색 후 현장 세션 진입 (Prefix+f) | ~/.config/vibe-tools/vibe.sh fzf
 🔙 para 세션으로 즉시 이동 | tmux switch-client -t para
-🔚 현재 Vibe 세션 종료 → para 복귀 | vibe done
+🔚 현재 Vibe 세션 종료 → para 복귀 | ~/.config/vibe-tools/vibe.sh done
 
 # ── 🤖 Claude / AI ──────────────────────────────────────
 🤖 Claude 프롬프트 팝업 | ~/.config/vibe-tools/claude-skills.sh
@@ -39,4 +41,4 @@
 # ── 🛠️  환경 관리 / 백업 ────────────────────────────────
 💾 현재 설정 백업 (vibe-dotfiles) | ~/Project/vibe-dotfiles/backup.sh
 🛠️  Tmux 설정 새로고침 | tmux source-file ~/.tmux.conf
-📋 Vibe 치트시트 보기 | vhelp
+📋 Vibe 치트시트 보기 | ~/.config/vibe-tools/vhelp.sh
