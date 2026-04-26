@@ -5,7 +5,7 @@
 # 정렬 기준: "이 작업을 할 때 손이 가는 순서" — 자주 쓰는 상황 → 드문 상황
 
 # ── 🗂️  세션 시작/전환 ──────────────────────────────────
-🗂️  프로젝트 세션 전환 (Sessionizer) | ~/.config/vibe-tools/tmux-sessionizer.sh
+🗂️  프로젝트 세션 전환 (fzf) | ~/.config/vibe-tools/vibe.sh fzf
 🔙 para 세션으로 즉시 이동 | tmux switch-client -t para
 🔚 현재 Vibe 세션 종료 → para 복귀 | vibe done
 

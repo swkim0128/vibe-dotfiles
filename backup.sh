@@ -99,19 +99,11 @@ backup_file "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/se
 info "Claude Code hooks 백업 중..."
 backup_dir "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
 
-# ── 5. Claude 개인 플러그인 (vibe-config) ────────────────────────────────────
-info "Claude 개인 플러그인 백업 중..."
-backup_dir "$HOME/.claude/plugins/cache/personal/vibe-config" "$DOTFILES/vibe-tools/claude-plugin"
-
-# ── 6. Vibe Tools ────────────────────────────────────────────────────────────
+# ── 5. Vibe Tools ────────────────────────────────────────────────────────────
 info "Vibe Tools 백업 중..."
 backup_dir "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 
-# ── 7. Claude 사용자 스킬 ────────────────────────────────────────────────────
-info "Claude 사용자 스킬 백업 중..."
-backup_dir "$HOME/.claude/skills" "$DOTFILES/claude-skills"
-
-# ── 8. Zsh ───────────────────────────────────────────────────────────────────
+# ── 7. Zsh ───────────────────────────────────────────────────────────────────
 # .zshrc는 환경별 비밀(토큰/VPN/회사 프록시 등)이 섞이기 쉬우므로 기본 OFF.
 # 백업이 필요하면 BACKUP_ZSHRC=1 ./backup.sh 로 명시적 실행.
 if [[ "${BACKUP_ZSHRC:-0}" == "1" ]]; then
