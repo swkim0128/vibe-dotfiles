@@ -1,7 +1,0 @@
-[👑 MAIN]   | vibe main    | 지휘소(para) 세션 생성 및 메인 에이전트 실행
-[👑 MAIN]   | vmarket list | 마켓플레이스 플러그인 활성화 목록 확인
-[🤖 SUB]    | vibe start   | 현재 경로에 현장 세션(Sub Agent) 다시 띄우기
-[🤖 SUB]    | git push     | 현재 작업 내역 Git 푸시 및 파이프라인 트리거
-[🌐 COMMON] | vibe fzf     | fzf로 다른 프로젝트 검색 후 즉시 이동 (Prefix+f)
-[🌐 COMMON] | lazygit      | 화면 중앙에 Lazygit 팝업 띄우기
-[🌐 COMMON] | vhelp        | Vibe 마크다운 치트시트 팝업 열기

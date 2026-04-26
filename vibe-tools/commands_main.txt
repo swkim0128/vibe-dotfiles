@@ -1,0 +1,2 @@
+vibe main | 지휘소(para) 세션 재생성 및 초기화
+vmarket list | 마켓플레이스 플러그인 활성화 목록 확인

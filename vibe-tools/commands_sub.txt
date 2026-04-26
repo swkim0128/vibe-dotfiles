@@ -1,0 +1,2 @@
+vibe start | 현재 경로에 현장 세션(Sub Agent) 다시 띄우기
+git push | 현재 작업 내역 Git 푸시 및 파이프라인 트리거

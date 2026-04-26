@@ -1,24 +1,28 @@
 #!/bin/bash
 
-COMMANDS_FILE="$HOME/.config/vibe-tools/commands.txt"
+CONFIG_DIR="$HOME/.config/vibe-tools"
+CURRENT_SESSION=$(tmux display-message -p '#S')
+TMP_FILE=$(mktemp)
 
-# ---------------------------------------------------------
-# [1] 명령어 목록 파일 존재 여부 확인
-# ---------------------------------------------------------
-if [ ! -f "$COMMANDS_FILE" ]; then
-    echo -e "\033[0;31m[오류]\033[0m 명령어 목록 파일이 없습니다: $COMMANDS_FILE"
-    exit 1
+# 1. 공통 명령어 추가
+cat "$CONFIG_DIR/commands_common.txt" > "$TMP_FILE"
+
+# 2. 현재 세션에 따라 전용 명령어 결합
+if [ "$CURRENT_SESSION" = "para" ]; then
+    cat "$CONFIG_DIR/commands_main.txt" >> "$TMP_FILE"
+    PROMPT_TITLE="👑 [MAIN - para] Tools: "
+else
+    cat "$CONFIG_DIR/commands_sub.txt" >> "$TMP_FILE"
+    PROMPT_TITLE="🤖 [SUB - $CURRENT_SESSION] Tools: "
 fi
 
-# ---------------------------------------------------------
-# [2] fzf로 목록을 띄우고 선택 받음
-# ---------------------------------------------------------
-SELECTED=$(cat "$COMMANDS_FILE" | fzf --prompt="⚡ Command: " --reverse)
+# 3. fzf로 팝업 띄우기
+SELECTED=$(cat "$TMP_FILE" | fzf --prompt="$PROMPT_TITLE" --reverse)
+rm -f "$TMP_FILE"
 
-# ---------------------------------------------------------
-# [3] '|' 기준 2번째 필드(명령어)를 추출하여 tmux 패널에 실행
-# ---------------------------------------------------------
+# 4. 명령어 추출 및 실행
 if [ -n "$SELECTED" ]; then
-    CMD=$(echo "$SELECTED" | awk -F '|' '{print $2}' | xargs)
+    # 파이프(|) 기준 첫 번째 필드(명령어) 추출 후 공백 제거
+    CMD=$(echo "$SELECTED" | awk -F '|' '{print $1}' | xargs)
     tmux send-keys "$CMD" C-m
 fi
