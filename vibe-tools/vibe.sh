@@ -94,6 +94,12 @@ case "$CMD" in
 
   # ── fzf ──────────────────────────────────────────────────────────────────
   fzf)
+    # tmux 밖에서 실행 시: 임시 세션을 만들어 fzf 실행 (세션 선택 후 switch-client로 이동)
+    if [[ -z "${TMUX:-}" ]]; then
+        VIBE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+        exec tmux new-session "$VIBE_SCRIPT fzf"
+    fi
+
     if [[ ! -f "$PATHS_FILE" ]]; then
         echo "오류: 경로 목록 파일이 없습니다: $PATHS_FILE" >&2; exit 1
     fi
@@ -125,12 +131,22 @@ case "$CMD" in
 
     base_name=$(basename "$selected" | tr . _)
 
-    # 해당 프로젝트의 기존 세션 확인 (기존 세션 먼저 표시)
-    existing_sessions=$(tmux list-sessions -F "#S" 2>/dev/null | grep "^${base_name}" | tr '\n' ' ')
+    # 해당 프로젝트의 기존 세션 목록
+    existing_sessions=()
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && existing_sessions+=("$line")
+    done < <(tmux list-sessions -F "#S" 2>/dev/null | grep "^${base_name}")
 
-    if [[ -n "$existing_sessions" ]]; then
-        target=$(echo -e "${existing_sessions// /\\n}\n🆕 [New Task Session]" | grep -v '^$' \
-            | fzf --prompt="🎯 접속할 세션 선택 (또는 새 작업 생성) > " \
+    if [[ ${#existing_sessions[@]} -eq 0 ]]; then
+        # 세션 없음 → 바로 생성
+        _do_start "$base_name" "$selected"
+    elif [[ ${#existing_sessions[@]} -eq 1 ]]; then
+        # 세션 1개 → 바로 전환
+        tmux switch-client -t "${existing_sessions[0]}" 2>/dev/null || tmux attach-session -t "${existing_sessions[0]}"
+    else
+        # 세션 2개+ → 선택 후 전환 또는 신규 생성
+        target=$(printf '%s\n' "${existing_sessions[@]}" "🆕 [New Task Session]" \
+            | fzf --prompt="🎯 접속할 세션 선택 > " \
                   --height=40% --layout=reverse --border=rounded)
 
         [[ -z "$target" ]] && exit 0
@@ -140,13 +156,6 @@ case "$CMD" in
         else
             tmux switch-client -t "$target" 2>/dev/null || tmux attach-session -t "$target"
         fi
-    else
-        target=$(echo -e "🚀 바로 시작 (${base_name})\n🆕 [New Task Session]" \
-            | fzf --prompt="🎯 세션 생성 방식 > " --height=40% --layout=reverse --border=rounded)
-
-        [[ -z "$target" ]] && exit 0
-
-        _do_start "$base_name" "$selected"
     fi
     ;;
 
