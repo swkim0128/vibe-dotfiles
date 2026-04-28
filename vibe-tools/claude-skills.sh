@@ -2,8 +2,8 @@
 set -u
 
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
-PROMPT_DIR="$PLUGIN_CACHE/swkim0128/vibe-config/prompts"
 SKILL_DIR="$HOME/.claude/skills"
+SETTINGS_JSON="$HOME/.claude/settings.json"
 
 # ITEMS 목록 캐시 — 플러그인 스킬 find 가 무거워 첫 실행 이후에는 재사용
 ITEMS_CACHE_DIR="$HOME/.cache/vibe-tools"
@@ -58,12 +58,47 @@ build_items_cache() {
     local tmp
     tmp=$(mktemp "$ITEMS_CACHE_FILE.XXXXXX") || return 1
 
+    # 활성 플러그인 키 목록 ("plugin@marketplace": true 만 추출)
+    # 프롬프트·플러그인 스킬 블록 양쪽에서 공유
+    local enabled=$'\n'
+    if [[ -f "$SETTINGS_JSON" ]]; then
+        local ekey
+        while IFS= read -r ekey; do
+            [[ -n "$ekey" ]] && enabled="${enabled}${ekey}"$'\n'
+        done < <(grep -oE '"[A-Za-z][^"]*@[A-Za-z][^"]*"[[:space:]]*:[[:space:]]*true' "$SETTINGS_JSON" 2>/dev/null \
+                 | sed -E 's/^"([^"]+)".*$/\1/')
+    fi
+
     {
-        if [[ -d "$PROMPT_DIR" ]]; then
-            while IFS= read -r f; do
-                local name="${f%.txt}"
-                echo "📝 ${name}|prompt|${PROMPT_DIR}/${f}"
-            done < <(cd "$PROMPT_DIR" 2>/dev/null && ls *.txt 2>/dev/null | sort)
+        # 플러그인 프롬프트 — 경로: $PLUGIN_CACHE/<marketplace>/<plugin>/<version>/prompts/<file>.txt
+        # 동일 plugin:prompt 가 여러 버전이면 최신 1개만 (sort -V -r). 비활성 플러그인 제외.
+        if [[ -d "$PLUGIN_CACHE" ]]; then
+            local prompt_seen=$'\n'
+            local prompt_file p_rel p_rest p_marketplace p_name p_key p_basename p_dedup
+            while IFS= read -r prompt_file; do
+                p_rel="${prompt_file#"$PLUGIN_CACHE"/}"
+                p_marketplace="${p_rel%%/*}"
+                p_rest="${p_rel#*/}"
+                p_name="${p_rest%%/*}"
+                p_key="${p_name}@${p_marketplace}"
+
+                if [[ "$enabled" != $'\n' ]]; then
+                    case "$enabled" in
+                        *$'\n'"$p_key"$'\n'*) ;;
+                        *) continue ;;
+                    esac
+                fi
+
+                p_basename=$(basename "$prompt_file" .txt)
+                p_dedup="${p_name}:${p_basename}"
+                case "$prompt_seen" in
+                    *$'\n'"$p_dedup"$'\n'*) continue ;;
+                esac
+                prompt_seen="${prompt_seen}${p_dedup}"$'\n'
+                echo "📝 ${p_name}:${p_basename}|prompt|${prompt_file}"
+            # mindepth/maxdepth=5 로 최상위 <marketplace>/<plugin>/<version>/prompts/<file>.txt 만 매칭
+            # (tests/, examples/ 등 더 깊은 prompts/ 디렉터리는 제외)
+            done < <(find -L "$PLUGIN_CACHE" -mindepth 5 -maxdepth 5 -type f -name "*.txt" -path "*/prompts/*.txt" 2>/dev/null | sort -V -r)
         fi
 
         if [[ -d "$SKILL_DIR" ]]; then
@@ -78,14 +113,30 @@ build_items_cache() {
 
         # 플러그인 스킬 — 경로: $PLUGIN_CACHE/<marketplace>/<plugin>/<version>/skills/<skill>/SKILL.md
         # 동일 plugin:skill 이 여러 버전으로 설치된 경우 최신 버전 1개만 노출 (sort -V -r 로 우선)
+        # settings.json 의 enabledPlugins 에 없는 플러그인은 비활성화로 간주하여 제외
         if [[ -d "$PLUGIN_CACHE" ]]; then
             # bash 3.2 (macOS 기본) 호환: 연관배열(declare -A) 대신 개행 구분 문자열로 중복 체크
             local seen=$'\n'
-            local skill_md skill_dir skill_name plugin_name key
+            local skill_md skill_dir skill_name plugin_name marketplace_name key plugin_key rel rest
             while IFS= read -r skill_md; do
                 skill_dir=$(dirname "$skill_md")
                 skill_name=$(basename "$skill_dir")
-                plugin_name=$(basename "$(dirname "$(dirname "$(dirname "$skill_dir")")")")
+                # PLUGIN_CACHE 기준 상대경로의 첫 2 세그먼트 = <marketplace>/<plugin>
+                # 이렇게 하면 skills/ 아래 카테고리(예: Notion)가 있어도 정확히 추출됨
+                rel="${skill_md#"$PLUGIN_CACHE"/}"
+                marketplace_name="${rel%%/*}"
+                rest="${rel#*/}"
+                plugin_name="${rest%%/*}"
+                plugin_key="${plugin_name}@${marketplace_name}"
+
+                # enabledPlugins 가 파싱되어 있으면 그 안에 없는 플러그인은 제외
+                if [[ "$enabled" != $'\n' ]]; then
+                    case "$enabled" in
+                        *$'\n'"$plugin_key"$'\n'*) ;;
+                        *) continue ;;
+                    esac
+                fi
+
                 key="${plugin_name}:${skill_name}"
                 case "$seen" in
                     *$'\n'"$key"$'\n'*) continue ;;
@@ -103,6 +154,12 @@ if [[ $FORCE_REFRESH -eq 1 ]]; then
     rm -f "$ITEMS_CACHE_FILE"
 fi
 
+# 자동 무효화: settings.json (enabledPlugins) 이 캐시보다 최신이면 재빌드
+# /plugin 으로 활성/비활성 토글 후 즉시 반영되도록
+if [[ -f "$ITEMS_CACHE_FILE" && -f "$SETTINGS_JSON" && "$SETTINGS_JSON" -nt "$ITEMS_CACHE_FILE" ]]; then
+    rm -f "$ITEMS_CACHE_FILE"
+fi
+
 if [[ ! -f "$ITEMS_CACHE_FILE" ]]; then
     echo "📦 프롬프트/스킬 목록 캐시 생성 중... (최초 1회)"
     build_items_cache || die "캐시 생성 실패: $ITEMS_CACHE_DIR 에 쓰기 권한이 있는지 확인하세요."
@@ -114,7 +171,7 @@ while IFS= read -r line; do
 done < "$ITEMS_CACHE_FILE"
 
 if [[ ${#ITEMS[@]} -eq 0 ]]; then
-    die "사용 가능한 프롬프트/스킬이 없습니다. $PROMPT_DIR 에 .txt 파일을 추가하거나 $SKILL_DIR 에 스킬을 설치한 뒤 '$0 --refresh' 로 갱신하세요."
+    die "사용 가능한 프롬프트/스킬이 없습니다. 활성화된 플러그인의 prompts/·skills/ 디렉터리 또는 $SKILL_DIR 에 항목을 추가한 뒤 '$0 --refresh' 로 갱신하세요."
 fi
 
 # 4. fzf 선택 (맨 위 '새로 고침' 항목 포함, 프리뷰는 빈 경로 가드)

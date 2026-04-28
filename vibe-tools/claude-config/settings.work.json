@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
+    "command": "sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
   },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
@@ -41,8 +41,10 @@
       "source": {
         "source": "git",
         "url": "https://github.com/swkim0128/vibe-claude-plugin.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "model": "sonnet"
 }

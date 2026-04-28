@@ -3,9 +3,9 @@
 #
 # 사용법:
 #   vibe main                              메인 지휘소(para) 세션 생성 [nvim 70% + claude 30%]
-#   vibe start <프로젝트명> <절대경로>      서브 프로젝트 현장 세션 생성 [nvim 70% + claude 30%]
+#   vibe start [프로젝트명] [절대경로]      서브 프로젝트 현장 세션 생성 (인자 생략 시 fzf 흐름)
 #   vibe fzf                               fzf로 프로젝트 탐색 후 세션 생성/전환
-#   vibe cast  <타겟세션> <"메시지">        타겟 클로드에게 원격 지시
+#   vibe cast  [타겟세션] ["메시지"]        타겟 클로드에게 원격 지시 (인자 생략 시 인터랙티브)
 #   vibe done                              현재 세션 종료 → para 세션 복귀
 
 set -euo pipefail
@@ -79,8 +79,9 @@ case "$CMD" in
     PROJECT_NAME="${2:-}"
     PROJECT_DIR="${3:-}"
 
+    # 인자가 부족하면 fzf 흐름으로 위임 (프로젝트 탐색 후 세션 생성/전환)
     if [[ -z "$PROJECT_NAME" || -z "$PROJECT_DIR" ]]; then
-        echo "사용법: vibe start <프로젝트명> <절대경로>" >&2; exit 1
+        exec "$0" fzf
     fi
 
     PROJECT_DIR="${PROJECT_DIR/#\~/$HOME}"
@@ -164,8 +165,26 @@ case "$CMD" in
     TARGET="${2:-}"
     MESSAGE="${3:-}"
 
-    if [[ -z "$TARGET" || -z "$MESSAGE" ]]; then
-        echo "사용법: vibe cast <타겟세션> <\"메시지\">" >&2; exit 1
+    # 타겟 누락 시 fzf 로 다른 세션 선택
+    if [[ -z "$TARGET" ]]; then
+        CURRENT=$(tmux display-message -p '#{session_name}' 2>/dev/null || echo "")
+        SESSIONS=()
+        while IFS= read -r s; do
+            [[ -n "$s" && "$s" != "$CURRENT" ]] && SESSIONS+=("$s")
+        done < <(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+
+        if [[ ${#SESSIONS[@]} -eq 0 ]]; then
+            echo "오류: 캐스트할 다른 tmux 세션이 없습니다." >&2; exit 1
+        fi
+        TARGET=$(printf '%s\n' "${SESSIONS[@]}" | fzf --prompt="📡 캐스트 대상 세션 > " --reverse --height=40%)
+        [[ -z "$TARGET" ]] && exit 0
+    fi
+
+    # 메시지 누락 시 프롬프트로 입력 받기 (빈 입력은 취소)
+    if [[ -z "$MESSAGE" ]]; then
+        printf '💬 메시지 (빈 입력 시 취소): ' >&2
+        IFS= read -r MESSAGE || exit 0
+        [[ -z "$MESSAGE" ]] && exit 0
     fi
 
     if ! tmux has-session -t "$TARGET" 2>/dev/null; then
@@ -220,9 +239,9 @@ Vibe Coding CLI — PARA 워크플로우 관리
 
 사용법:
   vibe main                              메인 지휘소(para) 세션 생성 [nvim 70% + claude 30%]
-  vibe start <프로젝트명> <절대경로>      서브 프로젝트 현장 세션 생성 [nvim 70% + claude 30%]
+  vibe start [프로젝트명] [절대경로]      서브 프로젝트 현장 세션 생성 (인자 생략 시 fzf 흐름)
   vibe fzf                               fzf로 프로젝트 탐색 후 세션 생성/전환
-  vibe cast  <타겟세션> <"메시지">        타겟 세션 클로드에게 원격 지시 + 콜백
+  vibe cast  [타겟세션] ["메시지"]        타겟 세션 클로드에게 원격 지시 + 콜백 (인자 생략 시 인터랙티브)
   vibe done                              현재 세션 종료 후 para 세션 복귀
 
 Tmux 단축키:
@@ -232,8 +251,10 @@ Tmux 단축키:
 
 예시:
   vibe main
+  vibe start                             # 인자 없이 실행 → fzf 로 프로젝트 탐색
   vibe start my-app ~/Project/my-app
   vibe fzf
+  vibe cast                              # 인자 없이 실행 → 세션 fzf + 메시지 프롬프트
   vibe cast my-app "로그인 API 유닛 테스트 작성해줘"
   vibe done
 HELP
