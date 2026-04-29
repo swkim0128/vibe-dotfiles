@@ -19,8 +19,7 @@ _do_start() {
     local project_dir="$2"
 
     if tmux has-session -t "$project_name" 2>/dev/null; then
-        echo "세션 '$project_name' 이미 존재 — 전환합니다."
-        tmux switch-client -t "$project_name" 2>/dev/null || tmux attach-session -t "$project_name"
+        echo "세션 '$project_name' 이미 존재 — 백그라운드에서 실행 중입니다."
         return 0
     fi
 
@@ -39,8 +38,7 @@ _do_start() {
     # nvim 패널로 포커스 복귀
     tmux select-pane -t "${project_name}:workspace.1"
 
-    echo "✅ 서브 세션 생성: $project_name  ($project_dir)"
-    tmux switch-client -t "$project_name" 2>/dev/null || tmux attach-session -t "$project_name"
+    echo "✅ 서브 세션 생성: $project_name  ($project_dir) — 현재 세션 유지"
 }
 
 CMD="${1:-}"

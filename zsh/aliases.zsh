@@ -10,6 +10,35 @@ export EDITOR="nvim"
 # ── Git TUI ───────────────────────────────────────────
 alias lg="lazygit"
 
+# ── Git 브랜치 fzf ────────────────────────────────────
+unalias gco 2>/dev/null
+function gco() {
+  local branch
+  branch=$(git branch --sort=-committerdate -a \
+    | sed 's/^[* ]*//' \
+    | sed 's|remotes/origin/||' \
+    | grep -v '^HEAD' \
+    | awk '!seen[$0]++' \
+    | fzf --height=50% --reverse --border \
+          --prompt="브랜치 전환: " \
+          --preview='git log --oneline --color=always -10 {} 2>/dev/null')
+  [[ -n "$branch" ]] && git checkout "$branch"
+}
+
+function gbd() {
+  local current branches
+  current=$(git branch --show-current 2>/dev/null)
+  branches=$(git branch \
+    | sed 's/^[* ]*//' \
+    | grep -v "^${current}$" \
+    | fzf --multi --height=50% --reverse --border \
+          --prompt="삭제할 브랜치 (Tab: 다중선택): " \
+          --preview='git log --oneline --color=always -10 {} 2>/dev/null')
+  if [[ -n "$branches" ]]; then
+    echo "$branches" | xargs -I {} git branch -d {}
+  fi
+}
+
 # ── Vibe Coding ───────────────────────────────────────
 alias vhelp='~/.config/vibe-tools/vhelp.sh'
 alias vibe="~/.config/vibe-tools/vibe.sh"
