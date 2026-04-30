@@ -25,18 +25,14 @@ function gco() {
   [[ -n "$branch" ]] && git checkout "$branch"
 }
 
+unalias gbd 2>/dev/null
 function gbd() {
-  local current branches
-  current=$(git branch --show-current 2>/dev/null)
-  branches=$(git branch \
-    | sed 's/^[* ]*//' \
-    | grep -v "^${current}$" \
+  local branches
+  branches=$(git branch | sed 's/^[* ]*//' \
     | fzf --multi --height=50% --reverse --border \
           --prompt="삭제할 브랜치 (Tab: 다중선택): " \
-          --preview='git log --oneline --color=always -10 {} 2>/dev/null')
-  if [[ -n "$branches" ]]; then
-    echo "$branches" | xargs -I {} git branch -d {}
-  fi
+          --preview='git log --oneline --color=always -10 {}')
+  [[ -n "$branches" ]] && git branch -d ${(f)branches}
 }
 
 # ── Vibe Coding ───────────────────────────────────────
