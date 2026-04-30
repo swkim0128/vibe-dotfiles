@@ -219,15 +219,7 @@ case "$CMD" in
         echo "이미 '$PARA_SESSION' 세션입니다."; exit 0
     fi
 
-    # para 세션이 없으면 새로 생성
-    if ! tmux has-session -t "$PARA_SESSION" 2>/dev/null; then
-        echo "⚠️  '$PARA_SESSION' 세션 없음 → 새로 생성합니다."
-        tmux new-session -ds "$PARA_SESSION"
-    fi
-
-    tmux switch-client -t "$PARA_SESSION"
     tmux kill-session -t "$CURRENT_SESSION"
-    echo "✅ '$CURRENT_SESSION' 종료 → '$PARA_SESSION' 복귀"
     ;;
 
   # ── help ─────────────────────────────────────────────────────────────────
@@ -240,12 +232,12 @@ Vibe Coding CLI — PARA 워크플로우 관리
   vibe start [프로젝트명] [절대경로]      서브 프로젝트 현장 세션 생성 (인자 생략 시 fzf 흐름)
   vibe fzf                               fzf로 프로젝트 탐색 후 세션 생성/전환
   vibe cast  [타겟세션] ["메시지"]        타겟 세션 클로드에게 원격 지시 + 콜백 (인자 생략 시 인터랙티브)
-  vibe done                              현재 세션 종료 후 para 세션 복귀
+  vibe done                              현재 세션 종료
 
 Tmux 단축키:
   Prefix + f   fzf 프로젝트 탐색기 (vibe fzf)
   Prefix + p   para 세션으로 즉시 이동
-  Prefix + x   현재 세션 종료 후 para 복귀 (vibe done)
+  Prefix + x   현재 세션 종료 (vibe done)
 
 예시:
   vibe main
