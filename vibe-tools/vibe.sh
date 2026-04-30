@@ -211,6 +211,64 @@ case "$CMD" in
     echo "📡 전송 완료 → 세션: $TARGET  패널: $CLAUDE_PANE"
     ;;
 
+  # ── test-pane ────────────────────────────────────────────────────────────
+  test-pane)
+    TASK="${2:-}"
+    SESSION="${3:-$(tmux display-message -p '#{session_name}' 2>/dev/null)}"
+
+    # workspace 윈도우 확인 (main 세션은 control-tower)
+    if [[ "$SESSION" == "$PARA_SESSION" ]]; then
+        WINDOW="${SESSION}:control-tower"
+    else
+        WINDOW="${SESSION}:workspace"
+    fi
+
+    if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+        echo "오류: 세션 '$SESSION' 을 찾을 수 없습니다." >&2; exit 1
+    fi
+
+    # 현재 패널 수 확인
+    PANE_COUNT=$(tmux list-panes -t "$WINDOW" 2>/dev/null | wc -l | tr -d ' ')
+
+    if [[ "$PANE_COUNT" -ge 3 ]]; then
+        # Pane 3 이미 존재 — 재사용
+        PANE3=$(tmux list-panes -t "$WINDOW" -F '#{pane_index} #{pane_id}' 2>/dev/null \
+            | awk '$1==3{print $2}')
+        echo "♻️  기존 테스트 패널 재사용: $PANE3"
+    else
+        # Pane 2 아래에 수직 분할로 Pane 3 생성
+        PANE2=$(tmux list-panes -t "$WINDOW" -F '#{pane_index} #{pane_id}' 2>/dev/null \
+            | awk '$1==2{print $2}')
+        PANE2_PATH=$(tmux display-message -p -t "$PANE2" '#{pane_current_path}' 2>/dev/null)
+
+        tmux split-window -t "$PANE2" -v -p 50 -c "$PANE2_PATH"
+        PANE3=$(tmux list-panes -t "$WINDOW" -F '#{pane_index} #{pane_id}' 2>/dev/null \
+            | awk '$1==3{print $2}')
+        tmux send-keys -t "$PANE3" "claude --chrome" Enter
+        tmux select-pane -t "$PANE3" -T "🧪 Test Agent"
+        echo "✅ 테스트 패널 생성: $PANE3  ($PANE2_PATH)"
+    fi
+
+    # 작업 위임 (태스크가 있을 때만)
+    if [[ -n "$TASK" ]]; then
+        DELEGATE="$HOME/.config/vibe-tools/claude-delegate.sh"
+        CALLER_PANE=$(tmux display-message -p '#{pane_id}' 2>/dev/null || echo "")
+        if [[ -x "$DELEGATE" ]]; then
+            "$DELEGATE" "$PANE3" "$TASK"
+        else
+            PROMPT="$TASK"
+            if [[ -n "$CALLER_PANE" ]]; then
+                PROMPT="${TASK}
+
+[시스템 지시사항] 테스트 완료 후 반드시 터미널에서 다음 명령어를 실행하여 완료를 보고할 것:
+~/.config/vibe-tools/claude-callback.sh '${CALLER_PANE}' '테스트 결과 요약'"
+            fi
+            tmux send-keys -t "$PANE3" "$PROMPT" Enter
+        fi
+        echo "📡 테스트 위임 완료 → $PANE3"
+    fi
+    ;;
+
   # ── done ─────────────────────────────────────────────────────────────────
   done)
     CURRENT_SESSION=$(tmux display-message -p '#{session_name}')
@@ -232,6 +290,7 @@ Vibe Coding CLI — PARA 워크플로우 관리
   vibe start [프로젝트명] [절대경로]      서브 프로젝트 현장 세션 생성 (인자 생략 시 fzf 흐름)
   vibe fzf                               fzf로 프로젝트 탐색 후 세션 생성/전환
   vibe cast  [타겟세션] ["메시지"]        타겟 세션 클로드에게 원격 지시 + 콜백 (인자 생략 시 인터랙티브)
+  vibe test-pane ["테스트 지시"] [세션]  Pane 2 아래 테스트 패널(Pane 3) 생성/재사용 후 위임
   vibe done                              현재 세션 종료
 
 Tmux 단축키:
