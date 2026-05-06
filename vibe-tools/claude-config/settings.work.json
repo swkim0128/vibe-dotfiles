@@ -57,7 +57,8 @@
     "task-mgmt@swkim0128": true,
     "vibe-admin@swkim0128": true,
     "notify@swkim0128": true,
-    "notion-suite@swkim0128": true
+    "notion-suite@swkim0128": true,
+    "php-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "omc": {
