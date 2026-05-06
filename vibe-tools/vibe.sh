@@ -13,6 +13,15 @@ set -euo pipefail
 PARA_SESSION="para"
 PATHS_FILE="$HOME/.config/vibe-tools/sessionizer-paths.txt"
 
+# ── 내부 함수: 이슈명 입력 받아 세션 이름 반환 ───────────────────────────────
+_prompt_session_name() {
+    local base_name="$1"
+    local issue_name
+    read -rp "🔖 이슈명 입력 (Enter 시 프로젝트명만 사용): " issue_name
+    issue_name=$(printf '%s' "$issue_name" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+    printf '%s' "${base_name}${issue_name:+_${issue_name}}"
+}
+
 # ── 내부 함수: 서브 세션 생성 및 전환 (start/fzf 공용) ──────────────────────
 _do_start() {
     local project_name="$1"
@@ -137,8 +146,9 @@ case "$CMD" in
     done < <(tmux list-sessions -F "#S" 2>/dev/null | grep "^${base_name}")
 
     if [[ ${#existing_sessions[@]} -eq 0 ]]; then
-        # 세션 없음 → 바로 생성
-        _do_start "$base_name" "$selected"
+        # 세션 없음 → 이슈명 입력 후 생성
+        session_name=$(_prompt_session_name "$base_name")
+        _do_start "$session_name" "$selected"
     elif [[ ${#existing_sessions[@]} -eq 1 ]]; then
         # 세션 1개 → 바로 전환
         tmux switch-client -t "${existing_sessions[0]}" 2>/dev/null || tmux attach-session -t "${existing_sessions[0]}"
@@ -151,7 +161,8 @@ case "$CMD" in
         [[ -z "$target" ]] && exit 0
 
         if [[ "$target" == "🆕 [New Task Session]" ]]; then
-            _do_start "$base_name" "$selected"
+            session_name=$(_prompt_session_name "$base_name")
+            _do_start "$session_name" "$selected"
         else
             tmux switch-client -t "$target" 2>/dev/null || tmux attach-session -t "$target"
         fi
