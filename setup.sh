@@ -187,6 +187,24 @@ fi
 
 safe_link "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
 
+# CLAUDE-user.md 심볼릭 링크 (사용자 전역 하네스 규칙)
+safe_link "$HOME/.claude/CLAUDE-user.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-user.md"
+
+# ~/.claude/CLAUDE.md에 @CLAUDE-user.md 임포트 주입 (OMC 영역 밖, 없을 때만)
+CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+IMPORT_LINE="@CLAUDE-user.md"
+if [[ -f "$CLAUDE_MD" ]]; then
+  if ! grep -qF "$IMPORT_LINE" "$CLAUDE_MD"; then
+    printf '\n<!-- Vibe Dotfiles harness rules -->\n%s\n' "$IMPORT_LINE" >> "$CLAUDE_MD"
+    success "~/.claude/CLAUDE.md 에 @CLAUDE-user.md 임포트 추가 완료"
+  else
+    success "~/.claude/CLAUDE.md — @CLAUDE-user.md 이미 등록됨"
+  fi
+else
+  printf '<!-- Vibe Dotfiles harness rules -->\n%s\n' "$IMPORT_LINE" > "$CLAUDE_MD"
+  success "~/.claude/CLAUDE.md 생성 및 @CLAUDE-user.md 임포트 추가 완료"
+fi
+
 # ── 10. Claude 사용자 스킬 (마켓플레이스로 이관됨) ──────────────────────────
 # 스킬은 vibe-claude-plugin 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.
 # 13단계에서 claude plugin install 로 자동 설치됩니다.

@@ -1,4 +1,5 @@
 {
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud-cache.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
@@ -27,7 +28,8 @@
     "legacy-suite@swkim0128": true,
     "task-mgmt@swkim0128": true,
     "vibe-admin@swkim0128": true,
-    "notify@swkim0128": true
+    "notify@swkim0128": true,
+    "notion-suite@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
@@ -45,5 +47,6 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "model": "sonnet"
+  "theme": "dark-daltonized",
+  "editorMode": "vim"
 }
