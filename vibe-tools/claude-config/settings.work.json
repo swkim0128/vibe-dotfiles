@@ -31,6 +31,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/php-encoding-check.sh\"",
+            "timeout": 15,
+            "statusMessage": "PHP 인코딩 확인 중..."
+          }
+        ]
       }
     ],
     "WorktreeCreate": [
