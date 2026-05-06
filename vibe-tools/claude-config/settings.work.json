@@ -79,7 +79,8 @@
     "allow": [
       "Bash(~/.config/vibe-tools/claude-callback.sh *)",
       "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
-      "Bash(~/.config/vibe-tools/claude-send.sh *)"
+      "Bash(~/.config/vibe-tools/claude-send.sh *)",
+      "Bash(iconv *)"
     ]
   },
   "alwaysThinkingEnabled": true,
