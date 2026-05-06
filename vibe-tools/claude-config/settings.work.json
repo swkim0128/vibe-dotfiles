@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/harness-reminder.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "WorktreeCreate": [
       {
         "hooks": [
