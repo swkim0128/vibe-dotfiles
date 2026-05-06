@@ -74,6 +74,13 @@
       "autoUpdate": true
     }
   },
+  "permissions": {
+    "allow": [
+      "Bash(~/.config/vibe-tools/claude-callback.sh *)",
+      "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
+      "Bash(~/.config/vibe-tools/claude-send.sh *)"
+    ]
+  },
   "alwaysThinkingEnabled": true,
   "theme": "dark-daltonized",
   "editorMode": "vim"
