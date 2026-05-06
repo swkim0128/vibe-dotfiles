@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(~/.config/vibe-tools/claude-callback.sh *)",
+      "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
+      "Bash(~/.config/vibe-tools/claude-send.sh *)",
+      "Bash(iconv *)"
+    ]
+  },
+  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -47,9 +56,13 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": ["node_modules", ".gradle", ".cache", "build"]
+    "symlinkDirectories": [
+      "node_modules",
+      ".gradle",
+      ".cache",
+      "build"
+    ]
   },
-  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud-cache.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
@@ -97,14 +110,6 @@
       },
       "autoUpdate": true
     }
-  },
-  "permissions": {
-    "allow": [
-      "Bash(~/.config/vibe-tools/claude-callback.sh *)",
-      "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
-      "Bash(~/.config/vibe-tools/claude-send.sh *)",
-      "Bash(iconv *)"
-    ]
   },
   "alwaysThinkingEnabled": true,
   "theme": "dark-daltonized",
