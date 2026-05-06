@@ -186,6 +186,7 @@ else
 fi
 
 safe_link "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
+safe_link "$HOME/.claude/commands" "$DOTFILES/vibe-tools/claude-config/commands"
 
 # CLAUDE-user.md 심볼릭 링크 (사용자 전역 하네스 규칙)
 safe_link "$HOME/.claude/CLAUDE-user.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-user.md"
