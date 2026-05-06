@@ -39,7 +39,8 @@
     "context7@claude-plugins-official": true,
     "oh-my-claudecode@omc": true,
     "notion@claude-plugins-official": true,
-    "notion-suite@swkim0128": true
+    "notion-suite@swkim0128": true,
+    "legacy-suite@swkim0128": true
   },
   "extraKnownMarketplaces": {
     "omc": {
@@ -47,6 +48,13 @@
         "source": "git",
         "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
+    },
+    "swkim0128": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/swkim0128/vibe-claude-plugin.git"
+      },
+      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,
