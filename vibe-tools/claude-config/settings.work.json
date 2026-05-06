@@ -1,4 +1,54 @@
 {
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/harness-reminder.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Read stdin. Extract tool_input.command. If it does NOT contain 'git commit', immediately output {\"continue\":true} without calling any tools. If it contains 'git commit': 1) Run Bash to get staged PHP files: git diff --cached --name-only --diff-filter=ACMR | grep '\\.php$' 2) If no PHP files, output {\"continue\":true} 3) For each staged PHP file use lsp_diagnostics tool to check diagnostics 4) If any error-severity diagnostics exist, output {\"continue\":false,\"stopReason\":\"❌ LSP 오류로 커밋 차단\\n\\n오류를 수정한 뒤 다시 커밋하세요.\\n\\n오류 목록:\\n<list errors>\"} 5) If no errors output {\"continue\":true}",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/settings-guard.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/worktree-setup.sh\"",
+            "timeout": 60,
+            "statusMessage": "워크트리 초기화 중..."
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules", ".gradle", ".cache", "build"]
+  },
   "model": "sonnet",
   "statusLine": {
     "type": "command",
@@ -29,6 +79,7 @@
     "task-mgmt@swkim0128": true,
     "vibe-admin@swkim0128": true,
     "notify@swkim0128": true,
+    "notion-suite@swkim0128": true,
     "php-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
@@ -45,6 +96,14 @@
       },
       "autoUpdate": true
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(~/.config/vibe-tools/claude-callback.sh *)",
+      "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
+      "Bash(~/.config/vibe-tools/claude-send.sh *)",
+      "Bash(iconv *)"
+    ]
   },
   "alwaysThinkingEnabled": true,
   "theme": "dark-daltonized",
