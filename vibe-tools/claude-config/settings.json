@@ -57,6 +57,13 @@
       "autoUpdate": true
     }
   },
+  "permissions": {
+    "allow": [
+      "Write(/Users/eunsol/Project/vibe-claude-plugin/*)",
+      "Bash(mkdir *)",
+      "Bash(git *)"
+    ]
+  },
   "alwaysThinkingEnabled": true,
   "editorMode": "vim"
 }
