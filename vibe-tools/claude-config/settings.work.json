@@ -1,4 +1,21 @@
 {
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/worktree-setup.sh\"",
+            "timeout": 60,
+            "statusMessage": "워크트리 초기화 중..."
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules", ".gradle", ".cache", "build"]
+  },
   "model": "sonnet",
   "statusLine": {
     "type": "command",
