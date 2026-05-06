@@ -31,3 +31,44 @@
 4. **ADAPT (실패 시 안전 루프 및 롤백):**
    * 에러가 발생하면 "무엇이 문제인지" 명확히 추적(Trace)하여 보고해.
    * **하네스 룰:** 원인을 모르는 상태에서 무작정 코드를 다시 짜맞추지 마. 동일한 에러로 3번 이상 실패하면 작업을 즉시 멈추고 현 상황을 브리핑한 뒤 내 지시를 기다려.
+
+# 🔀 코드 작업 워크플로우 (업무 프로젝트)
+
+코드 작업 요청을 받으면 아래 순서를 **반드시** 따라.
+
+## 1단계 — 요구사항 분석 (develop 기준)
+```bash
+git fetch origin
+git checkout develop && git pull origin develop
+```
+- develop 최신 상태에서 요구사항을 분석해 GROUND 플랜을 수립해.
+
+## 2단계 — 이슈 브랜치 생성 및 체크아웃
+```bash
+# 이슈번호 예: DWDEV-1234
+git checkout -b feature/<이슈번호> develop
+```
+- 브랜치명은 반드시 `feature/<이슈번호>` 형식을 따라.
+
+## 3단계 — Git Worktree 생성
+- `EnterWorktree` 네이티브 툴을 사용해 격리된 작업 공간을 만들어.
+- worktree-setup.sh가 자동으로 `.gitignore` 처리 및 의존성 설치를 수행해.
+
+## 4단계 — 소스 작업
+- GROUND → APPLY → VERIFY → ADAPT 하네스 파이프라인을 따라 원자적으로 구현해.
+
+## 5단계 — 검증
+```bash
+# 프로젝트에 맞는 명령 실행 (예: Spring Boot)
+./gradlew build
+./gradlew test
+./gradlew ktlintCheck   # 또는 eslint, flake8 등
+```
+- 검증 실패 시 ADAPT 룰 적용.
+
+## 6단계 — 반영
+작업 완료 후 아래 중 선택:
+- **커밋 & 푸시:** `git-commit` 스킬로 `~/.gitmessage.txt` 규칙에 따라 커밋
+- **develop 머지:** MR 생성 시 `git-mr-creator` 스킬 사용
+
+> **주의:** develop 브랜치에 직접 커밋/푸시 금지. 반드시 feature 브랜치 경유.
