@@ -11,6 +11,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/settings-guard.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "WorktreeCreate": [
       {
         "hooks": [
