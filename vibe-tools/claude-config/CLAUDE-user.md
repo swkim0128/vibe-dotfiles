@@ -55,18 +55,33 @@ git checkout -b feature/<이슈번호> develop
 - worktree-setup.sh가 자동으로 `.gitignore` 처리 및 의존성 설치를 수행해.
 
 ## 4단계 — 소스 작업
-- GROUND → APPLY → VERIFY → ADAPT 하네스 파이프라인을 따라 원자적으로 구현해.
+- GROUND → APPLY → ADAPT 하네스 파이프라인을 따라 원자적으로 구현해.
 
-## 5단계 — 검증
+## 5단계 — Worktree 정적 검증 (Lint만)
+> **Worktree 범위는 Lint/정적 분석까지.** 런타임 테스트는 로컬 브랜치 머지 후 수행.
+```bash
+./gradlew ktlintCheck   # 또는 eslint, flake8 등
+```
+- 검증 실패 시 ADAPT 룰 적용 후 재검증.
+
+## 6단계 — 로컬 브랜치로 머지
+- Worktree 작업을 커밋한 뒤 feature 브랜치에 머지.
+- `ExitWorktree` 또는 아래 명령:
+```bash
+git checkout feature/<이슈번호>
+git merge --no-ff <worktree-branch>
+```
+
+## 7단계 — 런타임 검증 (로컬)
+> 실제 수행 테스트는 로컬 환경에서 진행.
 ```bash
 # 프로젝트에 맞는 명령 실행 (예: Spring Boot)
 ./gradlew build
 ./gradlew test
-./gradlew ktlintCheck   # 또는 eslint, flake8 등
 ```
 - 검증 실패 시 ADAPT 룰 적용.
 
-## 6단계 — 반영
+## 8단계 — 반영
 작업 완료 후 아래 중 선택:
 - **커밋 & 푸시:** `git-commit` 스킬로 `~/.gitmessage.txt` 규칙에 따라 커밋
 - **develop 머지:** MR 생성 시 `git-mr-creator` 스킬 사용
