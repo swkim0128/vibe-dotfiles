@@ -18,4 +18,6 @@ fi
 
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
 git commit -m "chore: 작업 완료 자동 커밋 [$TIMESTAMP]" || exit 0
-git push || true
+if ! git push; then
+  echo "⚠️  [auto-git-push] git push 실패 — 수동으로 확인 필요" >&2
+fi
