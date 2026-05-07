@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/tmux-session-guard.sh\"",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/swkim0128/plugins/tmux-suite/skills/tmux-session-start/scripts/tmux-session-guard.sh\"",
             "timeout": 5
           },
           {
