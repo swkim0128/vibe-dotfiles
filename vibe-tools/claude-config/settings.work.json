@@ -1,7 +1,4 @@
 {
-  "env": {
-    "PATH": "${PATH}:${HOME}/.config/vibe-tools"
-  },
   "permissions": {
     "allow": [
       "Bash(~/.config/vibe-tools/claude-callback.sh *)",
