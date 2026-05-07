@@ -4,7 +4,18 @@
       "Bash(~/.config/vibe-tools/claude-callback.sh *)",
       "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
       "Bash(~/.config/vibe-tools/claude-send.sh *)",
-      "Bash(iconv *)"
+      "Bash(iconv *)",
+      "Bash(file *)",
+      "Bash(git *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(mkdir *)",
+      "Bash(rm /tmp/*)",
+      "Bash(rm -f /tmp/*)"
     ]
   },
   "model": "sonnet",
