@@ -271,7 +271,6 @@ else
   BASE_PLUGINS=(
     "superpowers@claude-plugins-official"
     "github@claude-plugins-official"
-    "playwright@claude-plugins-official"
     "skill-creator@claude-plugins-official"
     "context7@claude-plugins-official"
     "oh-my-claudecode@omc"
