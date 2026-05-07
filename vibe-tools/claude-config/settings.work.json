@@ -8,6 +8,9 @@
     ]
   },
   "model": "sonnet",
+  "env": {
+    "PATH": "${PATH}:${HOME}/.config/vibe-tools"
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -90,6 +93,7 @@
     "task-mgmt@swkim0128": true,
     "vibe-admin@swkim0128": true,
     "harness@swkim0128": true,
+    "para-mgmt@swkim0128": true,
     "notify@swkim0128": true,
     "notion-suite@swkim0128": true,
     "php-lsp@claude-plugins-official": true
