@@ -18,7 +18,6 @@
       "Bash(rm -f /tmp/*)"
     ]
   },
-  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {
