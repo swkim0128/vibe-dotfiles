@@ -74,7 +74,6 @@
     "oh-my-claudecode@omc": true,
     "analyze@cc-claude": true,
     "backend@cc-claude": true,
-    "beginner@cc-claude": true,
     "cc-utils@cc-claude": true,
     "context-architect@cc-claude": true,
     "enterprise-base@cc-claude": true,
