@@ -25,6 +25,11 @@
         "matcher": "Bash",
         "hooks": [
           {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/tmux-session-guard.sh\"",
+            "timeout": 5
+          },
+          {
             "type": "agent",
             "prompt": "Read stdin. Extract tool_input.command. If it does NOT contain 'git commit', immediately output {\"continue\":true} without calling any tools. If it contains 'git commit': 1) Run Bash to get staged PHP files: git diff --cached --name-only --diff-filter=ACMR | grep '\\.php$' 2) If no PHP files, output {\"continue\":true} 3) For each staged PHP file use lsp_diagnostics tool to check diagnostics 4) If any error-severity diagnostics exist, output {\"continue\":false,\"stopReason\":\"❌ LSP 오류로 커밋 차단\\n\\n오류를 수정한 뒤 다시 커밋하세요.\\n\\n오류 목록:\\n<list errors>\"} 5) If no errors output {\"continue\":true}",
             "timeout": 60
