@@ -96,7 +96,6 @@
     "oh-my-claudecode@omc": false,
     "analyze@swkim0128": true,
     "nworks@swkim0128": true,
-    "plane-mcp@swkim0128": true,
     "test@swkim0128": true,
     "tmux-suite@swkim0128": true,
     "git-suite@swkim0128": true,
@@ -105,7 +104,8 @@
     "task-mgmt@swkim0128": true,
     "notify@swkim0128": true,
     "notion-suite@swkim0128": true,
-    "php-lsp@claude-plugins-official": true
+    "php-lsp@claude-plugins-official": true,
+    "plane-mcp@cc-claude": true
   },
   "extraKnownMarketplaces": {
     "omc": {
