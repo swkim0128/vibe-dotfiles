@@ -18,6 +18,7 @@
 
 - [ ] CLAUDE-user.md ↔ 프로젝트 CLAUDE.md 하네스 중복 정리 (vibe-claude-plugin 배포 사이클과 묶어 진행)
 - [ ] setup.sh: 새 머신에서 설치 후 전체 플로우 통합 테스트
+- [ ] tmux 무인 자동화 권한 설정 적용 — `docs/claude-headless-automation.md` 검토 후 `vibe-tools/claude-config/settings.work.json`에 반영 + `scripts/claude-headless.sh` 생성
 
 ## 에러 / 블로커
 
