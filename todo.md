@@ -20,6 +20,14 @@
 - [x] **P0-B** `harness-reminder.sh`: 1줄 권고 → 결정론적 5조항(GROUND-APPLY-VERIFY-ADAPT, 도구별 VERIFY 명령, 3회 차단, 메모리 우선, settings Edit 강제). jq 기반 안전 직렬화(`-n` 플래그)
 - [x] **P0-C** 글로벌 `CLAUDE.md`: `@CLAUDE-omc.md` 임포트 제거 (OMC:START~END 영역과 100% 중복 → 매 세션 토큰 낭비 해소)
 
+### [2026-05-09] 하네스 4계층 SRP 재정의 (계층별 단일 책임)
+
+- [x] **L1-1** `~/.claude/CLAUDE-omc.md` 백업 후 제거(`/tmp/claude-md-archive-2026-05-09/`) — OMC:START~END가 단일 진실 공급원, ~890토큰 절감
+- [x] **L1-2** `~/.claude/CLAUDE.md` 사용자 영역에 L1 책임 명세 + 계층 우선순위(L3>L2>L1) 메타 룰 주석 추가
+- [x] **L2-1** `CLAUDE-user.md`에 메타 룰 추가: "프로젝트 빌드/검증 명령은 L3 우선, 본 파일은 공통 룰만"
+- [x] **L3-1** `vibe-dotfiles/CLAUDE.md`에서 글로벌 하네스 표 제거, dotfiles 한정 VERIFY 도구 표(shellcheck/luac/jq)로 대체
+- [x] **VERIFY** 임포트 체인·중복 잔재·jq 무결성 모두 통과
+
 ## TODO
 
 - [ ] **P1-D** 메모리 갱신 — `project-state.md`를 2026-05-09 스냅샷으로 최신화

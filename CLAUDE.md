@@ -19,28 +19,28 @@
 
 ---
 
-## ⚙️ 하네스 규칙 (Harness Rules)
+## ⚙️ 프로젝트 특화 룰 (dotfiles 한정)
 
-### 언어 & 스택
+> **글로벌 하네스 파이프라인**(GROUND→APPLY→VERIFY→ADAPT)과 **위임 전략**은
+> `~/.claude/CLAUDE-user.md` · `CLAUDE-delegation.md`에 있습니다.
+> 본 섹션은 **dotfiles에서만 적용되는 추가·재정의 룰**입니다 (L3 우선).
+
+### 언어 & 스택 제약
 - 주요 언어: Bash, Zsh, Lua (Neovim), Markdown
-- 모든 셸 스크립트는 `set -euo pipefail` 으로 시작해야 합니다.
-- 외부 도구 호출 전 `command -v <tool>` 로 존재 여부를 확인하세요.
+- 모든 셸 스크립트는 `set -euo pipefail`로 시작
+- 외부 도구 호출 전 `command -v <tool>`로 존재 여부 확인
 
-### 도구 기반 검증
-셸 스크립트(`.sh`) 작성·수정 후 반드시 실행:
-```bash
-shellcheck <파일명>      # 정적 분석 — 문법 오류 및 취약점 검출
-bash -n <파일명>         # shellcheck 미설치 시 최소 구문 검사 대안
-```
-`tests/` 디렉터리에 `bats` 테스트가 있는 경우:
-```bash
-bats tests/             # 단위 테스트 실행
-```
+### VERIFY 도구 (이 레포 전용)
+| 대상 | 명령 |
+|------|------|
+| `.sh` 작성·수정 후 | `shellcheck <파일>` (미설치 시 `bash -n <파일>`) |
+| `tests/bats` 존재 시 | `bats tests/` |
+| `nvim/lua/` 변경 시 | `luac -p <파일>` (Lua 구문 검사) |
+| `settings.work.json` 수정 시 | `jq empty <파일>` (Edit 도구만, Write 금지) |
 
-### 세션 인수인계
-**작업 중단 전:** 완료 항목, 남은 TODO, 발생한 에러를 `todo.md`에 기록하세요.
-
-**작업 재개 시:** 가장 먼저 `todo.md`를 읽어 이전 컨텍스트를 파악하고 최우선 과제를 확인하세요.
+### 세션 인수인계 (todo.md)
+- **중단 전**: 완료·TODO·에러를 `todo.md`에 기록
+- **재개 시**: `todo.md`를 가장 먼저 읽음
 
 `todo.md` 형식:
 ```markdown
