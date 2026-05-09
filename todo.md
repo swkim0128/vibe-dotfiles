@@ -28,16 +28,21 @@
 - [x] **L3-1** `vibe-dotfiles/CLAUDE.md`에서 글로벌 하네스 표 제거, dotfiles 한정 VERIFY 도구 표(shellcheck/luac/jq)로 대체
 - [x] **VERIFY** 임포트 체인·중복 잔재·jq 무결성 모두 통과
 
+### [2026-05-09] 하네스 P1 — 메모리·중복·미등록 훅 정리
+
+- [x] **P1-D** 메모리 갱신 — `project-state.md`(2026-05-09 스냅샷 재작성: 4계층 SRP·deny 25개·5조항 훅) + `pending-work.md`(완료 항목 정리, P2·미진행만 남김)
+- [x] **P1-E** PHP 인코딩 규칙 중복 진위 확인 — 결과: **중복 없음**(snapshot 추측 오류). SoR=`CLAUDE-delegation.md` L20-28 단독, 추가 작업 불필요
+- [x] **P1-F** 미등록 훅 5개 `hooks/_unused/`로 비파괴 격리 — `mac-notify.sh`(notify 플러그인), `php-encoding-check.sh`(legacy-suite), `pre-commit-check.sh`(LSP agent로 대체), `task-send.sh`/`task-stop.sh`(claude-delegate/callback.sh로 대체)
+- [x] **VERIFY** 활성 훅 5개·격리 5개 분리, settings 등록 5건 모두 활성 위치 매핑, 활성 셸 스크립트 bash -n 전부 통과
+
 ## TODO
 
-- [ ] **P1-D** 메모리 갱신 — `project-state.md`를 2026-05-09 스냅샷으로 최신화
-- [ ] **P1-E** PHP 인코딩 규칙 중복 정리 (`CLAUDE-delegation.md`에 단일화)
-- [ ] **P1-F** 미등록 훅 정리 — `pre-commit-check.sh`, `php-encoding-check.sh`, `auto-git-push.sh`, `task-send/stop.sh` settings 등록 또는 `hooks/_unused/` 격리
-- [ ] **P2-G** `docs/skill-trigger-map.md` — 자연어 → 스킬 매트릭스 (16개 플러그인 트리거 충돌 점검)
+- [ ] **P2-G** `docs/skill-trigger-map.md` — 자연어 → 스킬 매트릭스 (16개 플러그인 트리거 충돌 점검: `task-management ↔ para-task-review ↔ task-share`, `analyze:code-review ↔ harness:review-mr`, `harness:plan ↔ superpowers:writing-plans`)
 - [ ] **P2-H** `CLAUDE-user.md` 슬림화 — 본문 → `docs/harness-pipeline.md`로 분리, 진입점만 유지
-- [ ] CLAUDE-user.md ↔ 프로젝트 CLAUDE.md 하네스 중복 정리 (vibe-claude-plugin 배포 사이클과 묶어 진행)
+- [ ] code-pipeline 스킬 실전 검증 (ashop/bshop) — 여전히 미진행
+- [ ] `/php-review` 커맨드 검증 — 미진행
 - [ ] setup.sh: 새 머신에서 설치 후 전체 플로우 통합 테스트
-- [ ] tmux 무인 자동화 권한 설정 적용 — `docs/claude-headless-automation.md` 검토 후 `vibe-tools/claude-config/settings.work.json`에 반영 + `scripts/claude-headless.sh` 생성
+- [ ] tmux 무인 자동화 권한 설정 적용 — `docs/claude-headless-automation.md` 검토 후 추가 반영 + `scripts/claude-headless.sh` 생성
 
 ## 에러 / 블로커
 
