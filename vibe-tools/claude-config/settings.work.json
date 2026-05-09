@@ -28,8 +28,6 @@
       "Bash(rm -rf .:*)",
       "Bash(rm -rf ..:*)",
       "Bash(:(){ :|:& };:)",
-      "Bash(curl:*|*sh*)",
-      "Bash(wget:*|*sh*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)",
