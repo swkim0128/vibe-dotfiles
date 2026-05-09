@@ -18,13 +18,15 @@
 
 # 🔀 코드 작업 워크플로우 (업무 프로젝트)
 
-1. `git checkout develop && git pull` → GROUND 플랜 수립
+1. `git checkout develop && git pull` → GROUND 플랜 수립 (`harness:plan` 또는 `Agent(subagent_type=Plan)`)
 2. `git checkout -b feature/<이슈번호> develop`
-3. `EnterWorktree` → 격리 작업 공간 생성
-4. GROUND→APPLY→ADAPT 파이프라인 실행
-5. Worktree: lint 정적 검증만 (`./gradlew ktlintCheck` 등)
+3. `EnterWorktree` 또는 `superpowers:using-git-worktrees` → 격리 작업 공간
+4. `harness:dev-workflow`(Agent) / `harness:pipeline`(스킬)로 GROUND→APPLY→VERIFY→ADAPT 실행
+5. Worktree: lint 정적 검증만 (`./gradlew ktlintCheck` 등) — 런타임 테스트는 bash-guard가 차단
 6. `ExitWorktree` → feature 브랜치 머지
-7. 로컬: `./gradlew build && ./gradlew test`
-8. `git-commit` 스킬(커밋) / `git-mr-creator` 스킬(MR)
+7. 로컬: `./gradlew build && ./gradlew test` + `harness:verification-loop`로 종합 검증
+8. `git-suite:commit` 스킬(커밋) / `git-suite:mr` 또는 `git-suite:git-mr-creator` 스킬(MR)
+9. 머지 후: `harness:post-merge` 스킬로 Plane 이슈 종료 + Outline 문서 업데이트
 
 > develop 직접 커밋/푸시 금지. feature 브랜치 경유 필수.
+> 활성 플러그인 컴포넌트 매핑 전체는 `~/.claude/CLAUDE-plugins.md` 참조.

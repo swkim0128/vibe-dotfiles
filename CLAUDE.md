@@ -39,8 +39,9 @@
 | `settings.work.json` 수정 시 | `jq empty <파일>` (Edit 도구만, Write 금지) |
 
 ### 세션 인수인계 (todo.md)
-- **중단 전**: 완료·TODO·에러를 `todo.md`에 기록
-- **재개 시**: `todo.md`를 가장 먼저 읽음
+- **중단 전**: 완료·TODO·에러를 `todo.md`에 기록 (또는 `harness:handoff` 스킬로 HANDOFF.md 생성)
+- **재개 시**: `todo.md` / `HANDOFF.md`를 가장 먼저 읽음
+- 단일 TASKS.md 운영은 `task-mgmt:task-management` 스킬 활용 가능
 
 `todo.md` 형식:
 ```markdown
@@ -53,3 +54,45 @@
 ## 에러 / 블로커
 - 현상: / 원인: / 해결 여부:
 ```
+
+---
+
+## 🔌 플러그인 컴포넌트 매핑 (이 레포 전용)
+
+> 글로벌 매핑은 `~/.claude/CLAUDE-plugins.md`. 본 섹션은 **dotfiles 레포에서 우선 호출**할 컴포넌트만.
+
+### 코드 작업
+| 작업 | 컴포넌트 |
+|---|---|
+| 셸 스크립트 변경 후 검증 | `harness:verification-loop` 스킬 / 직접 `bash -n` + `shellcheck` |
+| 첫 Edit/Write/Bash 전 사실 조사 게이트 | `harness:gateguard` 스킬 (자동) |
+| 커밋 | `git-suite:commit` 스킬 |
+| MR 생성 | `git-suite:mr` / `git-suite:git-mr-creator` 스킬 |
+| 변경 영향도 검토 (스크립트·설정 광범위 수정 시) | `Agent(subagent_type=Explore)` |
+
+### 개발 환경 / tmux
+| 작업 | 컴포넌트 |
+|---|---|
+| 새 작업 세션 (PARA 7:3) | `tmux-suite:tmux-session-start` 스킬 |
+| 세션 종료 / PARA 복귀 | `tmux-suite:tmux-session-done` 스킬 |
+| 패널 간 위임/콜백 | `tmux-suite:claude-ipc` 스킬 |
+| 다른 세션에 알림/위임 | `tmux-suite:tmux-session-comm` 스킬 |
+
+### 메타 / 진단
+| 작업 | 컴포넌트 |
+|---|---|
+| `settings.work.json` 수정 | **Edit 도구만** + `jq empty` 검증 / `update-config` 스킬 |
+| 셋업 표면 점검 (MCP·플러그인·환경) | `vibe-admin:workspace-surface-audit` 스킬 |
+| 플러그인 생태계 비교 | `vibe-admin:ecosystem-map` 스킬 |
+| 스킬 작업 후 백업 | `vibe-admin:skill-backup` (자동) |
+| 라이브러리/도구 공식 문서 | Context7 MCP (`mcp__plugin_context7_context7__*`) |
+
+### 자동 발동 훅 (참고)
+- `harness/bash-guard.sh` — `curl|sh`/`rm -rf`/포그라운드 dev 서버/워크트리 런타임 테스트 차단
+- `harness/write-guard.sh` — 시크릿 보호
+- `harness/session-start.sh` — 하네스 5조항 주입
+
+### 비대상 (이 레포에서 호출하지 않음)
+- `analyze:*` (Spring Boot/FastAPI/SQL 등) — 백엔드 레포 전용
+- `harness:php-review` / `analyze:file-encoding-converter` — PHP 레포 전용
+- `notion-suite:*`, `nworks:*`, `plane-mcp:*` — 외부 시스템 연동 (필요 시 호출)
