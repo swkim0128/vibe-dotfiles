@@ -194,9 +194,12 @@ safe_link "$HOME/.claude/CLAUDE-user.md" "$DOTFILES/vibe-tools/claude-config/CLA
 # CLAUDE-delegation.md 심볼릭 링크 (작업 위임 전략)
 safe_link "$HOME/.claude/CLAUDE-delegation.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-delegation.md"
 
+# CLAUDE-plugins.md 심볼릭 링크 (활성 플러그인 컴포넌트 매핑)
+safe_link "$HOME/.claude/CLAUDE-plugins.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-plugins.md"
+
 # ~/.claude/CLAUDE.md에 @임포트 주입 (OMC 영역 밖, 없을 때만)
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
-for IMPORT_LINE in "@CLAUDE-user.md" "@CLAUDE-delegation.md"; do
+for IMPORT_LINE in "@CLAUDE-user.md" "@CLAUDE-delegation.md" "@CLAUDE-plugins.md"; do
   if [[ -f "$CLAUDE_MD" ]]; then
     if ! grep -qF "$IMPORT_LINE" "$CLAUDE_MD"; then
       printf '\n%s\n' "$IMPORT_LINE" >> "$CLAUDE_MD"
