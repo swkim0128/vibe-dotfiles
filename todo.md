@@ -14,8 +14,19 @@
 - [x] **P3** `CLAUDE-user.md`: "코딩 외 주제 절대 금지" → Claude Code 특성에 맞게 완화 (설정 점검·환경 진단 허용)
 - [x] **P4** `.claude/settings.local.json` permissions: 73개 일회성·실험적 항목 → 14개 재사용 가능 패턴으로 정리
 
+### [2026-05-09] 하네스 엔지니어링 P0 적용 (Gemini 가이드 기반)
+
+- [x] **P0-A** `settings.work.json`: `permissions.deny` 25개(rm 루트/홈, sudo, git force-push, hard reset, fork bomb 등) + `defaultMode: acceptEdits` 추가
+- [x] **P0-B** `harness-reminder.sh`: 1줄 권고 → 결정론적 5조항(GROUND-APPLY-VERIFY-ADAPT, 도구별 VERIFY 명령, 3회 차단, 메모리 우선, settings Edit 강제). jq 기반 안전 직렬화(`-n` 플래그)
+- [x] **P0-C** 글로벌 `CLAUDE.md`: `@CLAUDE-omc.md` 임포트 제거 (OMC:START~END 영역과 100% 중복 → 매 세션 토큰 낭비 해소)
+
 ## TODO
 
+- [ ] **P1-D** 메모리 갱신 — `project-state.md`를 2026-05-09 스냅샷으로 최신화
+- [ ] **P1-E** PHP 인코딩 규칙 중복 정리 (`CLAUDE-delegation.md`에 단일화)
+- [ ] **P1-F** 미등록 훅 정리 — `pre-commit-check.sh`, `php-encoding-check.sh`, `auto-git-push.sh`, `task-send/stop.sh` settings 등록 또는 `hooks/_unused/` 격리
+- [ ] **P2-G** `docs/skill-trigger-map.md` — 자연어 → 스킬 매트릭스 (16개 플러그인 트리거 충돌 점검)
+- [ ] **P2-H** `CLAUDE-user.md` 슬림화 — 본문 → `docs/harness-pipeline.md`로 분리, 진입점만 유지
 - [ ] CLAUDE-user.md ↔ 프로젝트 CLAUDE.md 하네스 중복 정리 (vibe-claude-plugin 배포 사이클과 묶어 진행)
 - [ ] setup.sh: 새 머신에서 설치 후 전체 플로우 통합 테스트
 - [ ] tmux 무인 자동화 권한 설정 적용 — `docs/claude-headless-automation.md` 검토 후 `vibe-tools/claude-config/settings.work.json`에 반영 + `scripts/claude-headless.sh` 생성

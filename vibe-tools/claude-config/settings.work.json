@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
       "Bash(~/.config/vibe-tools/claude-callback.sh *)",
       "Bash(~/.config/vibe-tools/claude-delegate.sh *)",
@@ -16,6 +17,33 @@
       "Bash(mkdir *)",
       "Bash(rm /tmp/*)",
       "Bash(rm -f /tmp/*)"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/:*)",
+      "Bash(rm -rf $HOME:*)",
+      "Bash(rm -rf .:*)",
+      "Bash(rm -rf ..:*)",
+      "Bash(:(){ :|:& };:)",
+      "Bash(curl:*|*sh*)",
+      "Bash(wget:*|*sh*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard origin/*)",
+      "Bash(git reset --hard upstream/*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -fdx:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(chmod -R 777:*)",
+      "Bash(dd if=/dev/*)",
+      "Bash(mkfs:*)",
+      "Bash(shutdown:*)",
+      "Bash(reboot:*)"
     ]
   },
   "hooks": {

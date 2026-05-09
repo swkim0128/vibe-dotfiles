@@ -1,3 +1,22 @@
 #!/bin/bash
-# UserPromptSubmit hook — harness pipeline reminder injected into context
-printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"[하네스 규칙] 코드 수정/생성 요청이라면 반드시 GROUND(플랜 수립) → APPLY(원자적 구현) → VERIFY(검증) → ADAPT(실패 추적) 순서를 따르세요. 동일 오류 3회 시 즉시 중단 후 브리핑."}}\n'
+# UserPromptSubmit hook — 결정론적 하네스 체크리스트 주입
+# 단일 진실 공급원: 대화 컨텍스트보다 메모리·CLAUDE.md 우선 신뢰
+set -euo pipefail
+
+read -r -d '' MSG <<'EOF' || true
+[하네스 규칙 — 결정론적 5조항]
+1. 코드 변경 시 GROUND(플랜)→APPLY(원자적)→VERIFY(도구)→ADAPT(추적) 순서 강제. 한 단계 건너뛰지 말 것.
+2. VERIFY는 사람 눈이 아닌 도구로: shell=`shellcheck`+`bash -n`, Kotlin=`./gradlew ktlintCheck`, Python=`ruff check`+`pytest`, PHP=`/php-review` 스킬.
+3. 동일 오류 3회 발생 시 즉시 중단·브리핑·사용자 판단 위임. 4번째 시도 금지.
+4. 메모리(`~/.claude/projects/.../memory/MEMORY.md`)와 `CLAUDE.md`를 대화 컨텍스트보다 먼저 신뢰. 메모리가 stale 가능성 있을 시 현재 상태로 검증 후 갱신.
+5. `settings.work.json`은 Edit 도구만 사용(Write 전체 재작성 금지). PHP 파일은 EUC-KR 확인 후 `legacy-suite:file-encoding-converter` 스킬 경유.
+EOF
+
+# JSON 인코딩 안전 처리 — jq로 문자열 직렬화 (stdin 무시: -n 필수)
+if command -v jq >/dev/null 2>&1; then
+  jq -cn --arg ctx "$MSG" '{hookSpecificOutput:{hookEventName:"UserPromptSubmit",additionalContext:$ctx}}'
+else
+  # jq 미설치 시 폴백 — 줄바꿈을 \n으로 치환
+  ESCAPED=$(printf '%s' "$MSG" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk 'BEGIN{ORS="\\n"}{print}')
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$ESCAPED"
+fi
