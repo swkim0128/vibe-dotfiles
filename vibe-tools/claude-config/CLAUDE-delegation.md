@@ -54,6 +54,42 @@ PHP 파일 작업 전 반드시:
 - PHP 커밋 전 리뷰: **`harness:php-review` 스킬** 또는 `/php-review` 슬래시 명령
 - EUC-KR 파일 직접 수정 금지. Agent에 위임 시 프롬프트에 변환 절차 명시 필수.
 
+# 🔍 PHP 문법 검사 (PHP 5.3 환경)
+
+> 로컬에 `php` CLI 미설치. PHP 5.3 amd64 컨테이너는 Apple Silicon에서 QEMU
+> segfault로 실행 불가. **Intelephense LSP 진단을 1차 도구로 사용**.
+
+## 1차 — Intelephense LSP 진단 (php-lsp 플러그인 + `intelephense`)
+1. PHP 작업 시작 전 워크스페이스 루트에 `.vscode/settings.json` 또는
+   `intelephense.json` 으로 PHP 5.3 환경 명시:
+   ```json
+   {
+     "intelephense.environment.phpVersion": "5.3.0",
+     "intelephense.environment.shortOpenTag": true
+   }
+   ```
+2. Claude Code의 LSP deferred tool로 진단 받기:
+   `ToolSearch query "select:LSP"` → 로딩 후 PHP 파일에 대해 진단 호출
+3. 한계 인지: 5.3 EOL 후 도입 문법(short array `[]`, traits, callable
+   타입힌트, `...` 가변인자, return type 등)은 잡히지만 5.3 런타임 명세
+   차이는 정확히 잡지 못할 수 있음 → 2차 검사로 보완.
+
+## 2차 — 커밋 전 정적 리뷰
+- **`harness:php-review` 스킬** 또는 `/php-review` 슬래시 명령 호출
+- **`analyze:php-code-review` 스킬** (체크리스트 기반 검토)
+- 두 스킬은 문법 검사가 아닌 **레거시 패턴/보안/관용구 검토**임을 인지
+
+## 3차 — 정확한 인터프리터 검증 (필요 시)
+- Apple Silicon에서 PHP 5.3 컨테이너는 **Rancher Desktop의 Rosetta 2
+  활성화** 후에만 동작. 활성화 절차:
+  - Rancher Desktop > Preferences > Virtual Machine > Emulation > Rosetta
+- 활성화 후:
+  ```bash
+  docker run --rm --platform linux/amd64 -v "$PWD":/app -w /app \
+    tetraweb/php:5.3 php -l <file>
+  ```
+- 또는 PHP 5.3이 설치된 **운영 서버/CI**에서 `php -l` 실행
+
 # ⚠️ 위임 수신 규칙
 
 - 현재 단계 완료 후 위임 수락

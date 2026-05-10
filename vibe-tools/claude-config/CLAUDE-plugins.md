@@ -43,6 +43,20 @@
 | 인프라 연동 (PG/Valkey/Kafka) | `analyze:infra-integration-guide` (Agent) |
 | 파일 인코딩 변환 (EUC-KR↔UTF-8) | `analyze:file-encoding-converter` (스킬) |
 
+## 🐘 PHP (5.3 레거시 환경)
+
+> 로컬 `php` CLI 미설치 + Apple Silicon에서 PHP 5.3 amd64 컨테이너 QEMU 실패.
+> 1차는 LSP 진단, 2차는 스킬 검토, 3차는 Rosetta 활성 후 컨테이너.
+
+| 작업 | 컴포넌트 |
+|---|---|
+| 1차 문법 검사 (PHP 5.3 타겟) | **php-lsp** + `intelephense` (LSP deferred tool). 워크스페이스에 `intelephense.environment.phpVersion: "5.3.0"` 설정 필요 |
+| 2차 커밋 전 리뷰 | `harness:php-review` / `/php-review` |
+| 레거시 패턴 코드 리뷰 | `analyze:php-code-review` 스킬 |
+| EUC-KR ↔ UTF-8 변환 | `analyze:file-encoding-converter` 스킬 |
+| PHP+jQuery → React 마이그레이션 | `analyze:php-jquery-to-react` 스킬 |
+| 정확한 인터프리터 검증 (필요 시) | Rancher Desktop Rosetta 2 활성 → `docker run --platform linux/amd64 tetraweb/php:5.3 php -l` |
+
 ## 🌳 워크트리 / 이슈 / 세션
 
 | 작업 | 컴포넌트 |
