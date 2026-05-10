@@ -1,15 +1,26 @@
 # Vibe Dotfiles Architecture Guide
 
-이 레포지토리는 사용자의 Mac 개발 환경을 원클릭으로 구축하는 핵심 설정(Dotfiles) 저장소입니다.
+이 레포지토리는 사용자의 Mac 개발 환경 **시스템·터미널 인프라**를 원클릭으로 구축하는 dotfiles 저장소입니다.
 
-## 🏗️ 역할 분담 (중요)
-- **이 레포지토리 (`vibe-dotfiles`):** 터미널 껍데기, Zsh, Tmux, Neovim 설정, 시스템 스크립트, Claude Code의 '환경 설정(`settings.json`)'을 담당합니다.
-- **마켓플레이스 레포지토리 (`vibe-claude-plugin`):** Claude Code의 프롬프트, 스킬, MCP 등 '지능과 페르소나'를 전담합니다.
-⚠️ **절대 이 레포지토리 안에 직접 스킬(`SKILL.md`)을 추가하지 마세요. 스킬은 마켓플레이스 레포지토리에서 관리합니다.**
+## 🏗️ 관심사 분리 (SoC, 2026-05-10 갱신)
+
+| 레포 | 책임 |
+|---|---|
+| **`vibe-dotfiles` (이 레포)** | 시스템·터미널 인프라 — Zsh, Tmux, Neovim, 시스템 스크립트(`vibe-tools/`), `setup.sh` 심링크 |
+| **`vibe-claude-plugin`** | AI 하네스 — `CLAUDE-*.md`, `hooks/`, `settings.work.json`, 마켓플레이스(`plugins/`) |
+
+⚠️ 절대 이 레포에 다음 자산을 추가하지 마세요 (모두 `vibe-claude-plugin`에서 관리):
+- 스킬 (`SKILL.md`), 에이전트 (`agents/*.md`), 슬래시 커맨드 (`commands/*.md`)
+- `CLAUDE-*.md` 글로벌 룰 파일
+- Claude Code 훅 스크립트
+- `settings.work.json` 등 Claude Code 정책 설정
+
+**의존 규칙:** 양 레포 간 코드 의존 금지. 본 레포의 `vibe-tools/claude-*.sh`를 vibe-claude-plugin이 호출하는 것은 **PATH 의존**(공통 macOS 경로)이지 코드 의존 아님.
 
 ## 🚀 설치 진입점
-- 모든 설치와 심볼릭 링크 구성은 `./setup.sh` 단일 스크립트를 통해 이루어집니다.
-- 환경 분기: 설치 시 개인용(`settings.json`)과 업무용(`settings.work.json`) 환경을 선택할 수 있습니다.
+- **시스템 인프라**: `./setup.sh` — 본 레포의 zsh/tmux/nvim/vibe-tools 자산만 deploy.
+- **AI 하네스**: `~/Project/vibe-claude-plugin/install.sh` — CLAUDE-*.md / hooks / settings.json 심링크.
+- 두 진입점은 독립 실행 가능. dotfiles `setup.sh`는 vibe-claude-plugin 자산을 건드리지 않습니다.
 
 ## 🛠️ 주요 구조
 - `tmux/` : `.tmux.conf` 및 세션 설정

@@ -160,58 +160,23 @@ safe_link "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 
 # 스크립트 실행 권한 보장
 chmod +x "$DOTFILES/vibe-tools/"*.sh
-chmod +x "$DOTFILES/vibe-tools/claude-config/hooks/mac-notify.sh"
 
 # ── 8. Neovim (NvChad) Lua 설정 ──────────────────────────────────────────────
 info "Neovim lua 설정 적용 중..."
 mkdir -p "$HOME/.config/nvim"
 safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
-# ── 9. Claude Code 설정 심볼릭 링크 ─────────────────────────────────────────
-info "Claude Code 설정 심볼릭 링크 적용 중..."
-
+# ── 9. Claude Code AI 자산 안내 (vibe-claude-plugin 별도 관리) ──────────────
+# SoC: AI 하네스 자산(CLAUDE-*.md, hooks/, settings.work.json)은
+#      vibe-claude-plugin 레포에서 관리됩니다 (단계 2 마이그레이션 2026-05-10 완료).
+info "Claude Code AI 하네스 자산은 vibe-claude-plugin 레포에서 별도 관리됩니다."
 echo ""
-echo "  환경을 선택하세요:"
-echo "  [p] 개인 환경 (기본)"
-echo "  [w] 회사 환경 (cc-claude 플러그인 포함)"
-read -r -p "  선택 (p/w, 기본값: p): " ENV_TYPE
-ENV_TYPE="${ENV_TYPE:-p}"
-
-if [[ "$ENV_TYPE" == "w" ]]; then
-  safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.work.json"
-  success "회사 환경 설정 적용"
-else
-  safe_link "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
-  success "개인 환경 설정 적용"
-fi
-
-safe_link "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
-# commands/ 는 vibe-claude-plugin harness 플러그인에서 관리 — 플러그인 설치 시 자동 등록
-
-# CLAUDE-user.md 심볼릭 링크 (사용자 전역 하네스 규칙)
-safe_link "$HOME/.claude/CLAUDE-user.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-user.md"
-
-# CLAUDE-delegation.md 심볼릭 링크 (작업 위임 전략)
-safe_link "$HOME/.claude/CLAUDE-delegation.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-delegation.md"
-
-# CLAUDE-plugins.md 심볼릭 링크 (활성 플러그인 컴포넌트 매핑)
-safe_link "$HOME/.claude/CLAUDE-plugins.md" "$DOTFILES/vibe-tools/claude-config/CLAUDE-plugins.md"
-
-# ~/.claude/CLAUDE.md에 @임포트 주입 (OMC 영역 밖, 없을 때만)
-CLAUDE_MD="$HOME/.claude/CLAUDE.md"
-for IMPORT_LINE in "@CLAUDE-user.md" "@CLAUDE-delegation.md" "@CLAUDE-plugins.md"; do
-  if [[ -f "$CLAUDE_MD" ]]; then
-    if ! grep -qF "$IMPORT_LINE" "$CLAUDE_MD"; then
-      printf '\n%s\n' "$IMPORT_LINE" >> "$CLAUDE_MD"
-      success "~/.claude/CLAUDE.md 에 $IMPORT_LINE 임포트 추가 완료"
-    else
-      success "~/.claude/CLAUDE.md — $IMPORT_LINE 이미 등록됨"
-    fi
-  else
-    printf '<!-- Vibe Dotfiles harness rules -->\n%s\n' "$IMPORT_LINE" > "$CLAUDE_MD"
-    success "~/.claude/CLAUDE.md 생성 및 $IMPORT_LINE 임포트 추가 완료"
-  fi
-done
+echo "  AI 룰·훅·settings.json 설치/갱신:"
+echo "    cd ~/Project/vibe-claude-plugin && ./install.sh"
+echo ""
+echo "  자세한 SoC 분담:"
+echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, vibe-tools/claude-*.sh)"
+echo "    - vibe-claude-plugin : AI 하네스 (CLAUDE-*.md, hooks/, settings.work.json, plugins/)"
 
 # ── 10. Claude 사용자 스킬 (마켓플레이스로 이관됨) ──────────────────────────
 # 스킬은 vibe-claude-plugin 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.
