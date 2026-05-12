@@ -17,3 +17,19 @@ map("v", "<C-_>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.v
 
 -- lazygit
 map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
+
+-- floating terminal: 기본 NvChad 크기 오버라이드 (90% x 85%)
+map({ "n", "t" }, "<A-i>", function()
+  require("nvchad.term").toggle {
+    pos = "float",
+    id = "floatTerm",
+    float_opts = {
+      relative = "editor",
+      row = 0.05,
+      col = 0.05,
+      width = 0.9,
+      height = 0.85,
+      border = "single",
+    },
+  }
+end, { desc = "Terminal: Floating (large)" })
