@@ -24,6 +24,37 @@ map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Tog
 -- csvview.nvim: CSV 컬럼 정렬 표시 토글
 map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view (virtual)" })
 
+-- Miller(mlr) 기반 CSV 정렬·필터 (csvview 자동 토글 없음 — 표시 갱신은 사용자가 <leader>cv로 수동)
+local function mlr_pipe(args, prompt_label)
+  vim.ui.input({ prompt = prompt_label }, function(input)
+    if not input or input == "" then return end
+    local bufnr = vim.api.nvim_get_current_buf()
+    local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
+    local view_state = vim.fn.winsaveview()
+    local pre_lines = vim.api.nvim_buf_line_count(bufnr)
+    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
+    if not ok then
+      vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
+      return
+    end
+    if vim.v.shell_error ~= 0 then
+      vim.notify(string.format("[mlr] exit=%d: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
+      vim.cmd("silent undo")
+      return
+    end
+    local post_lines = vim.api.nvim_buf_line_count(bufnr)
+    vim.fn.winrestview(view_state)
+    vim.notify(string.format("[mlr] OK (%d→%d lines) — %s", pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
+  end)
+end
+
+map("n", "<leader>cs", function() mlr_pipe("sort -f", "Sort by column(s) (comma-separated, lex asc): ") end,
+  { desc = "CSV: Sort by column (lexical asc)" })
+map("n", "<leader>cS", function() mlr_pipe("sort -nr", "Sort by column (numeric desc): ") end,
+  { desc = "CSV: Sort by column (numeric desc)" })
+map("n", "<leader>cF", function() mlr_pipe("filter", "Filter expression (e.g. $mallType==\"I_SMARTSTORE\"): ") end,
+  { desc = "CSV: Filter rows (mlr expression)" })
+
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)
   local range = nil
