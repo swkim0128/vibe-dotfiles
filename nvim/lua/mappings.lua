@@ -37,35 +37,38 @@ map("n", "<leader>cr", function()
 end, { desc = "CSV: Force refresh column view" })
 
 -- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
--- 옵션 B: 외부 mlr 실행 후 nvim_buf_set_lines로 buffer 교체
--- → on_lines 이벤트가 명시적으로 발생해 csvview의 incremental metric 갱신 경로 활용
--- 디스크 저장 없음, async 의존 없음
+-- 옵션 C: csvview의 buffer 변경 갱신 버그를 우회 — 정렬 시 csvview 일시 비활성화하고
+-- raw 상태에서 mlr 실행. 컬럼 정렬 표시 다시 보려면 사용자가 <leader>cv로 수동 토글.
 local function mlr_pipe(args, prompt_label, prompt_default)
   vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
     if not input or input == "" then return end
     local bufnr = vim.api.nvim_get_current_buf()
 
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local stdin = table.concat(lines, "\n")
+    -- csvview 비활성화 (raw 상태로 전환)
+    local csvview_ok, csvview = pcall(require, "csvview")
+    if csvview_ok and csvview.is_enabled(bufnr) then
+      csvview.disable(bufnr)
+    end
 
     local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
-    local result = vim.fn.system(mlr_cmd, stdin)
+    local view_state = vim.fn.winsaveview()
+    local pre_lines = vim.api.nvim_buf_line_count(bufnr)
 
+    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
+    if not ok then
+      vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
+      return
+    end
     if vim.v.shell_error ~= 0 then
-      vim.notify(string.format("[mlr] exit=%d: %s\n%s",
-        vim.v.shell_error, mlr_cmd, result), vim.log.levels.ERROR)
+      vim.notify(string.format("[mlr] exit=%d. 명령: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
+      vim.cmd("silent undo")
       return
     end
 
-    local out_lines = vim.split(result, "\n", { trimempty = false })
-    if out_lines[#out_lines] == "" then table.remove(out_lines, #out_lines) end
-
-    local view_state = vim.fn.winsaveview()
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, out_lines)
+    local post_lines = vim.api.nvim_buf_line_count(bufnr)
     vim.fn.winrestview(view_state)
-
-    vim.notify(string.format("[mlr] OK (%d→%d lines) — %s",
-      #lines, #out_lines, mlr_cmd), vim.log.levels.INFO)
+    vim.notify(string.format("[mlr] OK (%d→%d lines) — csvview 비활성 상태. 컬럼 정렬 보기는 <leader>cv 토글.",
+      pre_lines, post_lines), vim.log.levels.INFO)
   end)
 end
 
