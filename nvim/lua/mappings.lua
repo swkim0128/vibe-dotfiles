@@ -21,6 +21,9 @@ map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 -- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
 map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
 
+-- csvview: CSV 컬럼 정렬 표시 토글
+map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view" })
+
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)
   local range = nil

@@ -10,6 +10,15 @@ autocmd({ "VimEnter", "FocusGained" }, {
   end,
 })
 
+-- CSV/TSV 진입 시 csvview 자동 활성화 + virtualedit=block (블록 선택을 가상 컬럼 경계까지 확장)
+autocmd("FileType", {
+  pattern = { "csv", "tsv" },
+  callback = function()
+    vim.opt_local.virtualedit = "block"
+    pcall(function() vim.cmd("CsvViewEnable") end)
+  end,
+})
+
 -- 마크다운 제외, 저장 시 줄 끝 공백 제거
 autocmd("BufWritePre", {
   pattern = "*",
