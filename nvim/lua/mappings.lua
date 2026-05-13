@@ -18,6 +18,9 @@ map("v", "<C-_>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.v
 -- lazygit
 map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 
+-- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
+map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
+
 -- floating terminal: 기본 NvChad 크기 오버라이드 (90% x 85%)
 map({ "n", "t" }, "<A-i>", function()
   require("nvchad.term").toggle {

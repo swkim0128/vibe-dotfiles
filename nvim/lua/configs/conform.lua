@@ -5,6 +5,7 @@ local options = {
     html = { "prettier" },
     python = { "black" },
     php = { "php_cs_fixer" },
+    markdown = { "prettier" },
   },
 
   format_on_save = {
