@@ -10,12 +10,12 @@ autocmd({ "VimEnter", "FocusGained" }, {
   end,
 })
 
--- CSV/TSV 진입 시 csvview 자동 활성화 + virtualedit=block (블록 선택을 가상 컬럼 경계까지 확장)
+-- CSV/TSV 진입 시 virtualedit=block (블록 선택을 가상 컬럼 경계까지 확장)
+-- csv.vim 플러그인이 ft=csv 감지 시 컬럼 하이라이트·명령 자동 등록
 autocmd("FileType", {
   pattern = { "csv", "tsv" },
   callback = function()
     vim.opt_local.virtualedit = "block"
-    pcall(function() vim.cmd("CsvViewEnable") end)
   end,
 })
 

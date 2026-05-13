@@ -21,63 +21,27 @@ map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 -- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
 map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
 
--- csvview: CSV 컬럼 정렬 표시 토글
-map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view" })
-
--- csvview: 강제 새로고침 (extmark stale 시 복구)
-map("n", "<leader>cr", function()
-  local ok, csvview = pcall(require, "csvview")
-  if not ok then return end
-  local b = vim.api.nvim_get_current_buf()
-  if csvview.is_enabled(b) then csvview.disable(b) end
-  vim.defer_fn(function()
-    pcall(csvview.enable, b)
-    vim.cmd("redraw!")
-  end, 30)
-end, { desc = "CSV: Force refresh column view" })
-
--- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
--- 옵션 C: csvview의 buffer 변경 갱신 버그를 우회 — 정렬 시 csvview 일시 비활성화하고
--- raw 상태에서 mlr 실행. 컬럼 정렬 표시 다시 보려면 사용자가 <leader>cv로 수동 토글.
-local function mlr_pipe(args, prompt_label, prompt_default)
-  vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
-    if not input or input == "" then return end
-    local bufnr = vim.api.nvim_get_current_buf()
-
-    -- csvview 비활성화 (raw 상태로 전환)
-    local csvview_ok, csvview = pcall(require, "csvview")
-    if csvview_ok and csvview.is_enabled(bufnr) then
-      csvview.disable(bufnr)
+-- csv.vim 네이티브 키맵 (ft=csv 버퍼에서 동작)
+map("n", "<leader>cv", "<cmd>%ArrangeColumn<CR>", { desc = "CSV: Arrange columns (align widths)" })
+map("n", "<leader>cV", "<cmd>%UnArrangeColumn<CR>", { desc = "CSV: Unarrange columns (raw)" })
+map("n", "<leader>cs", function()
+  vim.ui.input({ prompt = "Sort by column number (current=" .. vim.fn.col(".") .. ", or empty=cursor col): " }, function(input)
+    if input == nil then return end
+    if input == "" then
+      vim.cmd("SortCsv")
+    else
+      vim.cmd("SortCsv " .. input)
     end
-
-    local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
-    local view_state = vim.fn.winsaveview()
-    local pre_lines = vim.api.nvim_buf_line_count(bufnr)
-
-    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
-    if not ok then
-      vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
-      return
-    end
-    if vim.v.shell_error ~= 0 then
-      vim.notify(string.format("[mlr] exit=%d. 명령: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
-      vim.cmd("silent undo")
-      return
-    end
-
-    local post_lines = vim.api.nvim_buf_line_count(bufnr)
-    vim.fn.winrestview(view_state)
-    vim.notify(string.format("[mlr] OK (%d→%d lines) — csvview 비활성 상태. 컬럼 정렬 보기는 <leader>cv 토글.",
-      pre_lines, post_lines), vim.log.levels.INFO)
   end)
-end
-
-map("n", "<leader>cs", function() mlr_pipe("sort -f", "Sort by column(s) (comma-separated): ") end,
-  { desc = "CSV: Sort by column (lexical asc)" })
-map("n", "<leader>cS", function() mlr_pipe("sort -nr", "Sort by column (numeric desc): ") end,
-  { desc = "CSV: Sort by column (numeric desc)" })
-map("n", "<leader>cF", function() mlr_pipe("filter", "Filter expression (e.g. $mallType==\"I_SMARTSTORE\"): ") end,
-  { desc = "CSV: Filter rows (mlr expression)" })
+end, { desc = "CSV: Sort by column" })
+map("n", "<leader>cS", function()
+  vim.ui.input({ prompt = "Sort by column number (numeric, reverse): " }, function(input)
+    if not input or input == "" then return end
+    vim.cmd("SortCsv! n " .. input)
+  end)
+end, { desc = "CSV: Sort by column (numeric reverse)" })
+map("n", "<leader>ch", "<cmd>HiColumn!<CR>", { desc = "CSV: Toggle column highlight" })
+map("n", "<leader>cH", "<cmd>Header<CR>", { desc = "CSV: Fix header at top" })
 
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)

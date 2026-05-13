@@ -105,21 +105,11 @@ return {
     },
   },
 
-  -- csvview: CSV/TSV 컬럼 정렬 표시 (virtual text — 원본 미수정) + 컬럼 단위 yank/edit 지원
+  -- csv.vim: CSV/TSV 통합 도구 (컬럼 정렬, 정렬, 필터, 헤더, 열 이동 등)
+  -- lazy=false: ftplugin/syntax 로딩 순서 이슈로 eager load 필요
   {
-    "hat0uma/csvview.nvim",
-    ft = { "csv", "tsv" },
-    cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
-    opts = {
-      parser = { comments = { "#", "//" } },
-      view = {
-        display_mode = "border",
-        header_lnum = 1,
-      },
-    },
-    config = function(_, opts)
-      require("csvview").setup(opts)
-    end,
+    "chrisbra/csv.vim",
+    lazy = false,
   },
 
   -- nvim-tree: 긴 파일명이 잘리지 않도록 폭 가변 확장
