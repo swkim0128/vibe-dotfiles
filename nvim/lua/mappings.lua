@@ -37,41 +37,35 @@ map("n", "<leader>cr", function()
 end, { desc = "CSV: Force refresh column view" })
 
 -- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
--- mlr 실행 → 디스크 저장 → reload로 csvview의 on_reload 트리거 (full metrics 재계산)
--- 주의: 디스크에 즉시 영속화됨. 되돌리려면 git/백업 사용.
+-- 옵션 B: 외부 mlr 실행 후 nvim_buf_set_lines로 buffer 교체
+-- → on_lines 이벤트가 명시적으로 발생해 csvview의 incremental metric 갱신 경로 활용
+-- 디스크 저장 없음, async 의존 없음
 local function mlr_pipe(args, prompt_label, prompt_default)
   vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
     if not input or input == "" then return end
     local bufnr = vim.api.nvim_get_current_buf()
-    local fname = vim.api.nvim_buf_get_name(bufnr)
-    if fname == "" then
-      vim.notify("[mlr] 연결된 파일이 없는 buffer는 save+reload 불가", vim.log.levels.ERROR)
-      return
-    end
+
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local stdin = table.concat(lines, "\n")
 
     local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
-    local view = vim.fn.winsaveview()
-    local pre_lines = vim.api.nvim_buf_line_count(bufnr)
+    local result = vim.fn.system(mlr_cmd, stdin)
 
-    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
-    if not ok then
-      vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
-      return
-    end
     if vim.v.shell_error ~= 0 then
-      vim.notify(string.format("[mlr] exit=%d. 명령: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
-      vim.cmd("silent undo")
+      vim.notify(string.format("[mlr] exit=%d: %s\n%s",
+        vim.v.shell_error, mlr_cmd, result), vim.log.levels.ERROR)
       return
     end
 
-    local post_lines = vim.api.nvim_buf_line_count(bufnr)
-    -- save + force reload: csvview의 on_reload가 metrics 전체 재계산
-    -- :edit! (force) → buffer가 disk와 일치해도 강제 reload하여 on_reload 발화 보장
-    pcall(vim.cmd, "silent write")
-    pcall(vim.cmd, "silent edit!")
-    vim.fn.winrestview(view)
-    vim.notify(string.format("[mlr] OK (%d→%d lines, saved+reloaded) — %s",
-      pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
+    local out_lines = vim.split(result, "\n", { trimempty = false })
+    if out_lines[#out_lines] == "" then table.remove(out_lines, #out_lines) end
+
+    local view_state = vim.fn.winsaveview()
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, out_lines)
+    vim.fn.winrestview(view_state)
+
+    vim.notify(string.format("[mlr] OK (%d→%d lines) — %s",
+      #lines, #out_lines, mlr_cmd), vim.log.levels.INFO)
   end)
 end
 
