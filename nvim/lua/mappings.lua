@@ -21,8 +21,22 @@ map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 -- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
 map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
 
--- csvview.nvim: CSV 컬럼 정렬 표시 토글
-map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view (virtual)" })
+-- csvview.nvim: CSV 컬럼 정렬 표시 토글 (disable 시 namespace 강제 클린업)
+-- 표준 :CsvViewDisable는 view 인스턴스가 추적한 extmark만 제거 — orphan extmark가
+-- 누적되어 잔영이 남는 csvview 결함을 우회하기 위해 csv_extmark namespace를 전체 클리어.
+map("n", "<leader>cv", function()
+  local ok, csvview = pcall(require, "csvview")
+  if not ok then return end
+  local bufnr = vim.api.nvim_get_current_buf()
+  if csvview.is_enabled(bufnr) then
+    csvview.disable(bufnr)
+    local ns = vim.api.nvim_create_namespace("csv_extmark")
+    vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+    vim.cmd("redraw!")
+  else
+    csvview.enable(bufnr)
+  end
+end, { desc = "CSV: Toggle column view (full cleanup on disable)" })
 
 -- Miller(mlr) 기반 CSV 정렬·필터 (csvview 자동 토글 없음 — 표시 갱신은 사용자가 <leader>cv로 수동)
 local function mlr_pipe(args, prompt_label)
