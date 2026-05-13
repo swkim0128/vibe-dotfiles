@@ -24,6 +24,22 @@ map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Tog
 -- csvview: CSV 컬럼 정렬 표시 토글
 map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view" })
 
+-- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
+local function mlr_pipe(args, prompt_label, prompt_default)
+  vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
+    if not input or input == "" then return end
+    local cmd = string.format("%%!mlr --csv %s %s", args, vim.fn.shellescape(input))
+    vim.cmd(cmd)
+  end)
+end
+
+map("n", "<leader>cs", function() mlr_pipe("sort -f", "Sort by column(s) (comma-separated): ") end,
+  { desc = "CSV: Sort by column (lexical asc)" })
+map("n", "<leader>cS", function() mlr_pipe("sort -nr", "Sort by column (numeric desc): ") end,
+  { desc = "CSV: Sort by column (numeric desc)" })
+map("n", "<leader>cF", function() mlr_pipe("filter", "Filter expression (e.g. $mallType==\"I_SMARTSTORE\"): ") end,
+  { desc = "CSV: Filter rows (mlr expression)" })
+
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)
   local range = nil
