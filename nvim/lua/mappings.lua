@@ -65,9 +65,10 @@ local function mlr_pipe(args, prompt_label, prompt_default)
     end
 
     local post_lines = vim.api.nvim_buf_line_count(bufnr)
-    -- save + reload: csvview의 on_reload가 metrics 전체 재계산
+    -- save + force reload: csvview의 on_reload가 metrics 전체 재계산
+    -- :edit! (force) → buffer가 disk와 일치해도 강제 reload하여 on_reload 발화 보장
     pcall(vim.cmd, "silent write")
-    pcall(vim.cmd, "silent edit")
+    pcall(vim.cmd, "silent edit!")
     vim.fn.winrestview(view)
     vim.notify(string.format("[mlr] OK (%d→%d lines, saved+reloaded) — %s",
       pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
