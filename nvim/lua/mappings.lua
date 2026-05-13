@@ -21,27 +21,8 @@ map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 -- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
 map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
 
--- csv.vim 네이티브 키맵 (ft=csv 버퍼에서 동작)
-map("n", "<leader>cv", "<cmd>%ArrangeColumn<CR>", { desc = "CSV: Arrange columns (align widths)" })
-map("n", "<leader>cV", "<cmd>%UnArrangeColumn<CR>", { desc = "CSV: Unarrange columns (raw)" })
-map("n", "<leader>cs", function()
-  vim.ui.input({ prompt = "Sort by column number (current=" .. vim.fn.col(".") .. ", or empty=cursor col): " }, function(input)
-    if input == nil then return end
-    if input == "" then
-      vim.cmd("SortCsv")
-    else
-      vim.cmd("SortCsv " .. input)
-    end
-  end)
-end, { desc = "CSV: Sort by column" })
-map("n", "<leader>cS", function()
-  vim.ui.input({ prompt = "Sort by column number (numeric, reverse): " }, function(input)
-    if not input or input == "" then return end
-    vim.cmd("SortCsv! n " .. input)
-  end)
-end, { desc = "CSV: Sort by column (numeric reverse)" })
-map("n", "<leader>ch", "<cmd>HiColumn!<CR>", { desc = "CSV: Toggle column highlight" })
-map("n", "<leader>cH", "<cmd>Header<CR>", { desc = "CSV: Fix header at top" })
+-- csvview.nvim: CSV 컬럼 정렬 표시 토글
+map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view (virtual)" })
 
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)
