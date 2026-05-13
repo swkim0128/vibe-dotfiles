@@ -37,43 +37,40 @@ map("n", "<leader>cr", function()
 end, { desc = "CSV: Force refresh column view" })
 
 -- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
--- csvview의 extmark가 buffer 교체 후 잔존하지 않도록 Lua API로 정확히 detach→re-attach
+-- mlr 실행 → 디스크 저장 → reload로 csvview의 on_reload 트리거 (full metrics 재계산)
+-- 주의: 디스크에 즉시 영속화됨. 되돌리려면 git/백업 사용.
 local function mlr_pipe(args, prompt_label, prompt_default)
   vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
     if not input or input == "" then return end
     local bufnr = vim.api.nvim_get_current_buf()
-    local csvview_ok, csvview = pcall(require, "csvview")
-    local was_active = csvview_ok and csvview.is_enabled(bufnr) or false
-    if was_active then csvview.disable(bufnr) end
+    local fname = vim.api.nvim_buf_get_name(bufnr)
+    if fname == "" then
+      vim.notify("[mlr] 연결된 파일이 없는 buffer는 save+reload 불가", vim.log.levels.ERROR)
+      return
+    end
 
     local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
     local view = vim.fn.winsaveview()
     local pre_lines = vim.api.nvim_buf_line_count(bufnr)
-    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
-    local success = ok and vim.v.shell_error == 0
 
+    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
     if not ok then
       vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
-    elseif vim.v.shell_error ~= 0 then
+      return
+    end
+    if vim.v.shell_error ~= 0 then
       vim.notify(string.format("[mlr] exit=%d. 명령: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
       vim.cmd("silent undo")
-    else
-      local post_lines = vim.api.nvim_buf_line_count(bufnr)
-      vim.notify(string.format("[mlr] OK (%d→%d lines) — %s", pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
+      return
     end
 
+    local post_lines = vim.api.nvim_buf_line_count(bufnr)
+    -- save + reload: csvview의 on_reload가 metrics 전체 재계산
+    pcall(vim.cmd, "silent write")
+    pcall(vim.cmd, "silent edit")
     vim.fn.winrestview(view)
-
-    -- csvview 재활성화: defer로 buffer change autocmd 처리 후 attach
-    if was_active and csvview_ok then
-      vim.defer_fn(function()
-        if vim.api.nvim_buf_is_valid(bufnr) then
-          pcall(csvview.enable, bufnr)
-          vim.cmd("redraw!")
-        end
-      end, 50)
-    end
-    _ = success
+    vim.notify(string.format("[mlr] OK (%d→%d lines, saved+reloaded) — %s",
+      pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
   end)
 end
 
