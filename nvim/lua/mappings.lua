@@ -25,11 +25,28 @@ map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Tog
 map("n", "<leader>cv", "<cmd>CsvViewToggle<CR>", { desc = "CSV: Toggle column view" })
 
 -- Miller(mlr) 기반 CSV 정렬·필터 (헤더 보존, quoted comma 안전)
+-- csvview의 virtual text가 잔존하지 않도록 일시 비활성→복원, 에러 가시화
 local function mlr_pipe(args, prompt_label, prompt_default)
   vim.ui.input({ prompt = prompt_label, default = prompt_default or "" }, function(input)
     if not input or input == "" then return end
-    local cmd = string.format("%%!mlr --csv %s %s", args, vim.fn.shellescape(input))
-    vim.cmd(cmd)
+    local was_active = pcall(vim.cmd, "CsvViewDisable")
+    local mlr_cmd = string.format("mlr --csv %s %s", args, vim.fn.shellescape(input))
+    local view = vim.fn.winsaveview()
+    local pre_lines = vim.api.nvim_buf_line_count(0)
+    local ok, err = pcall(function() vim.cmd("%!" .. mlr_cmd) end)
+    if not ok then
+      vim.notify("[mlr] 실행 실패: " .. tostring(err), vim.log.levels.ERROR)
+    else
+      local post_lines = vim.api.nvim_buf_line_count(0)
+      if vim.v.shell_error ~= 0 then
+        vim.notify(string.format("[mlr] exit=%d. 명령: %s", vim.v.shell_error, mlr_cmd), vim.log.levels.ERROR)
+        vim.cmd("silent undo")
+      else
+        vim.notify(string.format("[mlr] OK (%d→%d lines) — %s", pre_lines, post_lines, mlr_cmd), vim.log.levels.INFO)
+      end
+    end
+    vim.fn.winrestview(view)
+    if was_active then pcall(vim.cmd, "CsvViewEnable") end
   end)
 end
 
