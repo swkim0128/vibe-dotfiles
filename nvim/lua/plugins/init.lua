@@ -1,7 +1,8 @@
 return {
   {
     "stevearc/conform.nvim",
-    -- event = 'BufWritePre', -- uncomment for format on save
+    event = { "BufWritePre", "BufNewFile" }, -- 저장 직전 + 새 버퍼 진입 시 로드
+    cmd = { "Format", "ConformInfo" },
     opts = require "configs.conform",
   },
 
@@ -26,13 +27,6 @@ return {
   -- 	},
   -- },
   --
-  {
-    "stevearc/conform.nvim",
-    event = 'BufWritePre', -- 저장 직전에 실행되도록 설정
-    config = function()
-      require "configs.conform"
-    end,
-  },
   {
     "MeanderingProgrammer/render-markdown.nvim",
     dependencies = {
