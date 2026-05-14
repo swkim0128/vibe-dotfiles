@@ -57,6 +57,33 @@ As a result:
 - On initial file open, metrics accumulate via subsequent `on_lines` and `on_win` (decoration provider) calls — works correctly when the entire file is small enough to fit in the initial render pass.
 - After `:%!cmd` on a large buffer, the partial `on_lines` events update metrics incrementally but may not visit every row; rendering of unvisited rows uses partial metrics.
 
+### 3. `View:dispose()` only clears extmarks tracked by `self._extmarks`
+
+`view.lua` `View:clear` iterates only `self._extmarks` — extmarks the current `View` instance recorded via `_add_extmark`. The `csv_extmark` namespace is shared, so any extmarks created from other code paths (or orphaned by enable/disable cycles, sticky_header rendering, inccommand preview restore, etc.) remain in the buffer after `:CsvViewDisable`.
+
+Measured on a 216-row CSV that had been through one mlr sort cycle:
+
+```vim
+:lua local ns = vim.api.nvim_create_namespace("csv_extmark"); print(#vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}))
+```
+
+Output before disable: thousands. Output after `:CsvViewDisable`: **3650 extmarks still present**. These orphan extmarks render the visual `│` separators / padding on screen even though `is_enabled()` returns `false`, giving the user the impression that csvview is still active.
+
+Suggested fix (one line):
+
+```lua
+-- In View:clear or View:dispose, in addition to per-instance cleanup:
+vim.api.nvim_buf_clear_namespace(self.bufnr, EXTMARK_NS, 0, -1)
+```
+
+User-side workaround we currently apply:
+
+```lua
+csvview.disable(bufnr)
+vim.api.nvim_buf_clear_namespace(bufnr, vim.api.nvim_create_namespace("csv_extmark"), 0, -1)
+vim.cmd("redraw!")
+```
+
 ## Verification
 
 Headless reproducer with small file shows metrics correct after `:%!mlr`:
