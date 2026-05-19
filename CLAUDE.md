@@ -1,109 +1,55 @@
 # Vibe Dotfiles Architecture Guide
 
-이 레포지토리는 사용자의 Mac 개발 환경 **시스템·터미널 인프라**를 원클릭으로 구축하는 dotfiles 저장소입니다.
+Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 
-## 🏗️ 관심사 분리 (SoC, 2026-05-10 갱신)
+## 🏗️ 관심사 분리 (SoC)
 
 | 레포 | 책임 |
 |---|---|
-| **`vibe-dotfiles` (이 레포)** | 시스템·터미널 인프라 — Zsh, Tmux, Neovim, 시스템 스크립트(`vibe-tools/`), `setup.sh` 심링크 |
-| **`vibe-claude-plugin`** | AI 하네스 — `CLAUDE-*.md`, `hooks/`, `settings.work.json`, 마켓플레이스(`plugins/`) |
+| **`vibe-dotfiles`** (본 레포) | 시스템·터미널 인프라 — Zsh, Tmux, Neovim, `vibe-tools/`, `setup.sh` |
+| **`vibe-claude-plugin`** | AI 하네스 — `CLAUDE-*.md`, `hooks/`, `settings.work.json`, 마켓플레이스 |
 
-⚠️ 절대 이 레포에 다음 자산을 추가하지 마세요 (모두 `vibe-claude-plugin`에서 관리):
-- 스킬 (`SKILL.md`), 에이전트 (`agents/*.md`), 슬래시 커맨드 (`commands/*.md`)
-- `CLAUDE-*.md` 글로벌 룰 파일
-- Claude Code 훅 스크립트
-- `settings.work.json` 등 Claude Code 정책 설정
+⚠️ 본 레포에 추가 금지 (모두 `vibe-claude-plugin` 관리): 스킬·에이전트·커맨드·`CLAUDE-*.md`·Claude Code 훅·`settings.work.json`.
 
-**의존 규칙:** 양 레포 간 코드 의존 금지. 본 레포의 `vibe-tools/claude-*.sh`를 vibe-claude-plugin이 호출하는 것은 **PATH 의존**(공통 macOS 경로)이지 코드 의존 아님.
+**의존**: 양 레포 코드 의존 금지. 본 레포의 `vibe-tools/claude-*.sh`를 vibe-claude-plugin이 호출은 PATH 의존 (코드 의존 X).
 
 ## 🚀 설치 진입점
-- **시스템 인프라**: `./setup.sh` — 본 레포의 zsh/tmux/nvim/vibe-tools 자산만 deploy.
-- **AI 하네스**: `~/Project/vibe-claude-plugin/install.sh` — CLAUDE-*.md / hooks / settings.json 심링크.
-- 두 진입점은 독립 실행 가능. dotfiles `setup.sh`는 vibe-claude-plugin 자산을 건드리지 않습니다.
+- **시스템**: `./setup.sh` (zsh/tmux/nvim/vibe-tools deploy)
+- **AI 하네스**: `~/Project/vibe-claude-plugin/install.sh` (CLAUDE-*.md / hooks / settings.json 심링크)
+- 두 진입점 독립. setup.sh는 vibe-claude-plugin 자산 무수정.
 
-## 🛠️ 주요 구조
-- `tmux/` : `.tmux.conf` 및 세션 설정
-- `nvim/lua/` : NvChad 기반 에디터 설정
-- `vibe-tools/` : 커스텀 셸 스크립트 (`vibe.sh`, `claude-delegate.sh` 등)
-- `zsh/` : `aliases.zsh` 관리
+## 🛠️ 구조
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (셸 스크립트), `zsh/aliases.zsh`
 
----
+## ⚙️ dotfiles 한정 룰
 
-## ⚙️ 프로젝트 특화 룰 (dotfiles 한정)
+글로벌 룰(`~/.claude/CLAUDE-*.md`)에 더해 본 레포만 적용 (L3 우선):
 
-> **글로벌 하네스 파이프라인**(GROUND→APPLY→VERIFY→ADAPT)과 **위임 전략**은
-> `~/.claude/CLAUDE-user.md` · `CLAUDE-delegation.md`에 있습니다.
-> 본 섹션은 **dotfiles에서만 적용되는 추가·재정의 룰**입니다 (L3 우선).
+- 주요 언어: Bash, Zsh, Lua, Markdown
+- 셸 스크립트 시작: `set -euo pipefail`
+- 외부 도구 호출 전: `command -v <tool>` 확인
 
-### 언어 & 스택 제약
-- 주요 언어: Bash, Zsh, Lua (Neovim), Markdown
-- 모든 셸 스크립트는 `set -euo pipefail`로 시작
-- 외부 도구 호출 전 `command -v <tool>`로 존재 여부 확인
-
-### VERIFY 도구 (이 레포 전용)
+### VERIFY (본 레포 전용)
 | 대상 | 명령 |
-|------|------|
-| `.sh` 작성·수정 후 | `shellcheck <파일>` (미설치 시 `bash -n <파일>`) |
-| `tests/bats` 존재 시 | `bats tests/` |
-| `nvim/lua/` 변경 시 | `luac -p <파일>` (Lua 구문 검사) |
-| `settings.work.json` 수정 시 | `jq empty <파일>` (Edit 도구만, Write 금지) |
-
-### 세션 인수인계 (todo.md)
-- **중단 전**: 완료·TODO·에러를 `todo.md`에 기록 (또는 `harness:handoff` 스킬로 HANDOFF.md 생성)
-- **재개 시**: `todo.md` / `HANDOFF.md`를 가장 먼저 읽음
-- 단일 TASKS.md 운영은 `task-mgmt:task-management` 스킬 활용 가능
-
-`todo.md` 형식:
-```markdown
-## 완료
-- [x] 항목
-
-## TODO
-- [ ] 항목
-
-## 에러 / 블로커
-- 현상: / 원인: / 해결 여부:
-```
-
----
-
-## 🔌 플러그인 컴포넌트 매핑 (이 레포 전용)
-
-> 글로벌 매핑은 `~/.claude/CLAUDE-plugins.md`. 본 섹션은 **dotfiles 레포에서 우선 호출**할 컴포넌트만.
-
-### 코드 작업
-| 작업 | 컴포넌트 |
 |---|---|
-| 셸 스크립트 변경 후 검증 | `harness:verification-loop` 스킬 / 직접 `bash -n` + `shellcheck` |
-| 첫 Edit/Write/Bash 전 사실 조사 게이트 | `harness:gateguard` 스킬 (자동) |
-| 커밋 | `git-suite:commit` 스킬 |
-| MR 생성 | `git-suite:mr` / `git-suite:git-mr-creator` 스킬 |
-| 변경 영향도 검토 (스크립트·설정 광범위 수정 시) | `Agent(subagent_type=Explore)` |
+| `.sh` 변경 | `shellcheck` (미설치 시 `bash -n`) |
+| `tests/bats` | `bats tests/` |
+| `nvim/lua/` | `luac -p` |
+| `settings.work.json` | `jq empty` (Edit 도구만, Write 금지) |
 
-### 개발 환경 / tmux
-| 작업 | 컴포넌트 |
-|---|---|
-| 새 작업 세션 (PARA 7:3) | `tmux-suite:tmux-session-start` 스킬 |
-| 세션 종료 / PARA 복귀 | `tmux-suite:tmux-session-done` 스킬 |
-| 패널 간 위임/콜백 | `tmux-suite:claude-ipc` 스킬 |
-| 다른 세션에 알림/위임 | `tmux-suite:tmux-session-comm` 스킬 |
+### 세션 인수인계
+중단 전 `todo.md` 또는 `harness:handoff` 스킬로 HANDOFF.md 기록. 재개 시 먼저 읽음.
 
-### 메타 / 진단
-| 작업 | 컴포넌트 |
-|---|---|
-| `settings.work.json` 수정 | **Edit 도구만** + `jq empty` 검증 / `update-config` 스킬 |
-| 셋업 표면 점검 (MCP·플러그인·환경) | `vibe-admin:workspace-surface-audit` 스킬 |
-| 플러그인 생태계 비교 | `vibe-admin:ecosystem-map` 스킬 |
-| 스킬 작업 후 백업 | `vibe-admin:skill-backup` (자동) |
-| 라이브러리/도구 공식 문서 | Context7 MCP (`mcp__plugin_context7_context7__*`) |
+## 🔌 본 레포 우선 호출 컴포넌트
 
-### 자동 발동 훅 (참고)
-- `harness/bash-guard.sh` — `curl|sh`/`rm -rf`/포그라운드 dev 서버/워크트리 런타임 테스트 차단
-- `harness/write-guard.sh` — 시크릿 보호
-- `harness/session-start.sh` — 하네스 5조항 주입
+글로벌 매핑은 `~/.claude/CLAUDE-plugins.md` · `CLAUDE-tools.md`. 본 레포에서 자주 쓰는 것만:
 
-### 비대상 (이 레포에서 호출하지 않음)
-- `analyze:*` (Spring Boot/FastAPI/SQL 등) — 백엔드 레포 전용
-- `harness:php-review` / `analyze:file-encoding-converter` — PHP 레포 전용
-- `notion-suite:*`, `nworks:*`, `plane-mcp:*` — 외부 시스템 연동 (필요 시 호출)
+- 셸 변경 검증: `harness:verification-loop` / 직접 `shellcheck`
+- 커밋: `git-suite:commit` / MR: `git-suite:mr`
+- 영향도 검토: `Agent(subagent_type=Explore)`
+- tmux 세션: `tmux-suite:{tmux-session-start, tmux-session-done, claude-ipc, tmux-session-comm}`
+- `settings.work.json`: **Edit 전용** + `jq empty` (Write 금지)
+- 셋업 점검: `vibe-admin:workspace-surface-audit` / 생태계: `vibe-admin:ecosystem-map`
+
+### 비대상 (호출 안 함)
+`analyze:*` (백엔드 전용), `harness:php-review` (PHP 전용), `notion-suite:*` / `nworks:*` / `plane-mcp:*` (필요 시만).
