@@ -235,38 +235,41 @@ else
     fi
   done
 
-  # 공용 플러그인 (개인·업무 공통)
+  # 공용 플러그인 (개인·업무 공통, 2026-05-20 실 설치 상태 반영)
   BASE_PLUGINS=(
+    # claude-plugins-official
     "superpowers@claude-plugins-official"
     "github@claude-plugins-official"
-    "skill-creator@claude-plugins-official"
     "context7@claude-plugins-official"
+    "php-lsp@claude-plugins-official"
+    # omc (오케스트레이션 프레임워크)
     "oh-my-claudecode@omc"
-    "tmux-suite@swkim0128"
+    # swkim0128 마켓플레이스 (도메인 스킬 + 워크플로우 도구)
+    "analyze@swkim0128"
     "git-suite@swkim0128"
-    "legacy-suite@swkim0128"
-    "task-mgmt@swkim0128"
-    "vibe-admin@swkim0128"
+    "google-workspace@swkim0128"
+    "harness@swkim0128"
     "notify@swkim0128"
+    "notion-suite@swkim0128"
+    "nworks@swkim0128"
+    "task-mgmt@swkim0128"
+    "test@swkim0128"
+    "tmux-suite@swkim0128"
+    "vibe-admin@swkim0128"
   )
-  # 개인 환경 전용 플러그인
-  PERSONAL_PLUGINS=(
-    "notion@claude-plugins-official"
-  )
+  # 개인 환경 전용 (현재 없음 — BASE가 개인 환경 커버)
+  PERSONAL_PLUGINS=()
   # 업무 환경 전용 플러그인 (사내 cc-claude 마켓플레이스)
+  # NOTE: analyze/harness/test/nworks는 swkim0128 BASE로 이전됐으므로 여기서 제거 (충돌 방지)
   WORK_PLUGINS=(
-    "analyze@cc-claude"
     "backend@cc-claude"
     "beginner@cc-claude"
     "cc-utils@cc-claude"
     "context-architect@cc-claude"
     "enterprise-base@cc-claude"
-    "harness@cc-claude"
     "plane-mcp@cc-claude"
     "workflow@cc-claude"
     "legacy@cc-claude"
-    "test@cc-claude"
-    "nworks@cc-claude"
     "prompt-search@cc-claude"
   )
 
