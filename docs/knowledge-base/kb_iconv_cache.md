@@ -18,7 +18,7 @@ EUC-KR/CP949 ↔ UTF-8 인코딩 변환 캐싱 패턴.
 - 오버라이드: `ICONV_CACHE_DIR=<dir>` 환경변수
 - 보존 정책: 캐시 삭제 금지 — 다음 호출에서 재사용. SRC > 캐시 mtime 시 자동 재변환.
 
-⚠️ **`vibe-tools/smart_iconv.sh` 는 DEPRECATED.** 호출 시 stderr 경고가 출력되며 호환성 유지를 위해 동작은 그대로지만, 신규 작업은 스킬 경유 호출 필수.
+⚠️ **`vibe-tools/smart_iconv.sh` 는 2026-05-26 제거되었습니다.** 기능은 `analyze:file-encoding-converter` 스킬로 완전 이관. 과거 호출 형태(`smart_iconv.sh <SRC> <TGT> [FROM] [TO]`)는 더 이상 지원되지 않으므로 아래 스킬 경유 호출로 대체할 것.
 
 ### 사용 예시 (스킬 경유)
 ```bash
