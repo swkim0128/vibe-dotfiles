@@ -4,10 +4,21 @@
 # 매일 새벽 2시 launchd에 의해 실행됨 (caffeinate -i -s 래핑).
 # PARA 프로젝트 전반의 git 활동을 분석하고,
 # 다음 날 1순위 과제의 소스코드를 미리 스파이크 분석하여
-# ~/Project/00-PARA/Retrospectives/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
+# ~/Project/para/Retrospectives/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
+#
+# 추가 책무 (2026-05-26):
+#   ~/Project/para/01.Projects/*.md 중 frontmatter status=in_progress 파일을
+#   직접 Read 하여, 오늘 git 활동·블루프린트와 대조한 뒤 다음 두 작업을 수행:
+#     (1) `## 진행 내역`에 `- YYYY-MM-DD: <오늘 변동 요약>` 1줄 append
+#     (2) `## TO-DO` 체크리스트 갱신 (완료된 항목은 `- [x] ... ✅ YYYY-MM-DD`),
+#         미완 항목 중 명일 즉시 착수 가능한 것은 별도 섹션 `## 내일 실행 가이드`로
+#         같은 파일 하단에 자율 누적 (중복 헤더 방지: 이미 있으면 그 아래 append).
+#   frontmatter `status` 자체는 임의 변경 금지 — 인프라 단의 자동화는 본문 append만.
 #
 # 안전 가드:
-#   - read-only 분석 + 마크다운 작성만 수행
+#   - 소스코드(.php/.kt/.py/.ts/.js/.kts/.go/.rs 등): Read만 허용. Edit 절대 금지.
+#   - Edit 허용 화이트리스트: ~/Project/para/01.Projects/*.md (status=in_progress 한정)
+#   - Write 허용: 본 일자 블루프린트 파일 1개 (BLUEPRINT_FILE)
 #   - git push, 외부 API 호출, 임의 파일 삭제 금지
 #   - launchd에서 caffeinate로 래핑하므로 이 스크립트는 직접 caffeinate 호출 안 함
 #
@@ -132,6 +143,29 @@ if [[ -n "${PREV_FILE}" && -f "${PREV_FILE}" && "${PREV_FILE}" != "${BLUEPRINT_F
   log_info "직전 블루프린트 참조: ${PREV_FILE}"
 fi
 
+# ── PARA 01.Projects 중 status=in_progress 파일 수집 ─────────────────────────
+# frontmatter YAML 의 `status: in_progress` 라인을 grep으로 식별.
+declare -a IN_PROGRESS_FILES=()
+IN_PROGRESS_LIST_TEXT=""
+
+if [[ -d "${PARA_PROJECTS_DIR}" ]]; then
+  while IFS= read -r -d '' note; do
+    # 파일 첫 20줄 (frontmatter) 안에 status: in_progress 가 있는지 확인
+    if head -20 "${note}" 2>/dev/null | grep -Eq '^status:[[:space:]]*in_progress[[:space:]]*$'; then
+      IN_PROGRESS_FILES+=("${note}")
+      IN_PROGRESS_LIST_TEXT+="- ${note}\n"
+      log_info "IN_PROGRESS 작업 감지: $(basename "${note}")"
+    fi
+  done < <(find "${PARA_PROJECTS_DIR}" -maxdepth 1 -type f -name '*.md' -print0 2>/dev/null)
+fi
+
+if [[ ${#IN_PROGRESS_FILES[@]} -eq 0 ]]; then
+  IN_PROGRESS_LIST_TEXT="(현재 status=in_progress 인 작업 노트 없음)"
+  log_info "IN_PROGRESS 작업 0건 — 본문 append 작업은 skip 됨"
+else
+  log_info "IN_PROGRESS 작업 수: ${#IN_PROGRESS_FILES[@]}"
+fi
+
 # ── claude 헤드리스 호출 프롬프트 구성 ──────────────────────────────────────
 PROMPT_TEXT="$(cat <<PROMPT_EOF
 당신은 개발 프로젝트 분석 AI입니다. 야간 자율 분석 모드로 실행 중입니다.
@@ -150,7 +184,12 @@ ${PREV_BLUEPRINT:-"이전 블루프린트 없음"}
 - 경로: ${PARA_PROJECTS_DIR}
 - 활성 프로젝트: $(IFS=', '; echo "${ACTIVE_PROJECTS[*]:-없음}")
 
+## 현재 진행 중(IN_PROGRESS)인 단기 작업 노트 (frontmatter status=in_progress)
+$(printf '%b' "${IN_PROGRESS_LIST_TEXT}")
+
 ## 당신이 해야 할 일
+
+### A. 블루프린트 작성 (Write)
 1. 오늘의 git 커밋 내역을 바탕으로 프로젝트별 진행 상황을 요약하세요.
 2. 직전 블루프린트와 오늘 커밋을 종합하여 "내일 1순위로 착수해야 할 과제"를 구체적으로 도출하세요.
 3. 해당 과제의 관련 소스 파일을 Read 도구로 직접 읽어 분석하세요 (경로가 존재하는 경우).
@@ -158,7 +197,26 @@ ${PREV_BLUEPRINT:-"이전 블루프린트 없음"}
 5. 모든 결과를 아래 파일 경로에 마크다운으로 Write 도구를 사용해 저장하세요:
    ${BLUEPRINT_FILE}
 
-## 출력 파일 형식 (반드시 이 구조를 따를 것)
+### B. PARA 01.Projects IN_PROGRESS 작업 노트 갱신 (Edit) — 신규 책무
+위 "현재 진행 중인 단기 작업 노트" 목록의 **각 파일**에 대해 아래 두 작업을 수행하세요.
+
+- **B-1. 진행 내역 append**:
+  파일 내 \`## 진행 내역\` 섹션을 찾아, 그 섹션 마지막 \`---\` 직전에 다음 라인을 1줄 append.
+  형식: \`- ${TODAY}: <오늘 git 활동·블루프린트 기준으로 본 작업과 관련된 변동을 1줄 요약>\`
+  관련 변동이 전혀 없으면 이 작업 노트는 skip (라인 추가 안 함).
+
+- **B-2. 내일 실행 가이드 누적**:
+  파일 마지막에 \`## 내일 실행 가이드\` 섹션이 없으면 새로 추가, 있으면 그 아래에 \`### ${TODAY} 야간 분석 기준\` 서브헤더로 누적.
+  내용: 미완 TO-DO 중 명일 즉시 착수 가능한 1–3개 항목 + 시작점이 될 파일 경로/함수명.
+  - 본 작업에 관련 변동이 없으면 이 섹션도 추가하지 않음.
+
+### B 작업의 엄격한 제약
+- 위 IN_PROGRESS 목록에 명시된 파일만 Edit 가능. 그 외 모든 \`.md\` / 소스 파일은 Edit 절대 금지.
+- frontmatter (\`---\` ~ \`---\`) 영역은 절대 수정 금지. \`status\` 임의 변경 금지.
+- \`## 개요\`, \`## 이슈 트래킹\` 등 기존 본문 섹션 텍스트는 절대 수정 금지. **순수 append만** 허용.
+- 관련 변동이 없는 노트는 그대로 두기 (강제로 라인 추가 금지).
+
+## 출력 파일 형식 (블루프린트, A의 결과)
 \`\`\`markdown
 # Overnight Blueprint — ${TODAY}
 
@@ -177,6 +235,9 @@ ${PREV_BLUEPRINT:-"이전 블루프린트 없음"}
 ## 구현 블루프린트
 (내일 즉시 시작할 수 있는 의도 코드, 단계별 구현 계획)
 
+## PARA 01.Projects 갱신 보고 (신규)
+(B-1/B-2 로 어떤 노트의 어느 섹션에 무엇을 append 했는지 파일별 1줄 보고. 변동 없어 skip 한 노트도 명시)
+
 ## 위험 및 주의사항
 (놓친 것, 잠재적 문제, 다음 세션에 전달할 컨텍스트)
 \`\`\`
@@ -185,8 +246,9 @@ ${PREV_BLUEPRINT:-"이전 블루프린트 없음"}
 - git push 금지
 - 외부 API 호출 금지
 - 파일 삭제 금지
-- 사용자 작업 파일(소스코드) 수정 금지 — Read만 허용
-- 결과 마크다운 파일 Write만 허용
+- 소스코드(.php/.kt/.py/.ts/.js/.go/.rs 등) 수정 금지 — Read만 허용
+- Edit 허용 범위: 위 IN_PROGRESS 목록의 \`~/Project/para/01.Projects/*.md\` 파일들 (본문 append만)
+- Write 허용 범위: 본 일자 블루프린트 파일 1개 (${BLUEPRINT_FILE})
 PROMPT_EOF
 )"
 
@@ -221,12 +283,14 @@ DRY_EOF
 else
   # 실제 claude 헤드리스 호출
   # --dangerously-skip-permissions: 비대화형 자동 승인
-  # --allowedTools: Read, Glob, Grep, Write만 허용 (Bash, Edit 등 차단)
+  # --allowedTools: Read, Glob, Grep, Write, Edit 허용
+  #   * Edit 는 IN_PROGRESS 작업 노트 본문 append 전용. 프롬프트 안전 가드로 범위 제한.
+  #   * Bash, MultiEdit 등은 명시적으로 미허용.
   # --print: 비대화형 모드 (출력 후 종료)
   "${CLAUDE_BIN}" \
     --print \
     --dangerously-skip-permissions \
-    --allowedTools "Read,Glob,Grep,Write" \
+    --allowedTools "Read,Glob,Grep,Write,Edit" \
     --model "claude-sonnet-4-6" \
     --output-format text \
     "${PROMPT_TEXT}" \
