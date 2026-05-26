@@ -19,6 +19,8 @@ set -euo pipefail
 
 # ── 설정 ──────────────────────────────────────────────────────────────────────
 PARA_PROJECTS_DIR="${HOME}/Project/para/01.Projects"
+# git 활동 스캔 루트 — PARA 노트 모음에는 .git 없음. 실제 git 레포는 ~/Project/ 직속에 있다.
+REPO_SCAN_DIR="${HOME}/Project"
 RETRO_DIR="${HOME}/Project/para/Retrospectives"
 LOG_DIR="${HOME}/Library/Logs/overnight_worker"
 TODAY="$(date +%F)"
@@ -52,6 +54,7 @@ log_error() { log "ERROR" "$@"; }
 log_info "===== overnight_worker 시작 ====="
 log_info "실행 시각: ${RUN_DATE}"
 log_info "PARA 프로젝트 경로: ${PARA_PROJECTS_DIR}"
+log_info "git 스캔 루트: ${REPO_SCAN_DIR}"
 log_info "블루프린트 출력: ${BLUEPRINT_FILE}"
 log_info "DRY_RUN: ${DRY_RUN}"
 
