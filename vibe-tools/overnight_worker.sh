@@ -18,8 +18,8 @@
 set -euo pipefail
 
 # ── 설정 ──────────────────────────────────────────────────────────────────────
-PARA_PROJECTS_DIR="${HOME}/Project/00-PARA/01.Projects"
-RETRO_DIR="${HOME}/Project/00-PARA/Retrospectives"
+PARA_PROJECTS_DIR="${HOME}/Project/para/01.Projects"
+RETRO_DIR="${HOME}/Project/para/Retrospectives"
 LOG_DIR="${HOME}/Library/Logs/overnight_worker"
 TODAY="$(date +%F)"
 RUN_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
