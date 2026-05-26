@@ -10,34 +10,41 @@ EUC-KR/CP949 ↔ UTF-8 인코딩 변환 캐싱 패턴.
 - "사용 후 삭제"가 안전한 관행으로 굳어져 동일 파일 재분석 시 재사용 불가
 - 변환 명령(`iconv -f CP949 -t UTF-8 src > tgt`)이 항상 무조건 실행
 
-## 해결 코드
-`/Users/eunsol/Project/vibe-dotfiles/vibe-tools/smart_iconv.sh`
+## 해결 코드 (2026-05-26 갱신 — 스킬로 일원화)
 
-타임스탬프 기반 캐시 래퍼. TGT 가 없거나 SRC 가 더 새로울 때만 iconv 실행.
+**진실 공급원**: `analyze:file-encoding-converter` 스킬
+- 스크립트: `${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh`
+- 캐시 경로 (고정): `/tmp/iconv-cache/<basename(SRC)>.<to_lower_nohyphen>`
+- 오버라이드: `ICONV_CACHE_DIR=<dir>` 환경변수
+- 보존 정책: 캐시 삭제 금지 — 다음 호출에서 재사용. SRC > 캐시 mtime 시 자동 재변환.
 
-### 사용 예시
+⚠️ **`vibe-tools/smart_iconv.sh` 는 DEPRECATED.** 호출 시 stderr 경고가 출력되며 호환성 유지를 위해 동작은 그대로지만, 신규 작업은 스킬 경유 호출 필수.
+
+### 사용 예시 (스킬 경유)
 ```bash
-# 1) 기본 (CP949 -> UTF-8)
-smart_iconv.sh ./original.php /tmp/converted/original.utf8.php
+# 1) 기본 (자동 감지, → utf-8)
+bash "${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh" \
+  ./original.php --convert
+# → /tmp/iconv-cache/original.php.utf8 생성/재사용
 
 # 2) 명시적 인코딩
-smart_iconv.sh ./legacy.txt /tmp/converted/legacy.utf8.txt EUC-KR UTF-8
+bash "${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh" \
+  ./legacy.txt --convert --from euc-kr --to utf-8
+# → /tmp/iconv-cache/legacy.txt.utf8 생성/재사용
 
-# 3) 동일 인자 재실행 시 캐시 재사용
-smart_iconv.sh ./original.php /tmp/converted/original.utf8.php
-# => "기존 변환 파일을 재사용합니다: /tmp/converted/original.utf8.php"
+# 3) 동일 인자 재실행 시 캐시 hit
+# → "=== Cache hit: /tmp/iconv-cache/original.php.utf8 (재사용, 삭제 금지) ==="
+
+# 4) 캐시 디렉토리 변경
+ICONV_CACHE_DIR=~/.cache/iconv \
+  bash "${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh" \
+  ./original.php --convert
 ```
 
 ## 향후 주의사항
-**앞으로 파일 분석 작업을 할 때 변환된 인코딩 파일을 절대로 임의로 삭제하지 말고, 이 스크립트를 통해 캐시를 유지하며 작업할 것.**
+**파일 분석 작업 시 변환된 인코딩 파일을 절대로 임의 삭제하지 말 것. 스킬이 자동 캐싱.**
 
-- 변환 결과 보존 경로 패턴 (권장):
-  - 프로젝트 외부: `/tmp/iconv-cache/<프로젝트명>/<상대경로>.utf8.<ext>`
-  - 프로젝트 내부 분석 캐시: `.claude/cache/iconv/<상대경로>.utf8.<ext>` (gitignore 처리)
-- `rm` 으로 변환 결과를 일괄 삭제하지 말 것. 디스크 압박 시 LRU 기반 cleanup 스크립트 별도 작성.
-- 스크립트 호출 예시:
-  ```bash
-  smart_iconv.sh ./original.php /tmp/iconv-cache/myproj/original.utf8.php
-  ```
-- SRC 가 수정되면 자동 재변환되므로(`-nt` 비교) 캐시 stale 우려 없음. 강제 재변환이 필요하면 TGT 삭제 후 재실행.
-- 변환 실패는 `set -e` 로 즉시 종료 — 부분 변환된 TGT 가 남으면 다음 실행에서 캐시 hit 위험. 실패 시 TGT 수동 삭제 권장.
+- 캐시 경로는 `<basename>` 기반이므로 다른 디렉토리에 동명 파일이 있으면 충돌. 충돌 시 SRC mtime 비교로 자동 재변환되지만, 충돌이 잦은 환경은 `ICONV_CACHE_DIR` 로 프로젝트별 분리.
+- `rm` 으로 캐시 일괄 삭제 금지. 디스크 압박 시 LRU 기반 cleanup 스크립트 별도 작성.
+- SRC 가 수정되면 자동 재변환 (`-nt` 비교). 강제 재변환은 해당 캐시 파일 1개만 삭제 후 재호출.
+- 변환 실패 시 부분 산출물은 스크립트 내부에서 `rm` 처리 — 캐시 hit 위험 차단.

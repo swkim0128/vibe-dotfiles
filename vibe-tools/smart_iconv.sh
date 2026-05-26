@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# smart_iconv.sh — iconv 변환 결과 캐싱 래퍼
+# smart_iconv.sh — iconv 변환 결과 캐싱 래퍼 (DEPRECATED)
 #
-# 같은 SRC 를 매번 변환하지 않고, TGT 가 이미 존재하고 SRC 보다 오래되지 않았으면
+# ⚠️ DEPRECATED: 본 스크립트는 analyze:file-encoding-converter 스킬로 일원화되었습니다.
+#    스킬 사용:
+#      bash "${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh" \
+#        <file> --convert --from <enc> --to <enc>
+#    캐시 경로: /tmp/iconv-cache/<basename>.<to_enc>  (ICONV_CACHE_DIR 오버라이드 가능)
+#    캐시 보존: 삭제하지 않음 (재변환 회피)
+#
+# (호환성 유지) 같은 SRC 를 매번 변환하지 않고, TGT 가 이미 존재하고 SRC 보다 오래되지 않았으면
 # 기존 결과를 재사용한다. 분석 작업에서 EUC-KR/CP949 -> UTF-8 반복 변환을 줄인다.
 #
 # Usage:
 #   smart_iconv.sh <SRC> <TGT> [FROM_ENC] [TO_ENC]
 # Defaults:
 #   FROM_ENC=CP949, TO_ENC=UTF-8
+
+echo "⚠️  smart_iconv.sh is DEPRECATED — analyze:file-encoding-converter 스킬을 사용하세요." >&2
+echo "    스크립트: \${CLAUDE_PLUGIN_ROOT}/skills/file-encoding-converter/scripts/check-encoding.sh" >&2
 
 usage() {
   cat >&2 <<'EOF'
