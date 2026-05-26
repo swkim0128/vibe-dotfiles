@@ -71,16 +71,27 @@ if [[ ! -d "${PARA_PROJECTS_DIR}" ]]; then
   log_warn "빈 분석으로 블루프린트를 생성합니다."
 fi
 
+# ── git 스캔 루트 디렉토리 확인 ─────────────────────────────────────────────
+if [[ ! -d "${REPO_SCAN_DIR}" ]]; then
+  log_warn "git 스캔 루트를 찾을 수 없습니다: ${REPO_SCAN_DIR}"
+  log_warn "빈 분석으로 블루프린트를 생성합니다."
+fi
+
 # ── git 활동 수집 ─────────────────────────────────────────────────────────────
-# 각 프로젝트 하위의 git 레포에서 최근 24시간 커밋을 수집
+# REPO_SCAN_DIR 직속 자식 디렉토리(maxdepth=1) 중 .git 보유 + 최근 24시간 커밋이 있는 레포 수집
 declare -a ACTIVE_PROJECTS=()
 declare -a PROJECT_GIT_SUMMARIES=()
 
 GIT_SUMMARY_TEXT=""
 
-if [[ -d "${PARA_PROJECTS_DIR}" ]]; then
-  # 직접 하위 디렉토리 탐색 (최대 2단계)
+if [[ -d "${REPO_SCAN_DIR}" ]]; then
+  # REPO_SCAN_DIR 직속 하위 디렉토리만 (maxdepth=1, mindepth=1) — 깊은 중첩은 의도적으로 제외
   while IFS= read -r -d '' proj_dir; do
+    # find -mindepth 가 BSD find에서 제한적이므로 자기 자신 제외 가드
+    if [[ "${proj_dir}" == "${REPO_SCAN_DIR}" ]]; then
+      continue
+    fi
+
     proj_name="$(basename "${proj_dir}")"
 
     # .git 폴더가 없으면 git 레포가 아님
@@ -100,7 +111,7 @@ if [[ -d "${PARA_PROJECTS_DIR}" ]]; then
       GIT_SUMMARY_TEXT+="### ${proj_name}\n${commits}\n\n"
       log_info "활성 프로젝트 감지: ${proj_name} ($(echo "${commits}" | wc -l | tr -d ' ')건 커밋)"
     fi
-  done < <(find "${PARA_PROJECTS_DIR}" -maxdepth 2 -type d -print0 2>/dev/null)
+  done < <(find "${REPO_SCAN_DIR}" -maxdepth 1 -type d -print0 2>/dev/null)
 fi
 
 # 활성 프로젝트가 없어도 블루프린트는 생성 (분석 대상 없음 기록)
