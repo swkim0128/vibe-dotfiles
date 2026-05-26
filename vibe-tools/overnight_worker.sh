@@ -2,12 +2,12 @@
 # overnight_worker.sh — 야간 자율 분석 파이프라인
 #
 # 매일 새벽 2시 launchd에 의해 실행됨 (caffeinate -i -s 래핑).
-# PARA 프로젝트 전반의 git 활동을 분석하고,
+# 외부 PARA 볼트(선택적 의존)의 git 활동을 분석하고,
 # 다음 날 1순위 과제의 소스코드를 미리 스파이크 분석하여
-# ~/Project/para/Retrospectives/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
+# $PARA_PATH/Retrospectives/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
 #
 # 추가 책무 (2026-05-26):
-#   ~/Project/para/01.Projects/*.md 중 frontmatter status=in_progress 파일을
+#   $PARA_PATH/01.Projects/*.md 중 frontmatter status=in_progress 파일을
 #   직접 Read 하여, 오늘 git 활동·블루프린트와 대조한 뒤 다음 두 작업을 수행:
 #     (1) `## 진행 내역`에 `- YYYY-MM-DD: <오늘 변동 요약>` 1줄 append
 #     (2) `## TO-DO` 체크리스트 갱신 (완료된 항목은 `- [x] ... ✅ YYYY-MM-DD`),
@@ -15,9 +15,16 @@
 #         같은 파일 하단에 자율 누적 (중복 헤더 방지: 이미 있으면 그 아래 append).
 #   frontmatter `status` 자체는 임의 변경 금지 — 인프라 단의 자동화는 본문 append만.
 #
+# 환경 변수 (외부 볼트 통합 — 선택적 의존):
+#   PARA_PATH       PARA 볼트 루트. 미설정 시 폴백 = "$HOME/Project/para"
+#                   해당 경로가 존재하지 않으면 PARA 통합은 자동 skip (graceful).
+#                   본 레포 자체는 PARA 의 물리적 존재에 의존하지 않는다.
+#   REPO_SCAN_ROOT  git 레포 스캔 루트. 미설정 시 폴백 = "$HOME/Project"
+#   CLAUDE_BIN      claude CLI 경로. 미설정 시 PATH 에서 자동 탐색.
+#
 # 안전 가드:
 #   - 소스코드(.php/.kt/.py/.ts/.js/.kts/.go/.rs 등): Read만 허용. Edit 절대 금지.
-#   - Edit 허용 화이트리스트: ~/Project/para/01.Projects/*.md (status=in_progress 한정)
+#   - Edit 허용 화이트리스트: $PARA_PATH/01.Projects/*.md (status=in_progress 한정)
 #   - Write 허용: 본 일자 블루프린트 파일 1개 (BLUEPRINT_FILE)
 #   - git push, 외부 API 호출, 임의 파일 삭제 금지
 #   - launchd에서 caffeinate로 래핑하므로 이 스크립트는 직접 caffeinate 호출 안 함
@@ -25,14 +32,17 @@
 # 사용법:
 #   직접 실행은 권장하지 않음. launchd 또는 테스트 시 dry-run 플래그로 실행.
 #   DRY_RUN=1 ./overnight_worker.sh
+#   PARA_PATH=/custom/para ./overnight_worker.sh
 
 set -euo pipefail
 
-# ── 설정 ──────────────────────────────────────────────────────────────────────
-PARA_PROJECTS_DIR="${HOME}/Project/para/01.Projects"
-# git 활동 스캔 루트 — PARA 노트 모음에는 .git 없음. 실제 git 레포는 ~/Project/ 직속에 있다.
-REPO_SCAN_DIR="${HOME}/Project"
-RETRO_DIR="${HOME}/Project/para/Retrospectives"
+# ── 설정 (환경변수 우선, 안전 폴백) ──────────────────────────────────────────
+# 외부 PARA 볼트 — 미설정·미존재 시 PARA 통합은 자동 skip (본 레포는 PARA 의존 없음)
+PARA_ROOT="${PARA_PATH:-${HOME}/Project/para}"
+PARA_PROJECTS_DIR="${PARA_ROOT}/01.Projects"
+RETRO_DIR="${PARA_ROOT}/Retrospectives"
+# git 활동 스캔 루트 — 환경변수 오버라이드 가능
+REPO_SCAN_DIR="${REPO_SCAN_ROOT:-${HOME}/Project}"
 LOG_DIR="${HOME}/Library/Logs/overnight_worker"
 TODAY="$(date +%F)"
 RUN_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -45,7 +55,14 @@ CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo '')}"
 
 # ── 디렉토리 초기화 ──────────────────────────────────────────────────────────
 mkdir -p "${LOG_DIR}"
-mkdir -p "${RETRO_DIR}"
+
+# RETRO_DIR (PARA 볼트 하위) — PARA 부재 시 graceful fallback
+if ! mkdir -p "${RETRO_DIR}" 2>/dev/null; then
+  FALLBACK_RETRO="${TMPDIR:-/tmp}/overnight-blueprints"
+  mkdir -p "${FALLBACK_RETRO}"
+  RETRO_DIR="${FALLBACK_RETRO}"
+  BLUEPRINT_FILE="${RETRO_DIR}/${TODAY}_overnight_blueprint.md"
+fi
 
 # ── 로깅 함수 ────────────────────────────────────────────────────────────────
 log() {
@@ -64,6 +81,7 @@ log_error() { log "ERROR" "$@"; }
 # ── 시작 로그 ────────────────────────────────────────────────────────────────
 log_info "===== overnight_worker 시작 ====="
 log_info "실행 시각: ${RUN_DATE}"
+log_info "PARA 볼트 루트: ${PARA_ROOT}$([[ -d ${PARA_ROOT} ]] && echo '' || echo ' (미존재 — PARA 통합 skip)')"
 log_info "PARA 프로젝트 경로: ${PARA_PROJECTS_DIR}"
 log_info "git 스캔 루트: ${REPO_SCAN_DIR}"
 log_info "블루프린트 출력: ${BLUEPRINT_FILE}"
@@ -247,7 +265,7 @@ $(printf '%b' "${IN_PROGRESS_LIST_TEXT}")
 - 외부 API 호출 금지
 - 파일 삭제 금지
 - 소스코드(.php/.kt/.py/.ts/.js/.go/.rs 등) 수정 금지 — Read만 허용
-- Edit 허용 범위: 위 IN_PROGRESS 목록의 \`~/Project/para/01.Projects/*.md\` 파일들 (본문 append만)
+- Edit 허용 범위: 위 IN_PROGRESS 목록의 \`${PARA_PROJECTS_DIR}/*.md\` 파일들 (본문 append만)
 - Write 허용 범위: 본 일자 블루프린트 파일 1개 (${BLUEPRINT_FILE})
 PROMPT_EOF
 )"

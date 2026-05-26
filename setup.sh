@@ -89,6 +89,7 @@ FORMULAS=(
   zoxide lazygit navi starship mise
   yazi gh jq thefuck glow
   ktlint detekt
+  shellcheck bats-core
 )
 for formula in "${FORMULAS[@]}"; do
   if ! brew list --formula "$formula" &>/dev/null 2>&1; then
@@ -167,17 +168,27 @@ info "Neovim lua 설정 적용 중..."
 mkdir -p "$HOME/.config/nvim"
 safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
-# ── 9. Claude Code AI 자산 안내 (vibe-claude-plugin 별도 관리) ──────────────
-# SoC: AI 하네스 자산(CLAUDE-*.md, hooks/, settings.work.json)은
-#      vibe-claude-plugin 레포에서 관리됩니다 (단계 2 마이그레이션 2026-05-10 완료).
-info "Claude Code AI 하네스 자산은 vibe-claude-plugin 레포에서 별도 관리됩니다."
+# ── 9. Claude Code AI 자산 안내 (선택적 통합 — 별도 레포 관리) ──────────────
+# SoC: 본 레포는 시스템·터미널 인프라만 책임. AI 하네스(CLAUDE-*.md, hooks/,
+#      settings.work.json) 가 필요하면 외부 레포를 별도 설치 (선택적).
+#
+# 환경변수 VIBE_CLAUDE_PLUGIN_PATH 로 위치 명시 가능. 미설정 시 안내만 출력.
+VIBE_CLAUDE_PLUGIN_DIR="${VIBE_CLAUDE_PLUGIN_PATH:-$HOME/Project/vibe-claude-plugin}"
+info "Claude Code AI 하네스 자산은 외부 레포에서 별도 관리됩니다 (선택적 통합)."
 echo ""
-echo "  AI 룰·훅·settings.json 설치/갱신:"
-echo "    cd ~/Project/vibe-claude-plugin && ./install.sh"
+if [[ -x "${VIBE_CLAUDE_PLUGIN_DIR}/install.sh" ]]; then
+  echo "  감지됨: ${VIBE_CLAUDE_PLUGIN_DIR}/install.sh"
+  echo "  AI 룰·훅·settings.json 설치/갱신:"
+  echo "    \"${VIBE_CLAUDE_PLUGIN_DIR}/install.sh\""
+else
+  echo "  AI 하네스가 필요하면 별도 레포를 설치 후:"
+  echo "    VIBE_CLAUDE_PLUGIN_PATH=<레포경로> ./setup.sh  (재실행)"
+  echo "  (본 레포는 AI 하네스 없이도 정상 동작합니다.)"
+fi
 echo ""
 echo "  자세한 SoC 분담:"
 echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, vibe-tools/claude-*.sh)"
-echo "    - vibe-claude-plugin : AI 하네스 (CLAUDE-*.md, hooks/, settings.work.json, plugins/)"
+echo "    - 외부 AI 하네스 레포 : CLAUDE-*.md, hooks/, settings.work.json, plugins/"
 
 # ── 10. Claude 사용자 스킬 (마켓플레이스로 이관됨) ──────────────────────────
 # 스킬은 vibe-claude-plugin 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.

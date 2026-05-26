@@ -1,8 +1,13 @@
 #!/usr/bin/env bats
-# multi_dispatch.bats — multi-dispatch 스킬 동작 검증 스캐폴드
+# multi_dispatch.bats — multi-dispatch 스킬 동작 검증 스캐폴드 (인터페이스 정의)
 #
-# vibe-claude-plugin/plugins/task-mgmt/skills/multi-dispatch/ 의 동작을
-# 행위적으로 검증하기 위한 bats 케이스. 현 단계는 스캐폴드 (skip).
+# 본 파일은 외부 AI 하네스 레포에 위치한 `multi-dispatch` 스킬의 행위 명세를
+# 본 레포 관점에서 정의하는 인터페이스 테스트. 스킬 본체가 부재해도 본 레포는
+# 정상 동작하며, 모든 케이스는 `skip` 상태이므로 bats 통과를 보장한다.
+#
+# 외부 통합 (선택적): "${VIBE_CLAUDE_PLUGIN_PATH}/plugins/task-mgmt/skills/multi-dispatch/"
+#   해당 경로 존재 시 향후 본 스캐폴드를 활성화해 실제 동작 검증으로 전환.
+#   부재 시에도 본 테스트는 통과 (skip).
 #
 # 검증 대상 (5섹션 5.3 항목과 1:1 매핑):
 #   1. 인자 파싱 — Plane 이슈 / PARA 노트 / 자유텍스트 분류
@@ -13,8 +18,8 @@
 #
 # 사용:
 #   bats tests/bats/multi_dispatch.bats
-# 또는 bats 미설치 시 폴백:
-#   bash -n tests/bats/multi_dispatch.bats
+# bats 미설치 시:
+#   brew install bats-core  # 본 레포 setup.sh 가 자동 설치
 
 # ── 1. 인자 파싱 ─────────────────────────────────────────────────────────────
 
