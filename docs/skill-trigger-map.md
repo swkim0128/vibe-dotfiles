@@ -24,7 +24,7 @@
 
 | 자연어 트리거 | 우선 스킬 | 대안/보조 |
 |---|---|---|
-| "구현해줘", "기능 추가", "코드 작성", 이슈번호 | `harness:pipeline` (CODE 모드) | `harness:feature-development`, `harness:dev-workflow` |
+| "구현해줘", "기능 추가", "코드 작성", 이슈번호 | `harness:pipeline` (CODE 모드) | `harness:feature-development`, `Agent(harness:dev-workflow)` |
 | "TDD로", "테스트 먼저", "테스트 주도" | `superpowers:test-driven-development` | `test:tdd`, `test:tdd-workflow` |
 | "리팩토링", "정리해줘", "간소화" | `simplify` | `analyze:code-simplification-guide` |
 | "버그 잡아", "왜 안 돼", "에러 원인" | `superpowers:systematic-debugging` | `harness:debug`, `harness:trace` |
