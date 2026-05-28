@@ -60,7 +60,7 @@
 
 - `develop` 브랜치 직접 커밋·푸시 **금지**. 항상 feature 브랜치 경유.
 - `git push --force` / `git push -f` / `git reset --hard origin/*` — `permissions.deny`로 차단.
-- PHP 파일은 `file <파일>`로 EUC-KR 확인 후 `legacy-suite:file-encoding-converter` 스킬 경유.
+- PHP 파일은 `file <파일>`로 EUC-KR 확인 후 `analyze:file-encoding-converter` 스킬 경유.
 - `settings.work.json` 수정은 **Edit 도구만** 사용 (`settings-guard.sh`가 Write 차단).
 
 ---

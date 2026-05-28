@@ -9,7 +9,7 @@ read -r -d '' MSG <<'EOF' || true
 2. VERIFY는 사람 눈이 아닌 도구로: shell=`shellcheck`+`bash -n`, Kotlin=`./gradlew ktlintCheck`, Python=`ruff check`+`pytest`, PHP=`/php-review` 스킬.
 3. 동일 오류 3회 발생 시 즉시 중단·브리핑·사용자 판단 위임. 4번째 시도 금지.
 4. 메모리(`~/.claude/projects/.../memory/MEMORY.md`)와 `CLAUDE.md`를 대화 컨텍스트보다 먼저 신뢰. 메모리가 stale 가능성 있을 시 현재 상태로 검증 후 갱신.
-5. `settings.work.json`은 Edit 도구만 사용(Write 전체 재작성 금지). PHP 파일은 EUC-KR 확인 후 `legacy-suite:file-encoding-converter` 스킬 경유.
+5. `settings.work.json`은 Edit 도구만 사용(Write 전체 재작성 금지). PHP 파일은 EUC-KR 확인 후 `analyze:file-encoding-converter` 스킬 경유.
 6. Bash 호출은 단일 명령 단위로 분해. 세미콜론·`&&`·`||`·파이프·멀티라인·`2>&1` redirect 등 복합 명령은 권한 패턴 매칭 실패로 매번 프롬프트 발생 — 가능한 한 단일 Bash 호출 여러 번으로 분해할 것.
 EOF
 
