@@ -19,10 +19,6 @@ vibe-dotfiles/
 │   ├── tmux-sessionizer.sh   # 프로젝트 세션 매니저 (Prefix+F)
 │   ├── claude-delegate.sh    # 패널 간 클로드 작업 위임 (IPC)
 │   ├── claude-callback.sh    # 작업 완료 보고 (IPC)
-│   ├── claude-config/        # Claude Code 설정 (→ ~/.claude/ symlink)
-│   │   ├── settings.json     # 플러그인, hooks 설정
-│   │   └── hooks/
-│   │       └── mac-notify.sh # 작업 완료 macOS 알림
 │   └── claude-plugin/        # 개인 Claude Code 플러그인 (vibe-config@personal)
 │       ├── package.json
 │       ├── hooks/hooks.json  # Stop/Notification 훅

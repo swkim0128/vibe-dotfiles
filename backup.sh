@@ -91,15 +91,7 @@ backup_file "$HOME/.tmux.conf" "$DOTFILES/tmux/.tmux.conf"
 info "Neovim lua 설정 백업 중..."
 backup_dir "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 
-# ── 3. Claude Code settings.json ─────────────────────────────────────────────
-info "Claude Code settings.json 백업 중..."
-backup_file "$HOME/.claude/settings.json" "$DOTFILES/vibe-tools/claude-config/settings.json"
-
-# ── 4. Claude Code hooks ──────────────────────────────────────────────────────
-info "Claude Code hooks 백업 중..."
-backup_dir "$HOME/.claude/hooks" "$DOTFILES/vibe-tools/claude-config/hooks"
-
-# ── 5. Vibe Tools ────────────────────────────────────────────────────────────
+# ── 3. Vibe Tools ────────────────────────────────────────────────────────────
 info "Vibe Tools 백업 중..."
 backup_dir "$HOME/.config/vibe-tools" "$DOTFILES/vibe-tools"
 
