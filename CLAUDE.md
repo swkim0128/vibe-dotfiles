@@ -4,7 +4,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 
 본 파일은 **자기 완결적(self-contained)** 이다. 전역 룰(`~/.claude/CLAUDE-*.md`)이 없는 환경에서도 본 레포만으로 빌드·VERIFY 가능. 글로벌 룰은 상위 컨텍스트로 우선 적용되되, **부재 시 본 파일이 진실 공급원**.
 
-> **전역 규칙 우선 (있을 때만)**: `~/.claude/CLAUDE-user.md` 및 `~/.claude/CLAUDE-delegation.md` 을 먼저 따른다 — 단, 본 레포는 그 부재를 가정하고 모든 절차를 자체 수록.
+> **전역 규칙 항상 우선**: `~/.claude/CLAUDE.md` (L1 운영 원칙 6개) + `CLAUDE-user.md` / `CLAUDE-paths.md` / `CLAUDE-delegation*.md`(core·discipline·overnight 3분할) / `CLAUDE-workflows.md` / `CLAUDE-plugins.md` / `CLAUDE-tools.md`를 따른다. Subagent-First는 L1에서 강제. 본 레포는 self-contained 보장을 위해 핵심 절차도 자체 수록 — 전역 룰 부재 환경에서도 빌드·VERIFY 가능.
 > 전역 KB (선택적): `${KB_PATH:-<repo>/docs/knowledge-base}` — 본 레포 내부 `docs/knowledge-base/` 자체가 SSoT 이므로 항상 존재. `<repo>` 는 본 레포 루트(`setup.sh` 가 있는 디렉토리).
 
 ---
