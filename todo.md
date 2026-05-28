@@ -37,7 +37,7 @@
 
 ## TODO
 
-- [ ] **P2-G** `docs/skill-trigger-map.md` — 자연어 → 스킬 매트릭스 (16개 플러그인 트리거 충돌 점검: `task-management ↔ para-task-review ↔ task-share`, `analyze:code-review ↔ harness:review-mr`, `harness:plan ↔ superpowers:writing-plans`)
+- [x] **P2-G** `docs/skill-trigger-map.md` 작성 완료 (2026-05-28) — 16개 활성 플러그인 자연어 트리거 매트릭스 + 3개 충돌 분기 기준(task-management↔task-review↔task-share / analyze:code-review↔harness:review-mr / harness:plan↔superpowers:writing-plans) + 의사결정 트리. 백그라운드 검증 후 보강 가능.
 - [ ] **P2-H** `CLAUDE-user.md` 슬림화 — 본문 → `docs/harness-pipeline.md`로 분리, 진입점만 유지
 - [ ] code-pipeline 스킬 실전 검증 (ashop/bshop) — 여전히 미진행
 - [ ] `/php-review` 커맨드 검증 — 미진행
