@@ -201,8 +201,15 @@ fi
 #             (사용자가 구체 지시 입력 후 직접 Enter)
 if [[ "$KIND" == "prompt" ]]; then
     CONTENT=$(cat "$ARG")
+    # vim 모드 대응: literal paste → insert 종료(Escape) → submit(Enter) 4단 패턴
+    # AUTO_SUBMIT=0 으로 호출 시 submit 생략 (사용자가 검토 후 수동 전송)
     tmux send-keys -l -t "$TARGET_PANE" "$CONTENT"
-    tmux send-keys -t "$TARGET_PANE" C-m
+    if [[ "${AUTO_SUBMIT:-1}" == "1" ]]; then
+        sleep 0.1
+        tmux send-keys -t "$TARGET_PANE" Escape
+        sleep 0.05
+        tmux send-keys -t "$TARGET_PANE" Enter
+    fi
 elif [[ "$KIND" == "plugin-skill" ]]; then
     # ARG = .../skills/<skill>/SKILL.md → plugin:skill 형식으로 재구성
     skill_dir=$(dirname "$ARG")

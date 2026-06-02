@@ -218,7 +218,14 @@ case "$CMD" in
 ~/.config/vibe-tools/claude-callback.sh '${CALLER_PANE}' '작업 결과 요약'"
     fi
 
-    tmux send-keys -t "$CLAUDE_PANE" "$PROMPT" Enter
+    # vim 모드 대응: literal paste → insert 종료(Escape) → submit(Enter) 4단 패턴
+    tmux send-keys -l -t "$CLAUDE_PANE" "$PROMPT"
+    if [[ "${AUTO_SUBMIT:-1}" == "1" ]]; then
+        sleep 0.1
+        tmux send-keys -t "$CLAUDE_PANE" Escape
+        sleep 0.05
+        tmux send-keys -t "$CLAUDE_PANE" Enter
+    fi
     echo "📡 전송 완료 → 세션: $TARGET  패널: $CLAUDE_PANE"
     ;;
 
@@ -274,7 +281,14 @@ case "$CMD" in
 [시스템 지시사항] 테스트 완료 후 반드시 터미널에서 다음 명령어를 실행하여 완료를 보고할 것:
 ~/.config/vibe-tools/claude-callback.sh '${CALLER_PANE}' '테스트 결과 요약'"
             fi
-            tmux send-keys -t "$PANE3" "$PROMPT" Enter
+            # vim 모드 대응: literal paste → insert 종료(Escape) → submit(Enter) 4단 패턴
+            tmux send-keys -l -t "$PANE3" "$PROMPT"
+            if [[ "${AUTO_SUBMIT:-1}" == "1" ]]; then
+                sleep 0.1
+                tmux send-keys -t "$PANE3" Escape
+                sleep 0.05
+                tmux send-keys -t "$PANE3" Enter
+            fi
         fi
         echo "📡 테스트 위임 완료 → $PANE3"
     fi
