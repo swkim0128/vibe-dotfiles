@@ -34,7 +34,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 - **인코딩**: UTF-8 (LF). EUC-KR / CRLF 없음.
 - **디렉토리 구조 (1줄 요약)**:
   ```
-  setup.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (셸 도구) /
+  setup.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (사용자 설정 데이터·overnight·issue-start) /
   zsh/aliases.zsh / glow/ / docs/ / tests/bats/ / docs/knowledge-base/ (KB SSoT)
   ```
 
@@ -79,7 +79,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포의 `vibe-tools/claude-*.sh` 를 외부 AI 하네스가 호출은 PATH 의존만 허용 (코드 의존 X).
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt` 등) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-claude-plugin/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
 ## 🚀 설치 진입점
 - **시스템**: `./setup.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
@@ -87,7 +87,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 - 두 진입점 독립. `setup.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
 ## 🛠️ 구조
-- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (셸 스크립트), `zsh/aliases.zsh`, `docs/knowledge-base/` (KB SSoT)
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start), `zsh/aliases.zsh`, `docs/knowledge-base/` (KB SSoT)
 
 ## 세션 인수인계
 중단 전 `todo.md` 또는 (외부 하네스 설치 시) `harness:handoff` 스킬로 `HANDOFF.md` 기록. 재개 시 먼저 읽음.
