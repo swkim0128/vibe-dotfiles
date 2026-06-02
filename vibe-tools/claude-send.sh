@@ -32,6 +32,7 @@ MESSAGE="${2:-}"
 if [[ -z "$TARGET" || -z "$MESSAGE" ]]; then
   echo "사용법: $(basename "$0") <패널_ID_또는_이름> <\"메시지\">" >&2
   echo "  패널 ID 확인: tmux list-panes -a -F '#{pane_id} #{session_name}:#{window_index}.#{pane_index} #{pane_current_command}'" >&2
+  echo "  자동 submit 비활성: AUTO_SUBMIT=0 $(basename "$0") ..." >&2
   exit 1
 fi
 
@@ -67,7 +68,15 @@ if [[ "$MODE" == "delegate" ]]; then
 [시스템 지시사항] 이 작업이 완전히 끝나면 반드시 터미널에서 다음 명령어를 실행하여 완료를 보고할 것:
 ~/.config/vibe-tools/claude-callback.sh '${CURRENT_PANE_ID}' '작업 결과 요약을 여기에 입력'"
 
-  tmux send-keys -t "$DEST_PANE_ID" "$PAYLOAD" Enter
+  # vim 모드 대응: literal paste → insert 종료(Escape) → submit(Enter) 4단 패턴
+  # AUTO_SUBMIT=0 으로 호출 시 메시지만 주입, Enter 생략 (사용자가 검토 후 수동 전송)
+  tmux send-keys -l -t "$DEST_PANE_ID" "$PAYLOAD"
+  if [[ "${AUTO_SUBMIT:-1}" == "1" ]]; then
+    sleep 0.1
+    tmux send-keys -t "$DEST_PANE_ID" Escape
+    sleep 0.05
+    tmux send-keys -t "$DEST_PANE_ID" Enter
+  fi
 
   echo "✅ 위임 완료"
   echo "   호출자 패널 : $CURRENT_PANE_ID"
@@ -80,7 +89,14 @@ else
     | awk -v id="$CURRENT_PANE_ID" '$1 == id {print $2}')
   PAYLOAD="🔔 [$SENDER_LABEL] 작업 완료 보고: $MESSAGE"
 
-  tmux send-keys -t "$DEST_PANE_ID" "$PAYLOAD" Enter
+  # vim 모드 대응: 동일 4단 패턴 적용
+  tmux send-keys -l -t "$DEST_PANE_ID" "$PAYLOAD"
+  if [[ "${AUTO_SUBMIT:-1}" == "1" ]]; then
+    sleep 0.1
+    tmux send-keys -t "$DEST_PANE_ID" Escape
+    sleep 0.05
+    tmux send-keys -t "$DEST_PANE_ID" Enter
+  fi
 
   echo "📨 보고 전송 완료 → 패널 $DEST_PANE_ID ($DEST_LABEL)"
 fi
