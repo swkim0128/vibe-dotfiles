@@ -36,26 +36,9 @@ function gbd() {
 }
 
 # ── Vibe Coding ───────────────────────────────────────
-alias vhelp='~/.config/vibe-tools/vhelp.sh'
-alias vibe="~/.config/vibe-tools/vibe.sh"
-
-# ── Ctrl+F: 커스텀 명령어 팝업 ────────────────────────
-# tmux 안: my-tools.sh 가 직접 send-keys 로 입력
-# tmux 밖: 위젯이 stdout 을 BUFFER 에 채워 prompt 에 반영, placeholder 없으면 즉시 실행
-vibe-tools-widget() {
-  local cmd
-  cmd=$(~/.config/vibe-tools/my-tools.sh)
-  zle reset-prompt
-  if [[ -n "$cmd" ]]; then
-    BUFFER="$cmd"
-    CURSOR=${#BUFFER}
-    if [[ "$cmd" != *"<"*">"* ]]; then
-      zle accept-line
-    fi
-  fi
-}
-zle -N vibe-tools-widget
-bindkey '^f' vibe-tools-widget
+# vibe/vhelp/claude-{delegate,callback,switch} alias 와 Ctrl+F 위젯은
+# vibe-claude-plugin/plugins/tmux-suite/install.sh 가 등록한다.
+# (해당 install.sh 가 ~/.zshrc 에 source 라인을 멱등 추가)
 
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {
