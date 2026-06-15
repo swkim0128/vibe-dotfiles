@@ -4,7 +4,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 
 본 파일은 **자기 완결적(self-contained)** 이다. 전역 룰(`~/.claude/CLAUDE-*.md`)이 없는 환경에서도 본 레포만으로 빌드·VERIFY 가능. 글로벌 룰은 상위 컨텍스트로 우선 적용되되, **부재 시 본 파일이 진실 공급원**.
 
-> **전역 규칙 항상 우선**: `~/.claude/CLAUDE.md` (L1 운영 원칙 6개) + `CLAUDE-user.md` / `CLAUDE-paths.md` / `CLAUDE-delegation*.md`(core·discipline·overnight 3분할) / `CLAUDE-workflows.md` / `CLAUDE-plugins.md` / `CLAUDE-tools.md`를 따른다. Subagent-First는 L1에서 강제. 본 레포는 self-contained 보장을 위해 핵심 절차도 자체 수록 — 전역 룰 부재 환경에서도 빌드·VERIFY 가능.
+> **전역 규칙 항상 우선**: `~/.claude/CLAUDE.md` (라우팅 허브) + `CLAUDE-user.md` / `CLAUDE-delegation.md` 와 온디맨드 `~/.claude/sops/` (`sop_gava.md`·`sop_double_cache.md`·`sop_task_mgmt.md`·`sop_work_log.md`) 를 따른다. Subagent-First 는 글로벌에서 강제. 본 레포는 self-contained — 전역 룰 부재 환경에서도 빌드·VERIFY 가능.
 > 전역 KB (선택적): `${KB_PATH:-<repo>/docs/knowledge-base}` — 본 레포 내부 `docs/knowledge-base/` 자체가 SSoT 이므로 항상 존재. `<repo>` 는 본 레포 루트(`setup.sh` 가 있는 디렉토리).
 
 ---
@@ -79,10 +79,11 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt` 등) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-claude-plugin/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-claude-plugin/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
 ## 🚀 설치 진입점
 - **시스템**: `./setup.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
+- **백업**: `./backup.sh` (역방향 — 현재 시스템 dotfiles 를 본 레포로 복사. 이미 심볼릭 링크된 항목은 자동 skip)
 - **AI 하네스** (선택): `VIBE_CLAUDE_PLUGIN_PATH=<레포경로> ./setup.sh` 재실행 또는 외부 레포의 `install.sh` 별도 실행
 - 두 진입점 독립. `setup.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
