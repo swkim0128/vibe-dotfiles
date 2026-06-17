@@ -17,7 +17,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 |---|---|---|---|
 | `PARA_PATH` | `$HOME/Project/para` | 외부 PARA 볼트 (단기 작업·회고) | `overnight_worker.sh` 가 PARA 통합 skip + 블루프린트는 `$TMPDIR/overnight-blueprints/` 폴백 |
 | `REPO_SCAN_ROOT` | `$HOME/Project` | git 활동 스캔 루트 | 디렉토리 부재 시 빈 분석으로 진행 |
-| `VIBE_CLAUDE_PLUGIN_PATH` | `$HOME/Project/vibe-claude-plugin` | 외부 AI 하네스 레포 | `setup.sh` 가 안내만 출력. 본 레포는 정상 동작 |
+| `VIBE_AI_CONFIG_PATH` | `$HOME/Project/vibe-ai-config` | 외부 AI CLI 설정·하네스 레포 (구 vibe-claude-plugin) | `setup.sh` 가 안내만 출력. 본 레포는 정상 동작 |
 | `CLAUDE_BIN` | PATH 자동 탐색 | claude CLI | 미존재 시 `overnight_worker.sh` 만 fail (다른 모든 기능 정상) |
 
 **완벽한 독립성 약속**: 이 폴더 통째로 다른 Mac 에 복사 → `./setup.sh` → 시스템·터미널 인프라 100% 동작. 외부 레포 없이도 모든 VERIFY 통과.
@@ -79,12 +79,12 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-claude-plugin/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
 ## 🚀 설치 진입점
 - **시스템**: `./setup.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
 - **백업**: `./backup.sh` (역방향 — 현재 시스템 dotfiles 를 본 레포로 복사. 이미 심볼릭 링크된 항목은 자동 skip)
-- **AI 하네스** (선택): `VIBE_CLAUDE_PLUGIN_PATH=<레포경로> ./setup.sh` 재실행 또는 외부 레포의 `install.sh` 별도 실행
+- **AI 하네스** (선택): `VIBE_AI_CONFIG_PATH=<레포경로> ./setup.sh` 재실행 또는 외부 레포의 `install.sh` 별도 실행
 - 두 진입점 독립. `setup.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
 ## 🛠️ 구조

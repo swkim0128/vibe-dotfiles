@@ -172,17 +172,17 @@ safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
 # SoC: 본 레포는 시스템·터미널 인프라만 책임. AI 하네스(CLAUDE-*.md, hooks/,
 #      settings.work.json) 가 필요하면 외부 레포를 별도 설치 (선택적).
 #
-# 환경변수 VIBE_CLAUDE_PLUGIN_PATH 로 위치 명시 가능. 미설정 시 안내만 출력.
-VIBE_CLAUDE_PLUGIN_DIR="${VIBE_CLAUDE_PLUGIN_PATH:-$HOME/Project/vibe-claude-plugin}"
+# 환경변수 VIBE_AI_CONFIG_PATH 로 위치 명시 가능 (구 VIBE_CLAUDE_PLUGIN_PATH 도 하위호환). 미설정 시 안내만 출력.
+VIBE_AI_CONFIG_DIR="${VIBE_AI_CONFIG_PATH:-${VIBE_CLAUDE_PLUGIN_PATH:-$HOME/Project/vibe-ai-config}}"
 info "Claude Code AI 하네스 자산은 외부 레포에서 별도 관리됩니다 (선택적 통합)."
 echo ""
-if [[ -x "${VIBE_CLAUDE_PLUGIN_DIR}/install.sh" ]]; then
-  echo "  감지됨: ${VIBE_CLAUDE_PLUGIN_DIR}/install.sh"
+if [[ -x "${VIBE_AI_CONFIG_DIR}/install.sh" ]]; then
+  echo "  감지됨: ${VIBE_AI_CONFIG_DIR}/install.sh"
   echo "  AI 룰·훅·settings.json 설치/갱신:"
-  echo "    \"${VIBE_CLAUDE_PLUGIN_DIR}/install.sh\""
+  echo "    \"${VIBE_AI_CONFIG_DIR}/install.sh\""
 else
   echo "  AI 하네스가 필요하면 별도 레포를 설치 후:"
-  echo "    VIBE_CLAUDE_PLUGIN_PATH=<레포경로> ./setup.sh  (재실행)"
+  echo "    VIBE_AI_CONFIG_PATH=<레포경로> ./setup.sh  (재실행)"
   echo "  (본 레포는 AI 하네스 없이도 정상 동작합니다.)"
 fi
 echo ""
@@ -230,7 +230,7 @@ else
   # 마켓플레이스 등록 (이름|URL) — 공용 + 환경별
   MARKETPLACES=(
     "omc|https://github.com/Yeachan-Heo/oh-my-claudecode.git"
-    "swkim0128|https://github.com/swkim0128/vibe-claude-plugin.git"
+    "swkim0128|https://github.com/swkim0128/vibe-ai-config.git"
   )
   # 업무 환경: 사내 cc-claude 마켓플레이스 추가 (외부망에선 접근 불가)
   if [[ "$ENV_TYPE" == "w" ]]; then
