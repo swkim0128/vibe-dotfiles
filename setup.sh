@@ -191,7 +191,7 @@ echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, 
 echo "    - 외부 AI 하네스 레포 : CLAUDE-*.md, hooks/, settings.work.json, plugins/"
 
 # ── 10. Claude 사용자 스킬 (마켓플레이스로 이관됨) ──────────────────────────
-# 스킬은 vibe-claude-plugin 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.
+# 스킬은 vibe-ai-config 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.
 # 13단계에서 claude plugin install 로 자동 설치됩니다.
 
 # ── 11. Zsh aliases 자동 등록 ────────────────────────────────────────────────

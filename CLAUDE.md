@@ -79,7 +79,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` 만 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
 ## 🚀 설치 진입점
 - **시스템**: `./setup.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
