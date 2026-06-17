@@ -1,61 +1,58 @@
-# HANDOFF - Session Context Transfer
+# HANDOFF — 2026-06-17 (퇴근 저장)
 
-> 이전 세션의 작업 컨텍스트입니다.
-> 새 세션에서 이 파일을 읽고 작업을 이어가세요.
+> 새 세션에서 이 파일 + 메모리 `pending-work` 를 읽고 이어가세요.
 
-## Session Info
-- Date: 2026-05-17
-- Branch: master (vibe-dotfiles)
-- Goal: vibe-claude-plugin에 google-workspace 플러그인(gws-cal-to-notion MVP) 추가·활성화 후 재기동을 통한 검증 준비
+## 🔴 재개 즉시 할 일: skill-paths 커밋 랜딩 (PHP-훅에 막힘)
 
-## What Was Tried
-- vibe-claude-plugin/plugins/google-workspace 스캐폴딩 생성 → 성공 (직전 커밋 `7d41a2c feat(google-workspace): add plugin scaffold`)
-- `claude-config/settings.work.json` 플러그인 enable 토글 추가 → 성공 (1줄 diff, jq 검증 통과)
-- 본 세션 종료 전 정리 절차 — `git status`, `settings.work.json` 변경 확인, `auto-git-push.sh` 화이트리스트 스코프 검증
+plugins→claude-config/plugins 이동의 마지막 collateral 수정이 **worktree 에 미커밋 보존**됨.
+스킬 본문이 스크립트를 옛 마켓 캐시 경로(`marketplaces/swkim0128/plugins/tmux-suite/`)로 참조 →
+relocation 후 실제는 `marketplaces/swkim0128/claude-config/plugins/tmux-suite/` 라 스크립트 미발견 →
+`claude-config/` 삽입으로 정정 완료(검증: stale 경로 0). **커밋만 남음.**
 
-## What Succeeded
-- `vibe-claude-plugin/claude-config/settings.work.json`: `"google-workspace@swkim0128": true` 활성화 (1줄 추가, jq empty 통과)
-- `auto-git-push.sh` 화이트리스트가 vibe-claude-plugin도 포함하고 `plugins/` 만 제외함을 확인 → 본 변경은 다음 Stop 이벤트에 자동 커밋·푸시 예정
-- vibe-dotfiles 워킹트리: clean (별도 처리 불필요)
+### 막힌 이유
+PHP-체크 Bash 훅(`settings.work.json` PreToolUse:Bash agent 훅)이 현재 "don't ask" 권한 모드에서
+자체 `git diff`/lsp_diagnostics 실행 불가 → **모든 `git commit` 차단**.
+(이번 세션 앞쪽 커밋들은 통과 → 중간에 권한 모드 변경 추정. 재기동 시 기본 모드면 풀릴 것.)
 
-## What Failed / Pending
-- ashop_develop 권한 이슈 (직전 보류 — 본 세션에서 해결 안 함)
-- 노션 주간 루틴 2단계(회고) / 3단계(다음 주 계획) — para 위임 예정 (미실행)
+### 보존 위치
+- worktree: `/Users/eunsol/Project/vibe-ai-config/.worktrees/skill-paths`
+- branch: `fix/skill-script-paths` (base `c712f78`)
+- 9개 파일 수정(uncommitted):
+  - `claude-config/plugins/tmux-suite/skills/{claude-ipc,claude-pane-switch,tmux-session-comm,tmux-session-done,tmux-session-start}/SKILL.md`
+  - `claude-config/plugins/tmux-suite/skills/tmux-session-comm/references/protocol.md`
+  - `claude-config/plugins/task-mgmt/skills/multi-dispatch/{SKILL.md,agent-brief.md}`
+  - `claude-config/plugins/harness/skills/vibe-session`
 
-## Current State
-- Branch: master (vibe-dotfiles), up to date with origin
-- Uncommitted (vibe-dotfiles): 없음
-- Uncommitted (vibe-claude-plugin): `M claude-config/settings.work.json` — auto-git-push가 다음 Stop에 처리
-- 활성 tmux 세션: vibe-dotfiles, ashop_develop, ashop_DWDEV-4261, bshop_DWDEV-4289, BillingMPAdmin_DWDEV-2959, BillingMPAdmin_DWDEV-3980, Buyer_DWDEV-3980, eshop, PHPLib, para, qa-buyer-b2b-1778141591
+### 재개 순서 (기본 권한 모드 = 훅 Bash 가능 상태에서)
+1. `git -C /Users/eunsol/Project/vibe-ai-config/.worktrees/skill-paths commit -am "fix(skills): correct marketplace cache script paths after plugins relocation"`  ← tmux-suite·task-mgmt·harness 자동 bump 예상
+2. `git -C /Users/eunsol/Project/vibe-ai-config merge --ff-only fix/skill-script-paths`
+3. `git -C /Users/eunsol/Project/vibe-ai-config push origin master`
+4. `claude plugin marketplace update swkim0128` + `claude plugin update tmux-suite@swkim0128` (task-mgmt·harness 도)
+5. `git -C /Users/eunsol/Project/vibe-ai-config worktree remove .../.worktrees/skill-paths` + `git -C ... branch -d fix/skill-script-paths`
+6. 검증: `grep -rn "marketplaces/swkim0128/plugins/" /Users/eunsol/Project/vibe-ai-config/claude-config` → 0
 
-## Next Steps
+### 후속(권장)
+PHP-체크 훅을 Bash/lsp_diagnostics 불가 시 **graceful 통과**하도록 수정 → "don't ask" 모드 commit 영구 차단 재발 방지.
 
-### 1. 세션 재기동 후 google-workspace 플러그인 검증 (최우선)
-```
-/plugin list                                  # google-workspace 활성 확인
-/cal-to-notion                                # 명령 도움말
-/cal-to-notion this-week --dry-run            # 매핑 결과만 출력 (안전)
-/cal-to-notion this-week --mode append        # 실제 노션 반영
-```
-예상 출력:
-```
-[gws-cal-to-notion] 페이지: [week 20] @2026/05/11 → 2026/05/17 일지
-[gws-cal-to-notion] 시간 범위: 2026-05-11 ~ 2026-05-17 (Asia/Seoul)
-[gws-cal-to-notion] 이벤트 N건 → 슬롯 매핑: ...
-```
+---
 
-### 2. 노션 주간 루틴 — 2·3단계 진행 (para 세션 위임)
-- 2단계: notion-suite:notion-weekly-retrospective (KPT 회고)
-- 3단계: notion-suite:notion-weekly-schedule (다음 주 계획)
+## 이번 세션 완료·푸시 (이미 master 반영)
+**vibe-ai-config**
+- `711aa9d` plugins → claude-config/plugins 이동 (Option 2 하이브리드, manifest 루트 유지)
+- `dcbe87c` plane-mcp 플러그인 제거 (11→10)
+- `26bc540` settings allow 확대 (rg/jq/shellcheck/bash -n/head/tail/wc/stat/diff/tree/luac -p)
+- `f236ce1` Ctrl+F 근본수정: tmux-suite install.sh **self-heal** + aliases.zsh + vibe-claude-plugin→vibe-ai-config 이름 sweep
+- `c712f78` IPC 콜백 경로(vibe.sh·claude-send.sh) claude-config/ 삽입
 
-### 3. ashop_develop 권한 이슈 해결
-- 직전 보류 항목. ashop_develop tmux 세션에 위임 처리.
+**vibe-dotfiles**
+- `e405577` PLUGIN_CONFIG_ROOT 기본값·주석·CLAUDE.md tmux-suite scripts 경로 정합화
 
-### 4. (선택) auto-git-push 결과 확인
-- 재기동 후 `git -C ~/Project/vibe-claude-plugin log --oneline -3`로 자동 커밋 확인
+## 메모리 갱신
+- `subagent-write-blocked` **정정** — 서브에이전트 Edit/Write 동작함(실측), 진짜 제약은 Bash 허용목록 스톨·cwd 외 Read deny
+- `parallel-subagent-preference` **신규** — 독립 다중파일/다중세션 작업은 병렬 서브에이전트
+- `pending-work` 최상단 재개 블록
 
-## Key Files
-- `~/Project/vibe-claude-plugin/claude-config/settings.work.json` — 플러그인 활성/비활성 토글
-- `~/Project/vibe-claude-plugin/plugins/google-workspace/` — gws-cal-to-notion 스캐폴드
-- `~/Project/vibe-claude-plugin/plugins/git-suite/hooks/auto-git-push.sh` — Stop 훅 자동 커밋 (vibe-dotfiles + vibe-claude-plugin 화이트리스트, plugins/ 제외)
-- `~/.claude/projects/-Users-eunsol-Project-vibe-dotfiles/memory/pending-work.md` — 본 세션 후 갱신 필요
+## 검증된 상태 (현재 정상)
+- Ctrl+F: ~/.zshrc → 올바른 aliases.zsh → my-tools.sh 경로 모두 실존 (새 셸에서 동작)
+- 마켓플레이스 swkim0128: 10개 플러그인 인식, claude-config/plugins/ 구조
+- 설치 tmux-suite 1.0.8 (IPC 수정 포함)
