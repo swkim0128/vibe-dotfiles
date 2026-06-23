@@ -59,6 +59,17 @@ safe_link() {
   success "$target → $source"
 }
 
+# install_cask <cask-name>
+install_cask() {
+  local cask="$1"
+  if brew list --cask "$cask" &>/dev/null 2>&1; then
+    info "  이미 설치됨: $cask"
+    return
+  fi
+  info "  설치 중: $cask"
+  brew install --cask "$cask"
+}
+
 echo ""
 echo "============================================================"
 echo "  🚀 Vibe Dotfiles 설치 시작"
@@ -140,6 +151,31 @@ if ! command -v gemini &>/dev/null; then
 else
   success "Gemini CLI 이미 설치됨"
 fi
+
+# ── 4b. GUI 터미널 앱 (Ghostty · cmux) ───────────────────────────────────────
+info "GUI 터미널 앱 설치 중..."
+install_cask ghostty
+
+install_cask cmux
+
+if command -v cmux &>/dev/null; then
+  success "cmux CLI 사용 가능"
+else
+  warn "cmux CLI 미노출 — cmux 앱 Settings 에서 CLI(\"cmux\") 설치 필요"
+fi
+
+# ghostty config 적용 (cmux 가 ~/.config/ghostty/config 의 테마·폰트를 자동 상속)
+mkdir -p "$HOME/.config/ghostty"
+safe_link "$HOME/.config/ghostty/config" "$DOTFILES/ghostty/config"
+
+success "GUI 터미널 앱 설치 완료"
+
+# AI 툴 알림 연동 안내 (SoC: 본 레포는 실행하지 않음 — 선택적 수동 단계)
+echo ""
+info "AI 툴(Claude Code 등) 알림을 cmux 로 받으려면 아래를 1회 실행하세요:"
+echo "    cmux hooks setup"
+echo "  (이 명령은 Claude Code 설정을 수정합니다 — 터미널 인프라 범위 밖이라 자동 실행하지 않습니다.)"
+echo ""
 
 # ── 5. Tmux TPM ───────────────────────────────────────────────────────────────
 info "Tmux TPM 확인 중..."

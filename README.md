@@ -30,8 +30,10 @@ vibe-dotfiles/
 │       ├── mappings.lua      # 키 매핑
 │       ├── plugins/init.lua  # 추가 플러그인
 │       └── configs/          # LSP, 포매터 설정
-└── zsh/
-    └── aliases.zsh           # alias, bindkey, tools 함수
+├── zsh/
+│   └── aliases.zsh           # alias, bindkey, tools 함수
+└── ghostty/
+    └── config                # ~/.config/ghostty/config 로 심볼릭 링크 (cmux 가 테마·폰트 상속)
 ```
 
 ---

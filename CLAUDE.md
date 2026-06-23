@@ -35,7 +35,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 - **디렉토리 구조 (1줄 요약)**:
   ```
   setup.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (사용자 설정 데이터·overnight·issue-start) /
-  zsh/aliases.zsh / glow/ / docs/ / tests/bats/ / docs/knowledge-base/ (KB SSoT)
+  zsh/aliases.zsh / glow/ / ghostty/ (ghostty·cmux 터미널 설정) / docs/ / tests/bats/ / docs/knowledge-base/ (KB SSoT)
   ```
 
 ---
@@ -88,7 +88,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 - 두 진입점 독립. `setup.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
 ## 🛠️ 구조
-- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start), `zsh/aliases.zsh`, `docs/knowledge-base/` (KB SSoT)
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start), `zsh/aliases.zsh`, `ghostty/` (ghostty·cmux 터미널 설정), `docs/knowledge-base/` (KB SSoT)
 
 ## 세션 인수인계
 중단 전 `todo.md` 또는 (외부 하네스 설치 시) `harness:handoff` 스킬로 `HANDOFF.md` 기록. 재개 시 먼저 읽음.

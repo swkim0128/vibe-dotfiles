@@ -1,0 +1,48 @@
+# Theme
+theme = Catppuccin Macchiato
+
+# --- 폰트 및 렌더링 ---
+font-size = 14
+font-family = "D2Coding"
+font-family = "D2Coding Ligature"
+
+# 리가처(Ligatures) 활성화
+font-feature = "calt"
+font-feature = "liga"
+
+# --- 윈도우 UI ---
+window-decoration = true
+window-padding-x = 10
+window-padding-y = 10
+window-theme = system
+
+# --- 테마 및 배경 ---
+background-opacity = 0.9
+background-blur-radius = 15
+
+# Autosuggestion color (가독성을 위해 밝게)
+palette = 8=#7f849c
+
+# --- 커서 설정 ---
+cursor-style = block
+cursor-style-blink = true
+
+# Mouse
+mouse-hide-while-typing = true
+
+# Clipboard
+copy-on-select = true
+clipboard-paste-protection = false
+
+# Scrollback
+scrollback-limit = 10000
+
+# macOS
+macos-option-as-alt = true
+
+# Shell Integration
+shell-integration = zsh
+
+# --- 기타 편의 기능 ---
+# 터미널 종료 시 확인 창 비활성화
+confirm-close-surface = false
