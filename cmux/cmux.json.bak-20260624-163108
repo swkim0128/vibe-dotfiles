@@ -301,8 +301,4 @@
   //       "canvasDistributeHorizontally" : ""
   //     }
   //   },
-
-  "automation" : {
-    "socketControlMode" : "full"
-  },
 }
