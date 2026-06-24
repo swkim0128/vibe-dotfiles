@@ -2,3 +2,5 @@
 prompts.bak/
 .claude/
 /.worktrees/
+# 타임스탬프 백업 아티팩트 (예: cmux.json.bak-YYYYMMDD-HHMMSS) — 자동 커밋 유입 차단
+*.bak-*
