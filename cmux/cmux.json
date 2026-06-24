@@ -302,6 +302,15 @@
   //     }
   //   },
 
+  "terminal" : {
+    "autoResumeAgentSessions" : true,
+    "agentHibernation" : {
+      "enabled" : false,
+      "idleSeconds" : 5,
+      "maxLiveTerminals" : 12
+    }
+  },
+
   "automation" : {
     "socketControlMode" : "full"
   },
