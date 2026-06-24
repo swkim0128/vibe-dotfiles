@@ -168,6 +168,10 @@ fi
 mkdir -p "$HOME/.config/ghostty"
 safe_link "$HOME/.config/ghostty/config" "$DOTFILES/ghostty/config"
 
+# cmux config 적용 (cmux 자체 동작 설정 — 테마/폰트/색상은 ghostty config 에서 상속)
+mkdir -p "$HOME/.config/cmux"
+safe_link "$HOME/.config/cmux/cmux.json" "$DOTFILES/cmux/cmux.json"
+
 success "GUI 터미널 앱 설치 완료"
 
 # AI 툴 알림 연동 안내 (SoC: 본 레포는 실행하지 않음 — 선택적 수동 단계)

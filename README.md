@@ -32,8 +32,10 @@ vibe-dotfiles/
 │       └── configs/          # LSP, 포매터 설정
 ├── zsh/
 │   └── aliases.zsh           # alias, bindkey, tools 함수
-└── ghostty/
-    └── config                # ~/.config/ghostty/config 로 심볼릭 링크 (cmux 가 테마·폰트 상속)
+├── ghostty/
+│   └── config                # ~/.config/ghostty/config 로 심볼릭 링크 (cmux 가 테마·폰트 상속)
+└── cmux/
+    └── cmux.json             # ~/.config/cmux/cmux.json 로 심볼릭 링크 (cmux 자체 동작 설정)
 ```
 
 ---
