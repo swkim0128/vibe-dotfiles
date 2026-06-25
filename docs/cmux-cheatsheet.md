@@ -51,3 +51,35 @@ vibe-dotfiles 터미널 인프라. cmux 를 tmux 대체로 일상 사용할 때 
 
 ## 소켓 제어 활성 조건
 `cmux/cmux.json` 의 `automation.socketControlMode = "full"` + 앱 재시작 1회. 그래야 tmux 안에서도 CLI 소켓 명령이 동작(미적용 시 broken pipe). tmux 밖 cmux surface 면 자동.
+
+## 탭(Surface) 활용
+
+cmux 의 탭 = pane 안의 surface. 한 pane 에 surface 를 여러 개 쌓아 탭처럼 전환한다. surface 는 터미널뿐 아니라 브라우저·diff·마크다운·에이전트도 가능.
+
+### split(pane) vs 탭(surface)
+| | split (pane) | 탭 (surface) |
+|---|---|---|
+| 표시 | 여러 개 동시 | 하나씩 (각자 full 공간) |
+| 용도 | 나란히 비교 | 공간 절약·전환, 이종 콘텐츠 묶기 |
+
+### 키 / CLI
+- `cmd+t` 새 탭 · `cmd+shift+]`/`[` 전환 · `cmd+w` 닫기 · `ctrl+1~` 번호 선택
+- `cmux new-surface --pane <pane> --type terminal|browser|agent-session [--url ...]`
+- `cmux tab-action` / `cmux rename-tab` / `cmux move-surface`
+
+### 활용 5종
+1. 터미널 + 브라우저 탭 — 같은 pane 에 브라우저 surface 추가, 코드↔미리보기 전환 (split 안 늘림)
+2. diff/문서 탭 — helper pane 하나에 diff·마크다운·터미널을 탭으로 모아 레이아웃 단순화
+3. 마크다운 프리뷰 탭 — 문서를 surface 로 열어 코드 옆 참조
+4. 보조 에이전트 탭 — `new-surface --type agent-session --provider claude`
+5. 한 프로젝트 내 이슈별 병행 — 이슈마다 탭 생성, 각 탭에 이슈별 claude/터미널. `rename-tab` 으로 이슈번호 라벨, 사이드바에서 탭별 진행·미읽음 추적
+
+### 이슈별 작업 — 격리 수준 분기
+탭은 같은 working tree 를 공유한다. 따라서:
+- 같은 브랜치/파일 위 조사·병행 대화 → **탭** (가벼움)
+- 이슈마다 다른 브랜치 동시 편집·빌드 → **cmux 워크스페이스 = git worktree** (디렉토리·git 상태·포트 분리)
+
+한 프로젝트 다중 이슈 3단 선택: ① 탭(같은 트리, 가벼움) ② tmux 윈도우(같은 트리, 터미널 중심) ③ 워크스페이스/worktree(다른 브랜치, 완전 격리).
+
+### 공식 원칙
+반복적인 "열어줘" 는 split 을 늘리지 말고 기존 pane 에 탭(surface)을 추가. 분할은 동시에 봐야 할 때만, 부가 콘텐츠는 탭으로.
