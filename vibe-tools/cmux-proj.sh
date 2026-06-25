@@ -59,6 +59,7 @@ if [[ ! -d "$path" ]]; then
 fi
 
 # tmux 세션 미존재 시 레이아웃 생성
+session_created=false
 if ! tmux has-session -t "$name" 2>/dev/null; then
   tmux new-session -d -s "$name" -n edit -c "$path"
   tmux send-keys -t "$name:edit" 'nvim .' Enter
@@ -66,6 +67,7 @@ if ! tmux has-session -t "$name" 2>/dev/null; then
   tmux new-window -t "$name" -n verify -c "$path"
   tmux new-window -t "$name" -n claude -c "$path"
   tmux select-window -t "$name:edit"
+  session_created=true
 fi
 
 # cmux CLI 미설치 — tmux 세션만 만들고 종료 (이식성 정책)
@@ -91,4 +93,8 @@ cmux workspace-action --action pin --workspace "$ref" || true
 echo "✅ 워크스페이스 기동 완료"
 echo "   cmux workspace: $ref"
 echo "   tmux 세션: $name"
-echo "   창 구성: edit(nvim) / shell / verify / claude"
+if [[ "$session_created" == true ]]; then
+  echo "   창 구성: edit(nvim) / shell / verify / claude (신규 생성)"
+else
+  echo "   기존 tmux 세션 재사용 (창 구성 유지)"
+fi
