@@ -51,6 +51,8 @@ function gbd() {
 
 # ── cmux per-project 워크스페이스 런처 ────────────────
 cmux-proj() { bash "$HOME/.config/vibe-tools/cmux-proj.sh" "$@"; }
+# cmux 듀얼-프로젝트 워크스페이스 런처
+cmux-dual() { bash "$HOME/.config/vibe-tools/cmux-proj-dual.sh" "$@"; }
 
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {

@@ -2,3 +2,4 @@
 # 형식: name|path|hexcolor|description
 # path 는 $HOME 사용 가능, 런처가 전개함
 vibe-dotfiles|$HOME/Project/vibe-dotfiles|#196F3D|Mac dev 환경 dotfiles — 시스템·터미널 인프라
+vibe-ai-config|$HOME/Project/vibe-ai-config|#6A1B9A|AI CLI 설정·하네스 SSoT (구 vibe-claude-plugin)
