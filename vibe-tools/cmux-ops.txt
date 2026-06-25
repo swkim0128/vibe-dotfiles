@@ -1,0 +1,4 @@
+# cmux-ops 런처 설정 — 수동처리 스크립트 워크스페이스 (작업 관리용 para 와 분리)
+# 형식: name|path|hexcolor|description|sshhost(선택, 비우면 로컬 셸)
+# 실제 항목은 아래 예시를 참고해 사용자가 추가 (회사 서버/경로는 본인이 기입):
+# manual-ops|$HOME/Project/manual-ops|#7B3F00|수동처리 스크립트 작업|user@server.example.com
