@@ -49,6 +49,9 @@ function gbd() {
 # vibe-ai-config/claude-config/plugins/tmux-suite/install.sh 가 등록한다.
 # (해당 install.sh 가 ~/.zshrc 에 source 라인을 멱등 추가)
 
+# ── cmux per-project 워크스페이스 런처 ────────────────
+cmux-proj() { bash "$HOME/.config/vibe-tools/cmux-proj.sh" "$@"; }
+
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {
   local cmds=(

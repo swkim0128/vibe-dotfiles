@@ -1,0 +1,4 @@
+# cmux-proj 런처 per-project 설정
+# 형식: name|path|hexcolor|description
+# path 는 $HOME 사용 가능, 런처가 전개함
+vibe-dotfiles|$HOME/Project/vibe-dotfiles|#196F3D|Mac dev 환경 dotfiles — 시스템·터미널 인프라
