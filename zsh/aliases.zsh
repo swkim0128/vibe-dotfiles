@@ -55,6 +55,8 @@ cmux-proj() { bash "$HOME/.config/vibe-tools/cmux-proj.sh" "$@"; }
 cmux-dual() { bash "$HOME/.config/vibe-tools/cmux-proj-dual.sh" "$@"; }
 # cmux 수동처리 스크립트 작업 런처 (서버 실행용)
 cmux-ops() { bash "$HOME/.config/vibe-tools/cmux-proj-ops.sh" "$@"; }
+# cmux diff 리뷰 래퍼 (ws/surface 자동 해석)
+cmux-review() { bash "$HOME/.config/vibe-tools/cmux-proj-review.sh" "$@"; }
 
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {

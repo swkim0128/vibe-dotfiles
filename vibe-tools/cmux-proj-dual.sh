@@ -15,22 +15,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cmux-lib.sh disable=SC1091
+source "$SCRIPT_DIR/cmux-lib.sh"
 CONFIG="$SCRIPT_DIR/cmux-projects.txt"
-
-print_projects() {
-  echo "등록된 프로젝트:" >&2
-  grep -vE '^[[:space:]]*(#|$)' "$CONFIG" | while IFS='|' read -r n _p _c d; do
-    printf '  %-18s %s\n' "$n" "$d" >&2
-  done
-}
 
 # $1=name → "path|color|desc" (path 의 $HOME 전개). 미등록 시 return 1.
 lookup() {
   local match _name path color desc
-  match="$(grep -vE '^[[:space:]]*(#|$)' "$CONFIG" | awk -F'|' -v n="$1" '$1==n {print; exit}')"
+  match="$(cmux_lookup "$CONFIG" "$1")"
   [[ -z "$match" ]] && return 1
   IFS='|' read -r _name path color desc <<< "$match"
-  printf '%s|%s|%s' "${path/#\$HOME/$HOME}" "$color" "$desc"
+  printf '%s|%s|%s' "$(cmux_expand_home "$path")" "$color" "$desc"
 }
 
 A="${1:-}"
@@ -38,7 +33,7 @@ B="${2:-}"
 
 if [[ -z "$A" || -z "$B" || "$A" == "-h" || "$A" == "--help" ]]; then
   echo "사용법: $(basename "$0") <nameA> <nameB>" >&2
-  print_projects
+  cmux_print_projects "$CONFIG"
   exit 0
 fi
 
@@ -47,8 +42,8 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 1
 fi
 
-infoA="$(lookup "$A")" || { echo "오류: '$A' 미등록" >&2; print_projects; exit 1; }
-infoB="$(lookup "$B")" || { echo "오류: '$B' 미등록" >&2; print_projects; exit 1; }
+infoA="$(lookup "$A")" || { echo "오류: '$A' 미등록" >&2; cmux_print_projects "$CONFIG"; exit 1; }
+infoB="$(lookup "$B")" || { echo "오류: '$B' 미등록" >&2; cmux_print_projects "$CONFIG"; exit 1; }
 IFS='|' read -r pathA colorA _descA <<< "$infoA"
 IFS='|' read -r pathB _colorB _descB <<< "$infoB"
 
@@ -82,22 +77,13 @@ if ! tmux has-session -t "$SESS" 2>/dev/null; then
   created=true
 fi
 
-if ! command -v cmux >/dev/null 2>&1; then
+if ! cmux_has_cli; then
   echo "⚠️  cmux CLI 미설치 — tmux 세션 '$SESS' 만 구성." >&2
   echo "   attach: tmux attach -t $SESS" >&2
   exit 0
 fi
 
-ref="$(CMUX_QUIET=1 cmux workspace create --name "$SESS" --cwd "$pathA" --command "tmux new-session -A -s $SESS" --focus true | awk '/workspace:/{print $NF}')"
-
-if [[ -z "$ref" ]]; then
-  echo "오류: cmux 워크스페이스 생성 실패" >&2
-  exit 1
-fi
-
-cmux workspace-action --action set-color --color "$colorA" --workspace "$ref" || true
-cmux workspace-action --action set-description --description "$A + $B (듀얼)" --workspace "$ref" || true
-cmux workspace-action --action pin --workspace "$ref" || true
+ref="$(cmux_create_workspace "$SESS" "$pathA" "$colorA" "$A + $B (듀얼)")" || { echo "오류: cmux 워크스페이스 생성 실패" >&2; exit 1; }
 
 echo "✅ 듀얼-프로젝트 워크스페이스 기동"
 echo "   cmux workspace: $ref / tmux 세션: $SESS"

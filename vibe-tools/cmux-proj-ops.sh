@@ -16,20 +16,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cmux-lib.sh disable=SC1091
+source "$SCRIPT_DIR/cmux-lib.sh"
 CONFIG="$SCRIPT_DIR/cmux-ops.txt"
-
-print_ops() {
-  echo "등록된 ops 작업:" >&2
-  grep -vE '^[[:space:]]*(#|$)' "$CONFIG" | while IFS='|' read -r n _p _c d _s; do
-    printf '  %-18s %s\n' "$n" "$d" >&2
-  done || true
-}
 
 NAME="${1:-}"
 
 if [[ -z "$NAME" || "$NAME" == "-h" || "$NAME" == "--help" ]]; then
   echo "사용법: $(basename "$0") <name>" >&2
-  print_ops
+  cmux_print_projects "$CONFIG"
   exit 0
 fi
 
@@ -38,16 +33,16 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 1
 fi
 
-MATCH="$(grep -vE '^[[:space:]]*(#|$)' "$CONFIG" | awk -F'|' -v n="$NAME" '$1==n {print; exit}')"
+MATCH="$(cmux_lookup "$CONFIG" "$NAME")"
 
 if [[ -z "$MATCH" ]]; then
   echo "오류: '$NAME' 미등록" >&2
-  print_ops
+  cmux_print_projects "$CONFIG"
   exit 1
 fi
 
 IFS='|' read -r name raw_path color desc sshhost <<< "$MATCH"
-path="${raw_path/#\$HOME/$HOME}"
+path="$(cmux_expand_home "$raw_path")"
 
 if [[ ! -d "$path" ]]; then
   echo "오류: 경로 없음: $path" >&2
@@ -76,21 +71,12 @@ if ! tmux has-session -t "$name" 2>/dev/null; then
   created=true
 fi
 
-if ! command -v cmux >/dev/null 2>&1; then
+if ! cmux_has_cli; then
   echo "⚠️  cmux CLI 미설치 — tmux 세션 '$name' 만 구성. attach: tmux attach -t $name" >&2
   exit 0
 fi
 
-ref="$(CMUX_QUIET=1 cmux workspace create --name "$name" --cwd "$path" --command "tmux new-session -A -s $name" --focus true | awk '/workspace:/{print $NF}')"
-
-if [[ -z "$ref" ]]; then
-  echo "오류: cmux 워크스페이스 생성 실패" >&2
-  exit 1
-fi
-
-cmux workspace-action --action set-color --color "$color" --workspace "$ref" || true
-cmux workspace-action --action set-description --description "$desc" --workspace "$ref" || true
-cmux workspace-action --action pin --workspace "$ref" || true
+ref="$(cmux_create_workspace "$name" "$path" "$color" "$desc")" || { echo "오류: cmux 워크스페이스 생성 실패" >&2; exit 1; }
 
 echo "✅ ops 워크스페이스 기동: $ref / tmux 세션: $name"
 if [[ "$created" == true ]]; then
