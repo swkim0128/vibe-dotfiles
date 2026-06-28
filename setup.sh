@@ -174,6 +174,12 @@ safe_link "$HOME/.config/cmux/cmux.json" "$DOTFILES/cmux/cmux.json"
 
 success "GUI 터미널 앱 설치 완료"
 
+# tmux ↔ cmux 소켓 제어 안내 (socketControlMode=full 활성 조건 — SoC: 안내만)
+echo ""
+info "tmux 안에서 cmux CLI 소켓 명령(new-split·send·read-screen 등)을 쓰려면:"
+echo "    socketControlMode=full(cmux.json 에 이미 적용) 상태로 cmux 앱을 1회 재시작하세요."
+echo "  (재시작 전에는 tmux 내부에서 cmux 소켓 명령이 broken pipe 로 실패합니다.)"
+
 # AI 툴 알림 연동 안내 (SoC: 본 레포는 실행하지 않음 — 선택적 수동 단계)
 echo ""
 info "AI 툴(Claude Code 등) 알림을 cmux 로 받으려면 아래를 1회 실행하세요:"

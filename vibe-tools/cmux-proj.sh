@@ -55,13 +55,39 @@ fi
 # tmux 세션 미존재 시 레이아웃 생성 (리뷰 지향: claude / edit / review / verify)
 session_created=false
 if ! tmux has-session -t "$name" 2>/dev/null; then
-  tmux new-session -d -s "$name" -n claude -c "$path"
-  tmux new-window -t "$name" -n edit -c "$path"
-  tmux send-keys -t "$name:edit" 'nvim .' Enter
-  tmux new-window -t "$name" -n review -c "$path"
-  tmux send-keys -t "$name:review" 'lazygit' Enter
-  tmux new-window -t "$name" -n verify -c "$path"
-  tmux select-window -t "$name:claude"
+  case "$name" in
+    vibe-dotfiles)
+      tmux new-session -d -s "$name" -n main -c "$path"
+      tmux send-keys -t "$name:main" 'nvim .' Enter
+      tmux split-window -h -l 30% -t "$name:main" -c "$path"
+      tmux send-keys -t "$name:main" 'claude' Enter
+      tmux select-pane -L -t "$name:main"
+      tmux new-window -t "$name" -n review -c "$path"
+      tmux send-keys -t "$name:review" 'lazygit' Enter
+      tmux new-window -t "$name" -n verify -c "$path"
+      tmux select-window -t "$name:main"
+      layout_desc='main(nvim+claude) / review(lazygit) / verify'
+      ;;
+    para)
+      tmux new-session -d -s "$name" -n main -c "$path"
+      tmux send-keys -t "$name:main" 'nvim .' Enter
+      tmux split-window -h -l 30% -t "$name:main" -c "$path"
+      tmux send-keys -t "$name:main" 'claude' Enter
+      tmux select-pane -L -t "$name:main"
+      tmux select-window -t "$name:main"
+      layout_desc='main(nvim+claude) 단일 창'
+      ;;
+    *)
+      tmux new-session -d -s "$name" -n claude -c "$path"
+      tmux new-window -t "$name" -n edit -c "$path"
+      tmux send-keys -t "$name:edit" 'nvim .' Enter
+      tmux new-window -t "$name" -n review -c "$path"
+      tmux send-keys -t "$name:review" 'lazygit' Enter
+      tmux new-window -t "$name" -n verify -c "$path"
+      tmux select-window -t "$name:claude"
+      layout_desc='claude / edit(nvim) / review(lazygit) / verify'
+      ;;
+  esac
   session_created=true
 fi
 
@@ -79,7 +105,7 @@ echo "✅ 워크스페이스 기동 완료"
 echo "   cmux workspace: $ref"
 echo "   tmux 세션: $name"
 if [[ "$session_created" == true ]]; then
-  echo "   창 구성: claude / edit(nvim) / review(lazygit) / verify (신규 생성)"
+  echo "   창 구성: $layout_desc (신규 생성)"
 else
   echo "   기존 tmux 세션 재사용 (창 구성 유지)"
 fi
