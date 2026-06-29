@@ -1,23 +1,43 @@
-# HANDOFF — cmux 도입 세션 (2026-06-25)
+# HANDOFF — tmux 세션 레이아웃을 cmux 런처와 통일
 
-## 완료 (vibe-dotfiles, 전부 커밋+푸시됨)
-- **cmux 소켓**: `cmux/cmux.json` 에 `automation.socketControlMode="full"` + `terminal.autoResumeAgentSessions=true`. (앱 재시작 1회로 활성됨)
-- **워크스페이스 3개** (cmux): vibe-dotfiles(녹 #196F3D, dual: vibe-dotfiles+vibe-ai-config), para(teal #006B6B, 작업관리 전용), danawa-eshop(주황 #A04000, 수동처리 스크립트 ops)
-- **런처 4종 정규화** (`vibe-tools/`): `cmux-proj.sh`(단일) / `cmux-proj-dual.sh`(듀얼) / `cmux-proj-ops.sh`(스크립트+서버) / `cmux-proj-review.sh`(diff) — 공통 `cmux-lib.sh` 로 중복 제거(lookup/expand_home/print_projects/create_workspace/has_cli)
-- **설정**: `cmux-projects.txt`(vibe-dotfiles|vibe-ai-config|para), `cmux-ops.txt`(danawa-eshop)
-- **zsh 함수**: `zsh/aliases.zsh` 에 cmux-proj/cmux-dual/cmux-ops/cmux-review (대화형 셸용)
-- **문서**: `docs/cmux-cheatsheet.md` (tmux→cmux 매핑, 탭 활용 5종, 에이전트 호출 주의)
-- **메모리**: `cmux-tmux-integration.md` 갱신
-- **전역 라우팅**: vibe-ai-config `claude-config/CLAUDE.md` 라우팅 테이블에 cmux 행 추가 (win1.2 vibe-ai-config Claude 에 IPC 위임 완료) → ~/.claude/CLAUDE.md 심링크로 라이브
-- **tmux 재구성**: para 의 통합몰정합성/에누리수동생성 → danawa-eshop 으로 move-window 이전. danawa-eshop = win1 claude / win2 edit / win3 통합몰정합성(패널제목 데이터편집·기록·실행). 에누리수동생성 윈도우는 제거(win1/2 로 대체). para 는 claude/edit 만(순수 task-mgmt).
+작성: 2026-06-29 (퇴근 전 · 구현 보류 · 계획만). 재개 시 이 문서 먼저 읽기.
 
-## 잔여 / 다음 작업
-- ⚠️ **vibe-ai-config 미커밋**: CLAUDE.md 라우팅 행이 win1.2 에서 미커밋(master*). 파일·심링크는 라이브라 재시작엔 반영되나, git 영속화하려면 win1.2 에서 커밋 필요. (vibe-ai-config 는 자동 커밋 워처 없음)
-- **para Claude 재시작 후 테스트**: para:claude 에서 claude 재실행 → cmux 요청 → 라우팅 감지 → 치트시트 lazy-load → 스크립트경로 cmux 호출 확인
-- **에이전트 호출 규칙**: Claude 의 Bash 도구는 비대화형이라 cmux-* **함수 없음** → `bash ~/.config/vibe-tools/cmux-proj.sh <name>` 스크립트경로 사용 (치트시트 "에이전트 호출 주의" 참조)
-- **신규 프로젝트 cmux 화**: `cmux-projects.txt`/`cmux-ops.txt` 등록 후 런처 호출
+## 목표
+`vibe start`(vibe.sh) 등 tmux 세션 생성 기능의 **윈도우 구성**을 cmux 런처(`cmux-proj.sh`) 기본형과 동일하게 변경.
 
-## 핵심 권한/우회 사실
-- 메인 Bash 도구: `tmux new-session`·`split-window` 권한 거부 / `move-window`·`new-window`·`kill-window`·`rename-window`·`select-pane -T`·`send-keys` 허용
-- `cmux workspace create --command "tmux new-session -A -s X"` 는 cmux 앱이 세션 생성 → 거부 우회 (런처가 이용)
-- IPC: 모든 Claude 가 tmux pane(공유 소켓) → `tmux send-keys -t <세션>:claude '...' Enter` 범용. cmux 워크스페이스 경계 무관.
+## 확정 결정 (사용자 승인)
+목표 레이아웃 = **cmux 기본형 4개 창** (cmux-proj.sh 의 default `*` case 와 동일):
+- win1 `claude` : claude 실행
+- win2 `edit`   : nvim .
+- win3 `review` : lazygit
+- win4 `verify` : shell (검증용)
+- 각 창 단일 패널, `Prefix+숫자`/`n,p` 로 전환.
+- 현행 vibe start 의 단일 창 7:3(nvim|claude) → 위 4창 구조로 교체.
+
+## 수정 대상 (전부 vibe-ai-config 레포 / tmux-suite 플러그인 — SoC상 vibe-dotfiles 아님)
+- `claude-config/plugins/tmux-suite/scripts/vibe.sh` (vibe start 세션 생성 핵심)
+- `claude-config/plugins/tmux-suite/scripts/my-tools.sh` (vibe start 호출 경로 — 레이아웃 가정 있으면 점검)
+- tmux 세션 생성 스킬: `tmux-suite/tmux-session-start`(SKILL.md) 및 `tmux-session-comm`/`claude-pane-switch`/`claude-ipc` 중 세션 레이아웃·패널 타겟 가정이 있으면 함께 점검
+- 참고(수정 안 함): vibe-dotfiles `vibe-tools/cmux-proj.sh` default `*` case 의 tmux 명령 시퀀스 = 레퍼런스
+
+## 실행 방법 (cross-project → vibe-ai-config Claude 에 위임)
+1. vibe-ai-config 세션(이전엔 현재 세션 2번 패널 %19 사용)에 위임. 격리 git worktree, 외과수술식.
+2. vibe.sh 의 기존 7:3 split 생성 블록을 4창 생성 블록으로 교체. 레퍼런스 시퀀스:
+   - tmux new-session -d -s <s> -n claude -c <path>  →  send-keys -t <s>:claude 'claude' Enter
+   - tmux new-window -t <s> -n edit -c <path>        →  send-keys 'nvim .' Enter
+   - tmux new-window -t <s> -n review -c <path>      →  send-keys 'lazygit' Enter
+   - tmux new-window -t <s> -n verify -c <path>
+   - tmux select-window -t <s>:claude
+   (cmux-proj default 는 claude 자동실행이 빠져 있음 → vibe 쪽 win1 에는 claude 실행 포함시킬 것. 사용자 의도)
+3. 기존 IPC(claude-ipc / tmux-session-comm)·콜백 send-keys 타겟이 `<세션>:claude` 창을 가정하는지 확인 — 4창 구조에서도 `claude` 창이 존재하므로 대체로 유효하나, 7:3 split 패널(.2=claude) 타겟에 의존하던 코드가 있으면 창 타겟으로 수정.
+4. VERIFY: `shellcheck vibe.sh` 및 수정한 모든 .sh 통과(미설치 시 bash -n). 스킬 변경 시 관련 문서/cheatsheet 갱신.
+5. 커밋까지. tmux-suite 가 플러그인이면 적용에 재설치/재시작 고려.
+
+## 리스크
+- vibe start ↔ PARA 워크플로우 IPC 연동: 패널/창 타겟 변경 시 위임·콜백 깨질 수 있음 → 회귀 점검 필수.
+- 사용자 머슬메모리(7:3 단일창) 변화 → cheatsheet 등 문서 갱신 검토.
+
+## 기타 미결 (2026-06-29 세션 잔여)
+- notify cmux 사이드바 알림(notify@swkim0128 1.1.1): 구현·머지·재설치 **완료**. **Claude Code 재시작만 남음**(사용자 수동, 실행 세션 종료됨).
+- Slack: 모니터링 보류. 온디맨드 조회 쓰려면 `mcp__plugin_slack_slack__slack_search_public_and_private` 도구 permission allow 가 선결(비대화형 서브에이전트에서 거부됨).
+- cmux 런처 현황(이번 세션 완료·master 푸시): cmux-proj 세션 재사용/중복방지, cmux-close(닫기·tmux 유지), 선별 pin(vibe-dotfiles·para만), cmux-pair(앱+k8s매니페스트 2탭).
