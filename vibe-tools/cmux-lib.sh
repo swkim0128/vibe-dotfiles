@@ -39,7 +39,7 @@ cmux_workspace_ref_by_title() {
     || true
 }
 
-# 워크스페이스 생성 + 메타(색/설명/pin). ref 를 stdout 출력, 실패 시 비어있음+return 1
+# 워크스페이스 생성 + 메타(색/설명, pin 은 5번째 인자가 "pin"/"true" 일 때만). ref 를 stdout 출력, 실패 시 비어있음+return 1
 # 사용: ref="$(cmux_create_workspace "$name" "$path" "$color" "$desc")" || { 오류처리; }
 cmux_create_workspace() {
   local name="$1" path="$2" color="$3" desc="$4" ref
