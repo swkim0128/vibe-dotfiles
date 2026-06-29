@@ -67,7 +67,7 @@ if [[ "${#matches[@]}" -eq 1 ]]; then
   create_new=false
   echo "ℹ️  기존 세션 '$target' 재사용" >&2
 elif [[ "${#matches[@]}" -ge 2 ]]; then
-  if [[ -r /dev/tty && -w /dev/tty ]]; then
+  if { : >/dev/tty; } 2>/dev/null; then
     {
       echo "여러 기존 세션이 있습니다. 재사용할 세션을 고르세요:"
       i=1
