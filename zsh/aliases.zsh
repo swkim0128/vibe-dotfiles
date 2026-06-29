@@ -59,6 +59,8 @@ cmux-ops() { bash "$HOME/.config/vibe-tools/cmux-proj-ops.sh" "$@"; }
 cmux-review() { bash "$HOME/.config/vibe-tools/cmux-proj-review.sh" "$@"; }
 # cmux 워크스페이스 닫기 (tmux 세션 유지 — cmux-proj 로 설정 그대로 재오픈)
 cmux-close() { bash "$HOME/.config/vibe-tools/cmux-proj-close.sh" "$@"; }
+# cmux 앱+k8s매니페스트 페어 워크스페이스 런처 (cmux 탭 2개)
+cmux-pair() { bash "$HOME/.config/vibe-tools/cmux-proj-pair.sh" "$@"; }
 
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {
