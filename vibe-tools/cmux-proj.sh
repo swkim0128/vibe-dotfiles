@@ -42,7 +42,7 @@ if [[ -z "$MATCH" ]]; then
   exit 1
 fi
 
-IFS='|' read -r name raw_path color desc <<< "$MATCH"
+IFS='|' read -r name raw_path color desc pin_flag <<< "$MATCH"
 
 # $HOME 전개 (eval 대신 안전 치환)
 path="$(cmux_expand_home "$raw_path")"
@@ -162,7 +162,7 @@ if [[ -n "$ref" ]]; then
   cmux workspace select "$ref" >/dev/null 2>&1 || true
   reused_ws=true
 else
-  ref="$(cmux_create_workspace "$target" "$path" "$color" "$desc")" || { echo "오류: cmux 워크스페이스 생성 실패" >&2; exit 1; }
+  ref="$(cmux_create_workspace "$target" "$path" "$color" "$desc" "$pin_flag")" || { echo "오류: cmux 워크스페이스 생성 실패" >&2; exit 1; }
   reused_ws=false
 fi
 

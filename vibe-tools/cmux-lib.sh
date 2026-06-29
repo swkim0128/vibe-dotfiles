@@ -47,6 +47,8 @@ cmux_create_workspace() {
   [[ -z "$ref" ]] && return 1
   cmux workspace-action --action set-color --color "$color" --workspace "$ref" >/dev/null 2>&1 || true
   cmux workspace-action --action set-description --description "$desc" --workspace "$ref" >/dev/null 2>&1 || true
-  cmux workspace-action --action pin --workspace "$ref" >/dev/null 2>&1 || true
+  if [[ "$pin" == "pin" || "$pin" == "true" ]]; then
+    cmux workspace-action --action pin --workspace "$ref" >/dev/null 2>&1 || true
+  fi
   printf '%s' "$ref"
 }
