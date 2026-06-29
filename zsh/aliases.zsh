@@ -57,6 +57,8 @@ cmux-dual() { bash "$HOME/.config/vibe-tools/cmux-proj-dual.sh" "$@"; }
 cmux-ops() { bash "$HOME/.config/vibe-tools/cmux-proj-ops.sh" "$@"; }
 # cmux diff 리뷰 래퍼 (ws/surface 자동 해석)
 cmux-review() { bash "$HOME/.config/vibe-tools/cmux-proj-review.sh" "$@"; }
+# cmux 워크스페이스 닫기 (tmux 세션 유지 — cmux-proj 로 설정 그대로 재오픈)
+cmux-close() { bash "$HOME/.config/vibe-tools/cmux-proj-close.sh" "$@"; }
 
 # ── fzf 기반 도구 런처 ────────────────────────────────
 function tools() {
