@@ -41,3 +41,25 @@
 - notify cmux 사이드바 알림(notify@swkim0128 1.1.1): 구현·머지·재설치 **완료**. **Claude Code 재시작만 남음**(사용자 수동, 실행 세션 종료됨).
 - Slack: 모니터링 보류. 온디맨드 조회 쓰려면 `mcp__plugin_slack_slack__slack_search_public_and_private` 도구 permission allow 가 선결(비대화형 서브에이전트에서 거부됨).
 - cmux 런처 현황(이번 세션 완료·master 푸시): cmux-proj 세션 재사용/중복방지, cmux-close(닫기·tmux 유지), 선별 pin(vibe-dotfiles·para만), cmux-pair(앱+k8s매니페스트 2탭).
+
+## 개인 컴(personal Mac) parity — cmux 설정 동일 동작 (2026-06-29 추가 요청)
+
+목표: cmux 설정/런처가 개인 Mac 에서도 동일하게 동작.
+
+### 자동 (setup.sh 가 이미 전부 커버 — 확인됨)
+개인 Mac 에서 `./setup.sh` 1회 실행이면 cmux 인프라가 동일 배포됨:
+- `install_cask cmux` + `ghostty` (setup.sh:157-159)
+- `~/.config/cmux/cmux.json` · `~/.config/ghostty/config` 심링크 — socketControlMode=full 포함 (172-173, 169)
+- `~/.config/vibe-tools` → 레포 심링크 (207): cmux-proj/dual/ops/review/close/pair 전 런처 + cmux-projects.txt/cmux-ops.txt 자동 포함, `chmod +x` (210)
+- `~/.zshrc` 에 aliases.zsh source 라인 멱등 추가 (245-250): cmux-* 함수 전부
+- 1회 수동: cmux 앱 재시작(socketControlMode 활성화) + `cmux hooks setup`(알림)
+
+### 검토 필요 — machine-specific 데이터 (선택 개선)
+- `cmux-projects.txt`/`cmux-ops.txt` 에 회사 경로(ashop·sms·danawa-application/*)가 커밋돼 있음 → 개인 Mac 엔 경로 부재(런처가 per-entry "경로 없음" graceful 처리). dual-vault 관점에서도 회사 경로/이름이 공유 레포로 개인 머신에 전파됨.
+- 권장(옵션, 외과수술식 추가): 런처가 커밋된 기본 목록 + 머신로컬 오버레이(`cmux-projects.local.txt`, `.gitignore` 등록)를 함께 읽도록 변경. cmux_lookup/cmux_print_projects 가 두 파일 병합 조회 → 공유 레포는 generic 유지, 회사 항목은 비커밋 로컬에만 둠.
+
+### 별도 레포(vibe-ai-config) 도 개인 Mac 설치 필요
+- notify cmux 사이드바 알림(notify@swkim0128 1.1.1) + 예정된 vibe.sh 4창 레이아웃 변경은 tmux-suite(vibe-ai-config) 소속 → 개인 Mac 에 vibe-ai-config install.sh 별도 실행 필요.
+
+### VERIFY (개인 Mac)
+- `./setup.sh` 후: `command -v cmux` 노출, 새 셸에서 `cmux-proj`/`cmux-pair` 함수 인식, `ls ~/.config/vibe-tools/cmux-proj-pair.sh` 존재.
