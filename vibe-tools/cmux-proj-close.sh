@@ -66,6 +66,8 @@ if [[ -z "$ref" ]]; then
   exit 0
 fi
 
+# 고정(pin)된 워크스페이스는 바로 닫을 수 없으므로 먼저 핀 해제 (재오픈 시 cmux-proj 가 다시 pin)
+cmux workspace-action --action unpin --workspace "$ref" >/dev/null 2>&1 || true
 cmux workspace close "$ref"
 echo "✅ 워크스페이스 '$NAME' ($ref) 닫음 — tmux 세션은 유지됩니다."
 echo "   재오픈: cmux-proj $NAME  (cmux-projects.txt 의 색·설명·경로 그대로 복원)"
