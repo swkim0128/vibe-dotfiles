@@ -100,3 +100,6 @@ map({ "n", "t" }, "<A-i>", function()
     },
   }
 end, { desc = "Terminal: Floating (large)" })
+
+-- LSP: Ctrl+클릭으로 함수/심볼 선언부 이동 (VSCode식). gd 키맵은 NvChad 기본 유지.
+map("n", "<C-LeftMouse>", "<LeftMouse><cmd>lua vim.lsp.buf.definition()<CR>", { desc = "LSP: Go to definition (Ctrl+Click)" })
