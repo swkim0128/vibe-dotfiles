@@ -4,11 +4,3 @@
 vibe-dotfiles|$HOME/Project/vibe-dotfiles|#196F3D|Mac dev 환경 dotfiles — 시스템·터미널 인프라|pin
 vibe-ai-config|$HOME/Project/vibe-ai-config|#6A1B9A|AI CLI 설정·하네스 SSoT (구 vibe-claude-plugin)
 para|$HOME/Project/para|#006B6B|PARA 작업 허브 — 단기 작업·회고·프로젝트 대시보드|pin
-ashop|$HOME/Project/danawa/eshop/ashop|#1F618D|ashop PHP 쇼핑몰 (eshop 하위) — 협력사·빌링 주 서비스
-sms|$HOME/Project/danawa/sms|#B9770E|sms 발송 서비스 (PHP 8) — 문자/알림 발송·개인정보 암호화
-notification|$HOME/Project/danawa-application/notification|#0E6655|notification(message-service) API 앱 — 알림/메시지 발송
-notification-k8s-manifest|$HOME/Project/danawa-application/notification-k8s-manifest|#117864|notification(message-service) k8s 매니페스트 — Helm/ArgoCD 운영 배포 설정
-shopping|$HOME/Project/danawa-application/shopping|#8E44AD|shopping API 앱 — 쇼핑 서비스
-shopping-k8s-manifest|$HOME/Project/danawa-application/shopping-k8s-manifest|#5B2C6F|shopping k8s 매니페스트 — Helm/ArgoCD 운영 배포 설정
-shopping-danuri|$HOME/Project/danawa-application/shopping-danuri|#2E86C1|shopping-danuri API 앱 — 다누리 쇼핑 서비스
-shopping-danuri-k8s-manifest|$HOME/Project/danawa-application/shopping-danuri-k8s-manifest|#1B4F72|shopping-danuri k8s 매니페스트 — Helm/ArgoCD 운영 배포 설정

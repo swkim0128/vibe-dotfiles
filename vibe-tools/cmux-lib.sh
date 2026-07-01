@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # cmux-lib.sh — cmux 런처 공통 헬퍼 (cmux-proj/dual/ops/review 가 source). 직접 실행용 아님.
 
+# 머신로컬 오버레이(.local.txt) 를 기본 설정보다 먼저 병합. 주석/빈줄 제외 후 name(첫 필드) 기준 dedup, 첫 등장(=로컬) 우선. 로컬 부재해도 정상.
+cmux_merged_config() {
+  local config="$1"
+  local localConfig="${config%.txt}.local.txt"
+  cat "$localConfig" "$config" 2>/dev/null | grep -vE '^[[:space:]]*(#|$)' | awk -F'|' '!seen[$1]++'
+}
+
 # 설정에서 name 정확 매칭 줄을 stdout 출력 (없으면 빈 문자열, 항상 성공)
 cmux_lookup() {
-  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | awk -F'|' -v n="$2" '$1==n {print; exit}' || true
+  cmux_merged_config "$1" | awk -F'|' -v n="$2" '$1==n {print; exit}' || true
 }
 
 # $HOME 안전 전개 (eval 미사용)
@@ -14,7 +21,7 @@ cmux_expand_home() {
 # 등록 프로젝트 목록 stderr 출력 (빈 설정에도 exit 0)
 cmux_print_projects() {
   echo "등록된 프로젝트:" >&2
-  grep -vE '^[[:space:]]*(#|$)' "$1" 2>/dev/null | while IFS='|' read -r n _p _c d _s; do
+  cmux_merged_config "$1" | while IFS='|' read -r n _p _c d _s; do
     printf '  %-20s %s\n' "$n" "$d" >&2
   done || true
 }
