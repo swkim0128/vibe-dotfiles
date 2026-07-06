@@ -147,6 +147,13 @@ if [[ "$create_new" == true ]]; then
   session_created=true
 fi
 
+# 워크스페이스 제외 목록 — cmux 워크스페이스 생략, tmux 세션만 유지 (관찰은 기존 tmux 경로)
+if cmux_is_excluded "$name"; then
+  echo "ℹ️  '$name' 은 워크스페이스 제외 목록 — tmux 세션 '$target' 만 생성/유지했습니다." >&2
+  echo "   attach: tmux attach -t $target" >&2
+  exit 0
+fi
+
 # cmux CLI 미설치 — tmux 세션만 만들고 종료 (이식성 정책)
 if ! cmux_has_cli; then
   echo "⚠️  cmux CLI 미설치 — tmux 세션 '$target' 만 생성했습니다." >&2

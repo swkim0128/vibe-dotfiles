@@ -13,6 +13,14 @@ cmux_lookup() {
   cmux_merged_config "$1" | awk -F'|' -v n="$2" '$1==n {print; exit}' || true
 }
 
+# 워크스페이스 제외 목록 매치 여부 (제외=0, 아니면 1). 파일 없으면 제외 아님.
+# .local.txt 오버레이는 cmux_merged_config 가 자동 병합.
+cmux_is_excluded() {
+  local name="$1"
+  local config="$HOME/.config/vibe-tools/cmux-no-workspace.txt"
+  cmux_merged_config "$config" | awk -F'|' -v n="$name" '$1==n{f=1} END{exit f?0:1}'
+}
+
 # $HOME 안전 전개 (eval 미사용)
 cmux_expand_home() {
   printf '%s' "${1/#\$HOME/$HOME}"
