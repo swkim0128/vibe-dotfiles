@@ -8,7 +8,7 @@
 #
 # 동작:
 #   1. cmux-projects.txt 에서 name 매칭 (name|path|hexcolor|description).
-#   2. tmux 세션(claude/edit/review/verify 4창) 미존재 시 생성 — edit=nvim, review=lazygit 자동 실행.
+#   2. tmux 세션(claude/edit/verify 3창) 미존재 시 생성 — edit=nvim 자동 실행.
 #   3. cmux 워크스페이스 생성 후 tmux attach + 메타(색/설명/pin) 적용.
 #   cmux CLI 미설치 시 tmux 세션만 만들고 안내 후 종료 (graceful degradation).
 
@@ -139,11 +139,9 @@ if [[ "$create_new" == true ]]; then
       tmux new-session -d -s "$name" -n claude -c "$path"
       tmux new-window -t "$name" -n edit -c "$path"
       tmux send-keys -t "$name:edit" 'nvim .' Enter
-      tmux new-window -t "$name" -n review -c "$path"
-      tmux send-keys -t "$name:review" 'lazygit' Enter
       tmux new-window -t "$name" -n verify -c "$path"
       tmux select-window -t "$name:claude"
-      layout_desc='claude / edit(nvim) / review(lazygit) / verify'
+      layout_desc='claude / edit(nvim) / verify'
       ;;
   esac
   session_created=true
