@@ -99,7 +99,7 @@ extract_events() {
   if [[ ${HAS_JQ} -eq 1 ]]; then
     # timestamp 가 오늘로 시작하고 skill 또는 subagent_type 를 가진 이벤트만.
     # jq 파싱 실패(깨진 줄)는 -R -c 로 라인단위 시도하되 오류는 무시.
-    jq -R -c '. as $line | (try (fromjson) catch empty)
+    jq -R -r '. as $line | (try (fromjson) catch empty)
       | select((.timestamp // "") | startswith("'"${TODAY}"'"))
       | (.message.content // empty)
       | select(type == "array") | .[]
@@ -144,7 +144,7 @@ if [[ -d "${PROJECTS_DIR}" ]]; then
     # 프로젝트별 집계: type\tname 단위 count
     if [[ -s "${WORK_DIR}/events_proj.tmp" ]]; then
       sort "${WORK_DIR}/events_proj.tmp" | uniq -c \
-        | awk -v proj="${local_proj}" '{ cnt=$1; $1=""; sub(/^ /,""); print proj"\t"$0"\t"cnt }' \
+        | awk -v proj="${local_proj}" '{ c=$1; sub(/^[[:space:]]*[0-9]+[[:space:]]+/,""); print proj"\t"$0"\t"c }' \
         >> "${WORK_DIR}/usage_by_project.tsv"
       cat "${WORK_DIR}/events_proj.tmp" >> "${WORK_DIR}/events_global.tmp"
     fi
@@ -156,7 +156,7 @@ fi
 # 전역 집계: type\tname\tcount (count 내림차순)
 if [[ -s "${WORK_DIR}/events_global.tmp" ]]; then
   sort "${WORK_DIR}/events_global.tmp" | uniq -c \
-    | awk '{ cnt=$1; $1=""; sub(/^ /,""); print $0"\t"cnt }' \
+    | awk '{ c=$1; sub(/^[[:space:]]*[0-9]+[[:space:]]+/,""); print $0"\t"c }' \
     | sort -t"$(printf '\t')" -k3,3nr \
     > "${WORK_DIR}/usage_global.tsv"
 fi
