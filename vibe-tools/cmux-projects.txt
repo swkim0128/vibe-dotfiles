@@ -6,3 +6,4 @@ vibe-ai-config|$HOME/Project/vibe-ai-config|#6A1B9A|AI CLI 설정·하네스 SSo
 para|$HOME/Project/para|#006B6B|PARA 작업 허브 — 단기 작업·회고·프로젝트 대시보드|pin
 bshop|$HOME/Project/danawa/eshop/bshop|#B7410E|독립몰 (PHP/EUC-KR)
 BillingMPAdmin|$HOME/Project/danawa/billing/BillingMPAdmin|#1A5276|빌링 마켓플레이스 어드민
+PHPLib|$HOME/Project/danawa/global_library/PHPLib|#8E44AD|다나와 글로벌 공통 라이브러리 (PHP/EUC-KR)
