@@ -99,10 +99,13 @@ extract_events() {
   if [[ ${HAS_JQ} -eq 1 ]]; then
     # timestamp 가 오늘로 시작하고 skill 또는 subagent_type 를 가진 이벤트만.
     # jq 파싱 실패(깨진 줄)는 -R -c 로 라인단위 시도하되 오류는 무시.
-    jq -R -c '. as $line | try (fromjson) catch empty
+    jq -R -c '. as $line | (try (fromjson) catch empty)
       | select((.timestamp // "") | startswith("'"${TODAY}"'"))
-      | if .skill then {t:"skill", n:.skill}
-        elif .subagent_type then {t:"agent", n:.subagent_type}
+      | (.message.content // empty)
+      | select(type == "array") | .[]
+      | select((.type? // "") == "tool_use")
+      | if (.name == "Skill" and (.input.skill // null) != null) then {t:"skill", n:.input.skill}
+        elif ((.name == "Agent" or .name == "Task") and (.input.subagent_type // null) != null) then {t:"agent", n:.input.subagent_type}
         else empty end
       | "\(.t)\t\(.n)"' "${file}" 2>/dev/null || true
   else
