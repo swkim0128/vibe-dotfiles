@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Label: launchd 고유 식별자 -->
+  <key>Label</key>
+  <string>com.swkim0128.notion-diary</string>
+
+  <!-- 매일 오후 18시 정각 실행 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>18</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <!--
+    ProgramArguments:
+      /usr/bin/caffeinate -i -s: 실행 중 시스템 슬립 방지
+      /bin/zsh -lc: 로그인 셸로 PATH 등 환경변수 로드 보장
+  -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>-s</string>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>/Users/eunsol/Project/vibe-dotfiles/vibe-tools/notion_diary_worker.sh</string>
+  </array>
+
+  <!-- 로그 경로 (launchd가 직접 리다이렉트) -->
+  <key>StandardOutPath</key>
+  <string>/Users/eunsol/Library/Logs/notion-diary/launchd.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/eunsol/Library/Logs/notion-diary/launchd.err</string>
+
+  <!-- 부팅 시 자동 실행 안 함 (명시적 bootstrap 필요) -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- 환경변수: zsh -lc 사용으로 대부분 자동 로드되나, 명시적으로 설정 -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/eunsol</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- claude CLI 가 위 PATH 에 없다면 명시적으로 지정:
+    <key>CLAUDE_BIN</key>
+    <string>/opt/homebrew/bin/claude</string>
+    -->
+  </dict>
+</dict>
+</plist>
