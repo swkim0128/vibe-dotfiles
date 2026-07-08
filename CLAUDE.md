@@ -34,7 +34,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 - **인코딩**: UTF-8 (LF). EUC-KR / CRLF 없음.
 - **디렉토리 구조 (1줄 요약)**:
   ```
-  setup.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (사용자 설정 데이터·overnight·issue-start·cmux 런처) /
+  setup.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (사용자 설정 데이터·자동화 워커 3종·issue-start·cmux 런처) /
   zsh/aliases.zsh / glow/ / ghostty/ (ghostty·cmux 테마/폰트 설정) / cmux/ (cmux 자체 설정 cmux.json) / docs/ / tests/bats/ / docs/knowledge-base/ (KB SSoT)
   ```
 
@@ -79,7 +79,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`, `cmux-projects.txt`, `cmux-ops.txt`) + `overnight_worker.sh`, `issue-start.sh`, `com.swkim0128.overnight.plist` + cmux 정규화 런처(`cmux-lib.sh` + `cmux-proj*.sh` 6종)를 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`, `cmux-projects.txt`, `cmux-ops.txt`, `cmux-no-workspace.txt`) + 자동화 워커 3종(`overnight_worker.sh`, `notion_diary_worker.sh`, `skill_audit_worker.sh`)과 launchd plist 3종(`com.swkim0128.{overnight,notion-diary,skill-audit}.plist`) + `issue-start.sh` + cmux 정규화 런처(`cmux-lib.sh` + `cmux-proj*.sh` 6종)를 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
 - cmux 목록의 머신 로컬 오버레이 `*.local.txt` (`cmux-projects.local.txt`, `cmux-ops.local.txt`) 는 **비커밋**(gitignore) — 회사 경로 등 머신별 항목은 여기에만 등록.
 - cmux 사용 규칙·키맵은 `docs/cmux-cheatsheet.md` 참조 — raw cmux 명령 즉흥 조합 대신 정규화 런처(`cmux-proj`/`dual`/`ops`/`review`) 우선.
