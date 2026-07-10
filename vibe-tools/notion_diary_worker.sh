@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# notion_diary_worker.sh — 오늘 업무를 시간대별로 Notion 다이어리에 기록하는 야간 워커
+# notion_diary_worker.sh — 오늘 업무를 노션 주간 일지의 요일별 WORK 슬롯에 기록하는 야간 워커
 #
 # 매일 오후 18:00 launchd 에 의해 실행됨 (caffeinate -i -s 래핑).
 # 두 단계로 동작한다:
 #   (A) 결정론적 수집(셸): REPO_SCAN_DIR 하위 각 git 레포에서 오늘 자정 이후 커밋을
 #       "HH:MM|레포명|커밋제목" 형태로 모아 시각 오름차순 정렬한 WORK_LOG 를 만든다.
-#   (B) Notion 기록(claude --print 헤드리스): notion-suite:notion-diary 스킬 규칙에 따라
-#       오늘 다이어리 페이지를 찾거나 생성하고, WORK_LOG 를 시간대별로 append-only 기록.
-#       헤드리스 claude 는 Notion MCP(claude.ai 커넥터)에 정상 접근됨(검증 완료) →
-#       완전 무인 실행 가능.
+#   (B) Notion 기록(claude --print 헤드리스): 오늘 날짜가 속한 주차의 노션 "주간 일지"
+#       페이지(「[week NN] @YYYY/MM/DD → YYYY/MM/DD 일지」)를 notion-search 로 찾아,
+#       본문 Week Things 섹션의 오늘 요일 칸(### 월요일~### 금요일)에 있는 빈
+#       WORK1~WORK3 슬롯에만 WORK_LOG 를 이슈·주제 단위로 최대 3줄 요약해 채운다.
+#       빈 슬롯만 채우고(idempotent) 페이지 하단 append 는 절대 하지 않는다. 토·일은
+#       WORK 슬롯이 없어 skip. 헤드리스 claude 는 Notion MCP(claude.ai 커넥터)에
+#       정상 접근됨(검증 완료) → 완전 무인 실행 가능.
 #
 # 환경 변수:
 #   REPO_SCAN_ROOT  git 레포 스캔 루트. 미설정 시 폴백 = "$HOME/Project"
@@ -17,7 +20,7 @@
 #
 # 안전 가드:
 #   - 셸 수집 단계는 git log 읽기만 수행. 어떤 레포도 변경하지 않음.
-#   - Notion 기록은 append-only + idempotent (같은 시각·내용 중복 금지, 스킬 규칙).
+#   - Notion 기록은 빈 WORK 슬롯만 채움 + idempotent (기존 슬롯 덮어쓰기·하단 append 금지).
 #   - 자기완결: PARA·외부 볼트 의존 없음. git 스캔 루트 부재 시 graceful(빈 집계).
 #   - launchd에서 caffeinate로 래핑하므로 이 스크립트는 직접 caffeinate 호출 안 함.
 #
@@ -130,7 +133,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
   printf '# notion-diary DRY_RUN worklog — %s\n\n%s\n' "${TODAY}" "${WORK_LOG}" > "${DRY_WORKLOG}"
   log_info "[DRY_RUN] claude/Notion 호출을 건너뜁니다."
   log_info "[DRY_RUN] 수집 내역 저장: ${DRY_WORKLOG}"
-  log_info "[DRY_RUN] 실제 실행 시 위 내역이 Notion 다이어리에 시간대별로 기록됨."
+  log_info "[DRY_RUN] 실제 실행 시 위 내역이 주간 일지 오늘 요일의 빈 WORK 슬롯에 기록됨."
   log_info "===== notion_diary_worker 완료 (DRY_RUN) ====="
   exit 0
 fi
@@ -144,8 +147,8 @@ log_info "claude CLI: ${CLAUDE_BIN}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) Notion 기록 (claude --print 헤드리스)
-#   notion-suite:notion-diary 스킬(또는 그 규칙)에 따라 오늘 다이어리 페이지를
-#   찾거나(없으면 생성) WORK_LOG 를 시간대별로 append-only 기록. idempotent.
+#   오늘 날짜가 속한 주차 "주간 일지" 페이지를 찾아, Week Things 섹션의 오늘 요일
+#   칸의 빈 WORK1~WORK3 슬롯에만 WORK_LOG 를 요약 기록. 빈 슬롯만·idempotent.
 # ─────────────────────────────────────────────────────────────────────────────
 log_info "claude 헤드리스 Notion 기록 시작..."
 
