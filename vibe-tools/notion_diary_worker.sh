@@ -152,8 +152,29 @@ log_info "claude CLI: ${CLAUDE_BIN}"
 # ─────────────────────────────────────────────────────────────────────────────
 log_info "claude 헤드리스 Notion 기록 시작..."
 
-PROMPT="아래는 오늘(${TODAY}) 각 프로젝트의 시간대별 git 작업 내역이다. notion-suite:notion-diary 스킬(또는 그 규칙: 오늘 다이어리 페이지를 notion-search 로 검색→없으면 자동 생성, append-only, \`### HH:MM\` 시각 stamp 헤더, idempotent 중복 금지)에 따라, 이 업무 내역을 시간대별로 오늘 다이어리 페이지에 기록하라. 완전 자율 수행 — 사용자에게 확인·선택 요청 금지, 모호하면 합리적 기본값 채택. 이미 같은 시각·내용이 기록돼 있으면 중복 추가 금지. 감정 태그는 생략하고 업무 사실 위주로. 완료 후 기록한 슬롯 수만 한 줄 보고.
---- WORK_LOG (형식: HH:MM|레포명|커밋제목):
+PROMPT="아래는 오늘(${TODAY}) 각 프로젝트의 git 작업 내역이다(형식: HH:MM|레포명|커밋제목). 이 내역을 노션 '주간 일지' 페이지의 오늘 요일 WORK 슬롯에 기록하라. 완전 자율 수행 — 사용자에게 확인·선택·승인 요청 금지, 모호하면 합리적 기본값 채택.
+
+[대상 페이지]
+- notion-search 로 오늘(${TODAY})이 속한 주차의 주간 일지 페이지를 찾는다. 제목 형태: '[week NN] @YYYY/MM/DD → YYYY/MM/DD 일지' — 제목의 YYYY/MM/DD ~ YYYY/MM/DD 범위에 오늘 날짜가 포함되는 페이지다. 새 페이지를 생성하지 말 것. 반드시 기존 주차 페이지를 사용한다.
+
+[기록 위치]
+- 페이지 본문 'Week Things' 섹션에서 오늘 요일 헤딩(### 월요일 ~ ### 금요일 중 오늘에 해당하는 요일)을 찾는다.
+- 그 요일 칸의 WORK1, WORK2, WORK3 슬롯 중 비어 있는 슬롯에만 앞에서부터 순서대로 채운다.
+- 오늘이 토요일 또는 일요일이면 WORK 슬롯이 없으므로 아무것도 기록하지 말고 종료한다(skip).
+
+[기록 내용]
+- WORK_LOG 커밋들을 이슈·주제 단위로 묶어 슬롯당 한 주제씩 최대 3줄로 요약한다.
+- chore(auto) 류 자동 커밋은 레포 단위로 묶어 1줄로 처리한다.
+- 커밋 제목이나 브랜치에 이슈 키(DWDEV-xxxx)가 있으면 요약 앞에 표기한다.
+- WORK_LOG 가 '오늘 커밋 없음'이면 아무것도 기록하지 말고 종료한다.
+
+[규칙]
+- 이미 채워진 WORK 슬롯은 절대 덮어쓰지 않는다. 빈 슬롯만 채운다(idempotent).
+- 페이지 하단에 새 섹션이나 'Git 작업 로그' 블록을 append 하는 것을 절대 금지한다.
+- 감정 태그·잡담 없이 업무 사실 위주로 작성한다.
+- 완료 후 채운 WORK 슬롯 수(또는 skip 사유)만 한 줄로 보고한다.
+
+--- WORK_LOG:
 ${WORK_LOG}"
 
 set +e
@@ -162,7 +183,7 @@ printf '%s' "${PROMPT}" | "${CLAUDE_BIN}" \
   --dangerously-skip-permissions \
   --model "claude-sonnet-4-6" \
   --output-format text \
-  --allowedTools "Skill,Read,Glob,Grep,mcp__claude_ai_Notion__notion-search,mcp__claude_ai_Notion__notion-fetch,mcp__claude_ai_Notion__notion-update-page,mcp__claude_ai_Notion__notion-create-pages" \
+  --allowedTools "Read,Glob,Grep,mcp__claude_ai_Notion__notion-search,mcp__claude_ai_Notion__notion-fetch,mcp__claude_ai_Notion__notion-update-page" \
   >> "${LOG_FILE}" 2>&1
 CLAUDE_EXIT=${PIPESTATUS[1]}
 set -e
