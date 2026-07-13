@@ -3,6 +3,22 @@
 vibe-dotfiles 터미널 인프라. cmux 를 tmux 대체로 일상 사용할 때 키·명령 매핑.
 관련 설정: `cmux/cmux.json` (동작), `ghostty/config` (테마·폰트·투명도).
 
+## 용어 매핑 + ref 조작 규율 (에이전트 필독)
+
+에이전트 세션에서 cmux/tmux 용어 혼동이 반복돼 정본화. **사용자 표현 → 실제 개념 → 생성법**을 아래로 고정한다.
+
+| 사용자 표현 | 실제 개념 | 생성법 |
+|---|---|---|
+| **워크스페이스** | cmux workspace (좌측 사이드바의 프로젝트 단위, tmux 세션이 백킹) | `bash ~/.config/vibe-tools/cmux-proj.sh <NAME>` 또는 `cmux new-workspace` |
+| **윈도우** | cmux·tmux window | `cmux new-window` |
+| **탭** (`Cmd+T`) | cmux surface (pane 내부 탭바의 탭) | `cmux new-surface` 또는 `cmux tab-action --action new-terminal-right` |
+| **패널** | tmux pane = cmux pane (윈도우 내 분할) | `cmux new-pane` 또는 `cmux new-split <DIR>` |
+
+### ref 조작 규율
+1. **stale ref 방지**: surface/pane ref 는 생성 직후에도 stale 가능. 조작 전 반드시 `cmux tree --workspace <WS>` 또는 `tmux list-panes -t <SESSION>:<WIN> -F` 로 실제 상태를 확인한 뒤 **tmux pane_id(`%n`) 기준**으로 조작한다.
+2. **현재 워크스페이스 확인**: `cmux current-workspace` 가 사용자가 실제 보고 있는 워크스페이스와 다를 수 있다. `cmux workspace list` 의 `[selected]` 또는 tmux 로 확인한다.
+3. **cwd 상속**: `new-surface` / `new-pane` 에는 `--cwd` 옵션이 없어 워크스페이스 cwd 를 상속한다. 다른 경로가 필요하면 생성 후 `cd` 한다.
+
 ## 일상 워크플로우 (tmux 없이)
 1. 프로젝트 열기: `cmux open ~/Project/<프로젝트>` → 새 워크스페이스 생성
 2. 그 안에서 `claude` 직접 실행 → 알림 자동주입 + 소켓 env + 한글 IME 해방
