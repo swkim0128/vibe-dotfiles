@@ -35,7 +35,7 @@ copy-on-select = true
 clipboard-paste-protection = false
 
 # Scrollback
-scrollback-limit = 10000
+scrollback-limit = 10000000
 
 # macOS
 macos-option-as-alt = true
