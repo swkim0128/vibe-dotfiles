@@ -6,12 +6,14 @@
 # 이슈 식별자를 이름으로 하는 cmux 워크스페이스+tmux 세션을 만든다.
 #
 # 사용법:
-#   cmux-issue <ISSUE> <proj1> [proj2 ...]   # proj = cmux-projects.txt 등록명 또는 raw 경로
-#   cmux-issue                               # 등록 프로젝트 목록
-#   cmux-issue -h                            # 도움말
+#   cmux-issue <ISSUE> <proj1> [proj2 ...]        # 이슈 워크스페이스 생성/재사용
+#   cmux-issue --join <ISSUE> <pane_id> [pane_id ...]  # 실행 중 pane 을 우측 스택에 무중단 이전
+#   cmux-issue                                    # 등록 프로젝트 목록
+#   cmux-issue -h                                 # 도움말
 #
 # 구성 (win1 = work, main-vertical):
-#   좌측 main pane  : para cwd 의 claude (작업 추적·오케스트레이션·PARA 노트 기록)
+#   좌측 main pane  : para cwd 의 claude 단일 pane (작업 추적·오케스트레이션·PARA 노트)
+#                     — vibe start 현행 동작과 동일하게 메인은 단일 pane 이 기본
 #   우측 스택       : 수정 대상 프로젝트별 pane, 각 프로젝트 cwd 로 claude 실행
 #                     첫 인자(주 작업 레포)가 최상단
 #   win2 = view     : 주 작업 레포 cwd 셸 — 파일 육안 확인 시 vim 열람 (cmux 신규 탭도 가능)
@@ -20,6 +22,10 @@
 #   proj 인자는 등록명이면 config 경로, 아니면 raw 경로($HOME 전개)로 해석.
 #   동명 워크스페이스/세션 존재 시 재사용(레이아웃 유지).
 #   cmux CLI 미설치·제외목록 시 tmux 세션만 유지 (graceful degradation).
+#
+# --join: 이미 다른 곳(예: para 허브의 vibe delegate pane)에서 돌던 claude pane 을
+#   중단 없이 이슈 세션 work 창 우측 스택으로 옮긴다. tmux join-pane 이 pane 을
+#   프로세스째 이동하므로 실행 중 claude 세션이 그대로 보존된다.
 
 set -euo pipefail
 
@@ -30,11 +36,76 @@ CONFIG="$SCRIPT_DIR/cmux-projects.txt"
 
 # 이슈 워크스페이스 시각 마커 (앰버) — 등록 프로젝트 색과 구분
 ISSUE_COLOR='#B9770E'
+# detached 세션 기본 크기(80x24)에서 main-vertical 이 우측 스택을 1칸으로 붕괴시키는 것을 막기 위한 넓은 베이스.
+# 클라이언트(cmux) attach 시 실제 크기로 리플로우됨.
+WORK_COLS=250
+WORK_ROWS=50
 
+# work 창 레이아웃 정규화 — main-pane-width 를 select-layout 전에 반드시 설정(우측 붕괴 방지).
+# $1 = 세션명
+normalize_work_layout() {
+  tmux set-window-option -t "$1:work" main-pane-width '50%' >/dev/null 2>&1 || true
+  tmux select-layout -t "$1:work" main-vertical
+}
+
+# ── --join 서브커맨드: 실행 중 pane 무중단 이전 ──────────────────────────────
+if [[ "${1:-}" == "--join" || "${1:-}" == "join" ]]; then
+  shift
+  ISSUE="${1:-}"
+  shift || true
+  if [[ -z "$ISSUE" || "$#" -lt 1 ]]; then
+    echo "사용법: $(basename "$0") --join <ISSUE> <pane_id> [pane_id ...]" >&2
+    echo "  pane_id = tmux pane 식별자(예: %12). 'tmux list-panes -a -F \"#{pane_id} #{pane_current_path}\"' 로 확인." >&2
+    exit 1
+  fi
+  if ! tmux has-session -t "$ISSUE" 2>/dev/null; then
+    echo "오류: 이슈 세션 '$ISSUE' 가 없습니다. 먼저 'cmux-issue $ISSUE <proj...>' 로 생성하세요." >&2
+    exit 1
+  fi
+
+  # 존재하는 모든 pane_id 집합 (검증용)
+  existing_panes="$(tmux list-panes -a -F '#{pane_id}' 2>/dev/null || true)"
+
+  joined=0
+  for pid in "$@"; do
+    if ! printf '%s\n' "$existing_panes" | grep -qxF "$pid"; then
+      echo "⚠️  pane '$pid' 를 찾을 수 없어 건너뜁니다." >&2
+      continue
+    fi
+    # 우측 스택에 세로로 append (프로세스 보존 이동). -d = 포커스 이동 안 함.
+    if tmux join-pane -d -v -s "$pid" -t "$ISSUE:work" 2>/dev/null; then
+      tmux select-pane -t "$pid" -T "joined · claude" >/dev/null 2>&1 || true
+      joined=$((joined + 1))
+    else
+      echo "⚠️  pane '$pid' 이전 실패 (이미 이동됐거나 대상과 동일 창일 수 있음)." >&2
+    fi
+  done
+
+  if [[ "$joined" -eq 0 ]]; then
+    echo "ℹ️  이전된 pane 이 없습니다." >&2
+    exit 0
+  fi
+
+  # 좌측 main(para) + 우측 스택으로 재정규화
+  normalize_work_layout "$ISSUE"
+
+  # cmux 워크스페이스가 있으면 선택(관찰 표면 활성)
+  if cmux_has_cli; then
+    ref="$(cmux_workspace_ref_by_title "$ISSUE")"
+    [[ -n "$ref" ]] && cmux workspace select "$ref" >/dev/null 2>&1 || true
+  fi
+
+  echo "✅ pane $joined개를 이슈 세션 '$ISSUE' work 창 우측 스택으로 무중단 이전"
+  echo "   확인: tmux attach -t $ISSUE  (또는 cmux 워크스페이스 '$ISSUE')"
+  exit 0
+fi
+
+# ── 기본: 이슈 워크스페이스 생성/재사용 ─────────────────────────────────────
 ISSUE="${1:-}"
 
 if [[ -z "$ISSUE" || "$ISSUE" == "-h" || "$ISSUE" == "--help" ]]; then
   echo "사용법: $(basename "$0") <ISSUE> <proj1> [proj2 ...]" >&2
+  echo "        $(basename "$0") --join <ISSUE> <pane_id> [pane_id ...]" >&2
   echo "  proj = cmux-projects.txt 등록명 또는 절대/\$HOME 경로" >&2
   cmux_print_projects "$CONFIG"
   exit 0
@@ -104,8 +175,9 @@ session_created=false
 if tmux has-session -t "$ISSUE" 2>/dev/null; then
   echo "ℹ️  기존 세션 '$ISSUE' 재사용 (레이아웃 유지)" >&2
 else
-  # win1 work — 좌측 main pane = para claude (추적·오케스트레이션)
-  tmux new-session -d -s "$ISSUE" -n work -c "$para_path"
+  # win1 work — 좌측 main pane = para claude (단일 pane, 추적·오케스트레이션)
+  # -x/-y 로 넓은 베이스를 줘서 main-vertical 우측 스택이 붕괴하지 않게 함.
+  tmux new-session -d -s "$ISSUE" -n work -c "$para_path" -x "$WORK_COLS" -y "$WORK_ROWS"
   tmux send-keys -t "$ISSUE:work" 'claude' Enter
   tmux select-pane -t "$ISSUE:work" -T "$ISSUE · para(추적)"
 
@@ -125,9 +197,9 @@ else
     idx=$((idx + 1))
   done
 
-  # main-vertical: 좌측 큰 pane(para) 고정 + 우측 세로 스택. main pane 폭 50%.
-  tmux set-window-option -t "$ISSUE:work" main-pane-width '50%' >/dev/null 2>&1 || true
-  tmux select-layout -t "$ISSUE:work" main-vertical
+  # main-vertical: 좌측 큰 pane(para) 고정 + 우측 세로 스택.
+  # main-pane-width 를 select-layout 전에 설정(우측 1칸 붕괴 방지) — normalize_work_layout.
+  normalize_work_layout "$ISSUE"
 
   # win2 view — 주 작업 레포 셸 (파일 육안 확인 시 vim 열람)
   tmux new-window -t "$ISSUE" -n view -c "$main_path"
@@ -188,4 +260,5 @@ if [[ "$session_created" == true ]]; then
 else
   echo "   기존 세션 재사용 (레이아웃 유지)"
 fi
+echo "   실행 중 pane 추가 이전: cmux-issue --join $ISSUE <pane_id ...>"
 echo "   닫기: cmux-close $ISSUE"
