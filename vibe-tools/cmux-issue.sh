@@ -140,7 +140,7 @@ if [[ "${1:-}" == "--join" || "${1:-}" == "join" ]]; then
     [[ -n "$ref" ]] && cmux workspace select "$ref" >/dev/null 2>&1 || true
   fi
 
-  echo "✅ pane $joined개를 이슈 세션 '$ISSUE' work 창 우측 스택으로 무중단 이전"
+  echo "✅ pane ${joined}개를 이슈 세션 '$ISSUE' work 창 우측 스택으로 무중단 이전"
   echo "   확인: tmux attach -t $ISSUE  (또는 cmux 워크스페이스 '$ISSUE')"
   exit 0
 fi
