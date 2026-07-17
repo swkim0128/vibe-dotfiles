@@ -1,0 +1,1224 @@
+- generic [active] [ref=e1]:
+  - region "antigravity.google uses cookies to deliver and enhance the quality of its services and to analyze traffic. If you agree, cookies are also used to serve advertising and to personalize the content and advertisements that you see." [ref=e2]:
+    - paragraph [ref=e3]:
+      - text: antigravity.google uses cookies to deliver and enhance the quality of its services and to analyze traffic. If you agree, cookies are also used to serve advertising and to personalize the content and advertisements that you see.
+      - link "Learn more about how Google uses cookies. Opens in a new tab." [ref=e4] [cursor=pointer]:
+        - /url: https://policies.google.com/technologies/cookies?hl=en
+        - text: Learn more
+    - button "Agree" [ref=e5] [cursor=pointer]
+    - button "No thanks" [ref=e6] [cursor=pointer]
+  - main [ref=e7]:
+    - generic [ref=e10]:
+      - generic [ref=e13]:
+        - link "Google Antigravity" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - img [ref=e16]
+        - generic [ref=e59]:
+          - navigation [ref=e60] [cursor=pointer]:
+            - button "Products" [ref=e63]:
+              - text: Products
+              - generic [ref=e64]: keyboard_arrow_down
+            - button "Use Cases" [ref=e67]:
+              - text: Use Cases
+              - generic [ref=e68]: keyboard_arrow_down
+            - button "Pricing" [expanded] [ref=e71]
+            - button "Blog" [expanded] [ref=e74]
+            - button "Resources" [ref=e77]:
+              - text: Resources
+              - generic [ref=e78]: keyboard_arrow_down
+          - button "Download download" [ref=e80] [cursor=pointer]:
+            - text: Download
+            - generic [ref=e81]: download
+      - generic [ref=e83]:
+        - navigation "Documentation navigation" [ref=e86]:
+          - link "Home" [ref=e88] [cursor=pointer]:
+            - /url: /docs/home
+            - generic [ref=e89]: Home
+          - generic [ref=e91]:
+            - generic [ref=e92] [cursor=pointer]: Antigravity 2.0
+            - generic [ref=e93] [cursor=pointer]: chevron_right
+          - generic [ref=e95]:
+            - generic [ref=e96] [cursor=pointer]: Antigravity CLI
+            - generic [ref=e97] [cursor=pointer]: chevron_right
+          - generic [ref=e99]:
+            - generic [ref=e100] [cursor=pointer]: Antigravity SDK
+            - generic [ref=e101] [cursor=pointer]: chevron_right
+          - generic [ref=e103]:
+            - generic [ref=e104] [cursor=pointer]: Antigravity IDE
+            - generic [ref=e105] [cursor=pointer]: chevron_right
+          - generic [ref=e107]:
+            - generic [ref=e108] [cursor=pointer]: Migration
+            - generic [ref=e109] [cursor=pointer]: chevron_right
+          - link "Enterprise" [ref=e111] [cursor=pointer]:
+            - /url: /docs/enterprise
+            - generic [ref=e112]: Enterprise
+          - link "Plans" [ref=e114] [cursor=pointer]:
+            - /url: /docs/plans
+            - generic [ref=e115]: Plans
+          - link "FAQ" [ref=e117] [cursor=pointer]:
+            - /url: /docs/faq
+            - generic [ref=e118]: FAQ
+        - generic [ref=e119]:
+          - list [ref=e120] [cursor=pointer]:
+            - listitem [ref=e121]: Antigravity 2.0
+            - generic [ref=e122]: ">"
+            - listitem [ref=e123]: Customizations
+            - generic [ref=e124]: ">"
+            - listitem [ref=e125]: Hooks
+          - heading "Hooks Link to section" [level=1] [ref=e127]:
+            - text: Hooks
+            - link "Link to section" [ref=e128] [cursor=pointer]:
+              - /url: "#hooks"
+              - text: link
+          - paragraph [ref=e130]: Hooks allow you to run custom scripts or shell commands at specific points during Antigravity's execution loop. This is powerful for enforcing custom rules, running linters, or capturing diagnostics automatically.
+          - heading "Configuration Link to section" [level=2] [ref=e132]:
+            - text: Configuration
+            - link "Link to section" [ref=e133] [cursor=pointer]:
+              - /url: "#configuration"
+              - text: link
+          - paragraph [ref=e135]:
+            - text: Hooks are configured in a
+            - code [ref=e136]: hooks.json
+            - text: file located in your customization directory (e.g.,
+            - code [ref=e137]: .agents/
+            - text: in your workspace or
+            - code [ref=e138]: ~/.gemini/config/
+            - text: ).
+          - heading "Schema and File Format Link to section" [level=2] [ref=e140]:
+            - text: Schema and File Format
+            - link "Link to section" [ref=e141] [cursor=pointer]:
+              - /url: "#schema-and-file-format"
+              - text: link
+          - paragraph [ref=e143]:
+            - text: The
+            - code [ref=e144]: hooks.json
+            - text: file maps hook names to their event configurations.
+          - generic [ref=e147]:
+            - generic [ref=e149]: json
+            - button "content_copy" [ref=e150] [cursor=pointer]
+            - code [ref=e153]:
+              - text: "{ \"my-linter-hook\": { \"PostToolUse\": [ { \"matcher\": \"run_command\", \"hooks\": [ { \"type\": \"command\", \"command\": \"./scripts/lint.sh\", \"timeout\": 10 } ] } ] }, \"safety-gate\": { \"enabled\":"
+              - generic [ref=e154]: "false"
+              - text: ", \"PreToolUse\": [ { \"matcher\": \"run_command\", \"hooks\": [ { \"command\": \"./scripts/safety-check.sh\" } ] } ] }, \"reminder\": { \"PreInvocation\": [ { \"type\": \"command\", \"command\": \"./scripts/reminder.sh\" } ] } }"
+          - heading "Hook Definition Fields Link to section" [level=3] [ref=e156]:
+            - text: Hook Definition Fields
+            - link "Link to section" [ref=e157] [cursor=pointer]:
+              - /url: "#hook-definition-fields"
+              - text: link
+          - paragraph [ref=e159]:
+            - table [ref=e160]:
+              - rowgroup [ref=e161]:
+                - row "Field Type Description" [ref=e162]:
+                  - columnheader "Field" [ref=e163]
+                  - columnheader "Type" [ref=e164]
+                  - columnheader "Description" [ref=e165]
+              - rowgroup [ref=e166]:
+                - row "enabled boolean Optional. Set to false to disable the hook without removing it. Defaults to true." [ref=e167]:
+                  - cell "enabled" [ref=e168]:
+                    - code [ref=e169]: enabled
+                  - cell "boolean" [ref=e170]
+                  - cell "Optional. Set to false to disable the hook without removing it. Defaults to true." [ref=e171]:
+                    - text: Optional. Set to
+                    - code [ref=e172]: "false"
+                    - text: to disable the hook without removing it. Defaults to
+                    - code [ref=e173]: "true"
+                    - text: .
+                - row "PreToolUse array Handlers that run before a tool is executed." [ref=e174]:
+                  - cell "PreToolUse" [ref=e175]:
+                    - code [ref=e176]: PreToolUse
+                  - cell "array" [ref=e177]
+                  - cell "Handlers that run before a tool is executed." [ref=e178]
+                - row "PostToolUse array Handlers that run after a tool completes." [ref=e179]:
+                  - cell "PostToolUse" [ref=e180]:
+                    - code [ref=e181]: PostToolUse
+                  - cell "array" [ref=e182]
+                  - cell "Handlers that run after a tool completes." [ref=e183]
+                - row "PreInvocation array Handlers that run before Antigravity calls the model." [ref=e184]:
+                  - cell "PreInvocation" [ref=e185]:
+                    - code [ref=e186]: PreInvocation
+                  - cell "array" [ref=e187]
+                  - cell "Handlers that run before Antigravity calls the model." [ref=e188]
+                - row "PostInvocation array Handlers that run after tool calls finish." [ref=e189]:
+                  - cell "PostInvocation" [ref=e190]:
+                    - code [ref=e191]: PostInvocation
+                  - cell "array" [ref=e192]
+                  - cell "Handlers that run after tool calls finish." [ref=e193]
+                - row "Stop array Handlers that run when the execution loop terminates." [ref=e194]:
+                  - cell "Stop" [ref=e195]:
+                    - code [ref=e196]: Stop
+                  - cell "array" [ref=e197]
+                  - cell "Handlers that run when the execution loop terminates." [ref=e198]
+          - heading "Supported Events Link to section" [level=2] [ref=e200]:
+            - text: Supported Events
+            - link "Link to section" [ref=e201] [cursor=pointer]:
+              - /url: "#supported-events"
+              - text: link
+          - paragraph [ref=e203]:
+            - table [ref=e204]:
+              - rowgroup [ref=e205]:
+                - row "Event Description Matcher Target" [ref=e206]:
+                  - columnheader "Event" [ref=e207]
+                  - columnheader "Description" [ref=e208]
+                  - columnheader "Matcher Target" [ref=e209]
+              - rowgroup [ref=e210]:
+                - row "PreToolUse Fires before a tool is executed. Tool name (e.g., run_command)" [ref=e211]:
+                  - cell "PreToolUse" [ref=e212]:
+                    - code [ref=e213]: PreToolUse
+                  - cell "Fires before a tool is executed." [ref=e214]
+                  - cell "Tool name (e.g., run_command)" [ref=e215]:
+                    - text: Tool name (e.g.,
+                    - code [ref=e216]: run_command
+                    - text: )
+                - row "PostToolUse Fires after a tool completes. Tool name" [ref=e217]:
+                  - cell "PostToolUse" [ref=e218]:
+                    - code [ref=e219]: PostToolUse
+                  - cell "Fires after a tool completes." [ref=e220]
+                  - cell "Tool name" [ref=e221]
+                - row "PreInvocation Fires before the model is called. N/A (matcher ignored)" [ref=e222]:
+                  - cell "PreInvocation" [ref=e223]:
+                    - code [ref=e224]: PreInvocation
+                  - cell "Fires before the model is called." [ref=e225]
+                  - cell "N/A (matcher ignored)" [ref=e226]
+                - row "PostInvocation Fires after tool calls finish. N/A (matcher ignored)" [ref=e227]:
+                  - cell "PostInvocation" [ref=e228]:
+                    - code [ref=e229]: PostInvocation
+                  - cell "Fires after tool calls finish." [ref=e230]
+                  - cell "N/A (matcher ignored)" [ref=e231]
+                - row "Stop Fires when execution terminates. N/A (matcher ignored)" [ref=e232]:
+                  - cell "Stop" [ref=e233]:
+                    - code [ref=e234]: Stop
+                  - cell "Fires when execution terminates." [ref=e235]
+                  - cell "N/A (matcher ignored)" [ref=e236]
+          - heading "Matcher Link to section" [level=3] [ref=e238]:
+            - text: Matcher
+            - link "Link to section" [ref=e239] [cursor=pointer]:
+              - /url: "#matcher"
+              - text: link
+          - paragraph [ref=e241]:
+            - text: For
+            - code [ref=e242]: PreToolUse
+            - text: and
+            - code [ref=e243]: PostToolUse
+            - text: ", you can use a regular expression in the"
+            - code [ref=e244]: matcher
+            - text: "field to specify which tools trigger the hook:"
+          - list [ref=e246]:
+            - listitem [ref=e247]:
+              - generic [ref=e248]:
+                - code [ref=e249]: "\"\""
+                - text: or
+                - code [ref=e250]: "\"*\""
+                - text: ": Match all tools."
+            - listitem [ref=e251]:
+              - generic [ref=e252]:
+                - code [ref=e253]: "\"run_command\""
+                - text: ": Match exactly"
+                - code [ref=e254]: run_command
+                - text: .
+            - listitem [ref=e255]:
+              - generic [ref=e256]:
+                - code [ref=e257]: "\"run_command|view_file\""
+                - text: ": Match either tool."
+            - listitem [ref=e258]:
+              - generic [ref=e259]:
+                - code [ref=e260]: "\"browser_.*\""
+                - text: ": Match any tool starting with"
+                - code [ref=e261]: browser_
+                - text: .
+          - generic [ref=e263]:
+            - generic [ref=e264]: info
+            - generic [ref=e265]:
+              - strong [ref=e266]: Note
+              - text: ": For"
+              - code [ref=e267]: PreInvocation
+              - text: ","
+              - code [ref=e268]: PostInvocation
+              - text: ", and"
+              - code [ref=e269]: Stop
+              - text: ", the structure is simpler (a list of handlers directly under the event key) and the matcher is ignored."
+          - heading "Supported Tools Link to section" [level=2] [ref=e271]:
+            - text: Supported Tools
+            - link "Link to section" [ref=e272] [cursor=pointer]:
+              - /url: "#supported-tools"
+              - text: link
+          - paragraph [ref=e274]:
+            - text: For
+            - code [ref=e275]: PreToolUse
+            - text: and
+            - code [ref=e276]: PostToolUse
+            - text: "matchers, you can match against the following tool names, grouped by category:"
+          - heading "File and Directory Operations Link to section" [level=3] [ref=e278]:
+            - text: File and Directory Operations
+            - link "Link to section" [ref=e279] [cursor=pointer]:
+              - /url: "#file-and-directory-operations"
+              - text: link
+          - list [ref=e281]:
+            - listitem [ref=e282]:
+              - generic [ref=e283]:
+                - strong [ref=e284]:
+                  - code [ref=e285]: view_file
+                - text: ":"
+              - text: View the contents of a file.
+            - listitem [ref=e286]:
+              - generic [ref=e287]:
+                - text: "Arguments:"
+                - code [ref=e288]: AbsolutePath
+                - text: ","
+                - code [ref=e289]: StartLine
+                - text: (optional),
+                - code [ref=e290]: EndLine
+                - text: (optional),
+                - code [ref=e291]: IsSkillFile
+                - text: (optional)
+            - listitem [ref=e292]:
+              - generic [ref=e293]:
+                - strong [ref=e294]:
+                  - code [ref=e295]: write_to_file
+                - text: ":"
+              - text: Create new files.
+            - listitem [ref=e296]:
+              - generic [ref=e297]:
+                - text: "Arguments:"
+                - code [ref=e298]: TargetFile
+                - text: ","
+                - code [ref=e299]: Overwrite
+                - text: ","
+                - code [ref=e300]: CodeContent
+                - text: ","
+                - code [ref=e301]: Description
+                - text: ","
+                - code [ref=e302]: IsArtifact
+                - text: (optional),
+                - code [ref=e303]: ArtifactMetadata
+                - text: (optional)
+            - listitem [ref=e304]:
+              - generic [ref=e305]:
+                - strong [ref=e306]:
+                  - code [ref=e307]: replace_file_content
+                - text: ":"
+              - text: Edit a single contiguous block of text in a file.
+            - listitem [ref=e308]:
+              - generic [ref=e309]:
+                - text: "Arguments:"
+                - code [ref=e310]: TargetFile
+                - text: ","
+                - code [ref=e311]: Instruction
+                - text: ","
+                - code [ref=e312]: Description
+                - text: ","
+                - code [ref=e313]: AllowMultiple
+                - text: ","
+                - code [ref=e314]: TargetContent
+                - text: ","
+                - code [ref=e315]: ReplacementContent
+                - text: ","
+                - code [ref=e316]: StartLine
+                - text: ","
+                - code [ref=e317]: EndLine
+                - text: ","
+                - code [ref=e318]: TargetLintErrorIds
+                - text: (optional)
+            - listitem [ref=e319]:
+              - generic [ref=e320]:
+                - strong [ref=e321]:
+                  - code [ref=e322]: multi_replace_file_content
+                - text: ":"
+              - text: Make multiple, non-contiguous edits to the same file.
+            - listitem [ref=e323]:
+              - generic [ref=e324]:
+                - text: "Arguments:"
+                - code [ref=e325]: TargetFile
+                - text: ","
+                - code [ref=e326]: Instruction
+                - text: ","
+                - code [ref=e327]: Description
+                - text: ","
+                - code [ref=e328]: ReplacementChunks
+                - text: (array of chunks),
+                - code [ref=e329]: TargetLintErrorIds
+                - text: (optional),
+                - code [ref=e330]: ArtifactMetadata
+                - text: (optional)
+            - listitem [ref=e331]:
+              - generic [ref=e332]:
+                - strong [ref=e333]:
+                  - code [ref=e334]: list_dir
+                - text: ":"
+              - text: List the contents of a directory.
+            - listitem [ref=e335]:
+              - generic [ref=e336]:
+                - text: "Arguments:"
+                - code [ref=e337]: DirectoryPath
+            - listitem [ref=e338]:
+              - generic [ref=e339]:
+                - strong [ref=e340]:
+                  - code [ref=e341]: find_by_name
+                - text: ":"
+              - text: Search for files and directories using glob patterns.
+            - listitem [ref=e342]:
+              - generic [ref=e343]:
+                - text: "Arguments:"
+                - code [ref=e344]: SearchDirectory
+                - text: ","
+                - code [ref=e345]: Pattern
+                - text: ","
+                - code [ref=e346]: Type
+                - text: (optional),
+                - code [ref=e347]: Excludes
+                - text: (optional),
+                - code [ref=e348]: Extensions
+                - text: (optional),
+                - code [ref=e349]: FullPath
+                - text: (optional),
+                - code [ref=e350]: MaxDepth
+                - text: (optional)
+          - heading "Search and Research Link to section" [level=3] [ref=e352]:
+            - text: Search and Research
+            - link "Link to section" [ref=e353] [cursor=pointer]:
+              - /url: "#search-and-research"
+              - text: link
+          - list [ref=e355]:
+            - listitem [ref=e356]:
+              - generic [ref=e357]:
+                - strong [ref=e358]:
+                  - code [ref=e359]: grep_search
+                - text: ":"
+              - text: Fast text searches within specific paths.
+            - listitem [ref=e360]:
+              - generic [ref=e361]:
+                - text: "Arguments:"
+                - code [ref=e362]: SearchPath
+                - text: ","
+                - code [ref=e363]: Query
+                - text: ","
+                - code [ref=e364]: IsRegex
+                - text: (optional),
+                - code [ref=e365]: CaseInsensitive
+                - text: (optional),
+                - code [ref=e366]: Includes
+                - text: (optional),
+                - code [ref=e367]: MatchPerLine
+                - text: (optional)
+            - listitem [ref=e368]:
+              - generic [ref=e369]:
+                - strong [ref=e370]:
+                  - code [ref=e371]: search_web
+                - text: ":"
+              - text: Perform a general web search.
+            - listitem [ref=e372]:
+              - generic [ref=e373]:
+                - text: "Arguments:"
+                - code [ref=e374]: query
+                - text: ","
+                - code [ref=e375]: domain
+                - text: (optional)
+            - listitem [ref=e376]:
+              - generic [ref=e377]:
+                - strong [ref=e378]:
+                  - code [ref=e379]: read_url_content
+                - text: ":"
+              - text: Fetch text content of a public URL.
+            - listitem [ref=e380]:
+              - generic [ref=e381]:
+                - text: "Arguments:"
+                - code [ref=e382]: Url
+          - heading "System and Execution Link to section" [level=3] [ref=e384]:
+            - text: System and Execution
+            - link "Link to section" [ref=e385] [cursor=pointer]:
+              - /url: "#system-and-execution"
+              - text: link
+          - list [ref=e387]:
+            - listitem [ref=e388]:
+              - generic [ref=e389]:
+                - strong [ref=e390]:
+                  - code [ref=e391]: run_command
+                - text: ":"
+              - text: Propose a bash command to run.
+            - listitem [ref=e392]:
+              - generic [ref=e393]:
+                - text: "Arguments:"
+                - code [ref=e394]: CommandLine
+                - text: ","
+                - code [ref=e395]: Cwd
+                - text: ","
+                - code [ref=e396]: WaitMsBeforeAsync
+                - text: ","
+                - code [ref=e397]: RunPersistent
+                - text: (optional),
+                - code [ref=e398]: RequestedTerminalID
+                - text: (optional)
+            - listitem [ref=e399]:
+              - generic [ref=e400]:
+                - strong [ref=e401]:
+                  - code [ref=e402]: manage_task
+                - text: ":"
+              - text: Interact with background tasks.
+            - listitem [ref=e403]:
+              - generic [ref=e404]:
+                - text: "Arguments:"
+                - code [ref=e405]: Action
+                - text: (
+                - code [ref=e406]: "'list'"
+                - text: ","
+                - code [ref=e407]: "'kill'"
+                - text: ","
+                - code [ref=e408]: "'status'"
+                - text: ","
+                - code [ref=e409]: "'send_input'"
+                - text: ),
+                - code [ref=e410]: TaskId
+                - text: (optional),
+                - code [ref=e411]: Input
+                - text: (optional)
+            - listitem [ref=e412]:
+              - generic [ref=e413]:
+                - strong [ref=e414]:
+                  - code [ref=e415]: schedule
+                - text: ":"
+              - text: Set timers or recurring cron jobs.
+            - listitem [ref=e416]:
+              - generic [ref=e417]:
+                - text: "Arguments:"
+                - code [ref=e418]: DurationSeconds
+                - text: (optional),
+                - code [ref=e419]: CronExpression
+                - text: (optional),
+                - code [ref=e420]: MaxIterations
+                - text: (optional),
+                - code [ref=e421]: Prompt
+            - listitem [ref=e422]:
+              - generic [ref=e423]:
+                - strong [ref=e424]:
+                  - code [ref=e425]: list_permissions
+                - text: ":"
+              - text: View current resource access grants.
+            - listitem [ref=e426]: "Arguments: None"
+            - listitem [ref=e427]:
+              - generic [ref=e428]:
+                - strong [ref=e429]:
+                  - code [ref=e430]: ask_permission
+                - text: ":"
+              - text: Request additional scoped permissions.
+            - listitem [ref=e431]:
+              - generic [ref=e432]:
+                - text: "Arguments:"
+                - code [ref=e433]: Action
+                - text: ","
+                - code [ref=e434]: Target
+                - text: ","
+                - code [ref=e435]: Reason
+          - heading "Agent Collaboration Link to section" [level=3] [ref=e437]:
+            - text: Agent Collaboration
+            - link "Link to section" [ref=e438] [cursor=pointer]:
+              - /url: "#agent-collaboration"
+              - text: link
+          - list [ref=e440]:
+            - listitem [ref=e441]:
+              - generic [ref=e442]:
+                - strong [ref=e443]:
+                  - code [ref=e444]: invoke_subagent
+                - text: ":"
+              - text: Spawn specialized sub-agents.
+            - listitem [ref=e445]:
+              - generic [ref=e446]:
+                - text: "Arguments:"
+                - code [ref=e447]: Subagents
+                - text: (array of specs with
+                - code [ref=e448]: Prompt
+                - text: ","
+                - code [ref=e449]: Role
+                - text: ","
+                - code [ref=e450]: TypeName
+                - text: ","
+                - code [ref=e451]: Workspace
+                - text: (optional))
+            - listitem [ref=e452]:
+              - generic [ref=e453]:
+                - strong [ref=e454]:
+                  - code [ref=e455]: define_subagent
+                - text: ":"
+              - text: Create a custom sub-agent.
+            - listitem [ref=e456]:
+              - generic [ref=e457]:
+                - text: "Arguments:"
+                - code [ref=e458]: name
+                - text: ","
+                - code [ref=e459]: description
+                - text: ","
+                - code [ref=e460]: system_prompt
+                - text: ","
+                - code [ref=e461]: enable_mcp_tools
+                - text: (optional),
+                - code [ref=e462]: enable_write_tools
+                - text: (optional),
+                - code [ref=e463]: enable_subagent_tools
+                - text: (optional)
+            - listitem [ref=e464]:
+              - generic [ref=e465]:
+                - strong [ref=e466]:
+                  - code [ref=e467]: send_message
+                - text: ":"
+              - text: Communicate with other agents.
+            - listitem [ref=e468]:
+              - generic [ref=e469]:
+                - text: "Arguments:"
+                - code [ref=e470]: Recipient
+                - text: ","
+                - code [ref=e471]: Message
+            - listitem [ref=e472]:
+              - generic [ref=e473]:
+                - strong [ref=e474]:
+                  - code [ref=e475]: manage_subagents
+                - text: ":"
+              - text: List or terminate active sub-agents.
+            - listitem [ref=e476]:
+              - generic [ref=e477]:
+                - text: "Arguments:"
+                - code [ref=e478]: Action
+                - text: (
+                - code [ref=e479]: "'list'"
+                - text: ","
+                - code [ref=e480]: "'kill'"
+                - text: ","
+                - code [ref=e481]: "'kill_all'"
+                - text: ),
+                - code [ref=e482]: ConversationIds
+                - text: (optional)
+          - heading "Interaction and Media Link to section" [level=3] [ref=e484]:
+            - text: Interaction and Media
+            - link "Link to section" [ref=e485] [cursor=pointer]:
+              - /url: "#interaction-and-media"
+              - text: link
+          - list [ref=e487]:
+            - listitem [ref=e488]:
+              - generic [ref=e489]:
+                - strong [ref=e490]:
+                  - code [ref=e491]: ask_question
+                - text: ":"
+              - text: Ask multiple-choice questions.
+            - listitem [ref=e492]:
+              - generic [ref=e493]:
+                - text: "Arguments:"
+                - code [ref=e494]: questions
+                - text: (array of questions with
+                - code [ref=e495]: question
+                - text: ","
+                - code [ref=e496]: options
+                - text: ","
+                - code [ref=e497]: is_multi_select
+                - text: )
+            - listitem [ref=e498]:
+              - generic [ref=e499]:
+                - strong [ref=e500]:
+                  - code [ref=e501]: generate_image
+                - text: ":"
+              - text: Create or edit images.
+            - listitem [ref=e502]:
+              - generic [ref=e503]:
+                - text: "Arguments:"
+                - code [ref=e504]: Prompt
+                - text: ","
+                - code [ref=e505]: ImageName
+                - text: ","
+                - code [ref=e506]: ImagePaths
+                - text: (optional)
+          - heading "Hook Handler Configuration Link to section" [level=2] [ref=e508]:
+            - text: Hook Handler Configuration
+            - link "Link to section" [ref=e509] [cursor=pointer]:
+              - /url: "#hook-handler-configuration"
+              - text: link
+          - paragraph [ref=e511]:
+            - text: Each item in the
+            - code [ref=e512]: hooks
+            - text: "array supports:"
+          - paragraph [ref=e514]:
+            - table [ref=e515]:
+              - rowgroup [ref=e516]:
+                - row "Field Type Description" [ref=e517]:
+                  - columnheader "Field" [ref=e518]
+                  - columnheader "Type" [ref=e519]
+                  - columnheader "Description" [ref=e520]
+              - rowgroup [ref=e521]:
+                - row "type string Optional. Currently only \"command\" is supported. Defaults to \"command\"." [ref=e522]:
+                  - cell "type" [ref=e523]:
+                    - code [ref=e524]: type
+                  - cell "string" [ref=e525]
+                  - cell "Optional. Currently only \"command\" is supported. Defaults to \"command\"." [ref=e526]:
+                    - text: Optional. Currently only
+                    - code [ref=e527]: "\"command\""
+                    - text: is supported. Defaults to
+                    - code [ref=e528]: "\"command\""
+                    - text: .
+                - row "command string Required. The shell command to execute." [ref=e529]:
+                  - cell "command" [ref=e530]:
+                    - code [ref=e531]: command
+                  - cell "string" [ref=e532]
+                  - cell "Required. The shell command to execute." [ref=e533]
+                - row "timeout integer Optional. Timeout in seconds. Defaults to 30." [ref=e534]:
+                  - cell "timeout" [ref=e535]:
+                    - code [ref=e536]: timeout
+                  - cell "integer" [ref=e537]
+                  - cell "Optional. Timeout in seconds. Defaults to 30." [ref=e538]:
+                    - text: Optional. Timeout in seconds. Defaults to
+                    - code [ref=e539]: "30"
+                    - text: .
+          - heading "Input/Output Contract Link to section" [level=2] [ref=e541]:
+            - text: Input/Output Contract
+            - link "Link to section" [ref=e542] [cursor=pointer]:
+              - /url: "#inputoutput-contract"
+              - text: link
+          - paragraph [ref=e544]:
+            - text: Hooks receive input via
+            - strong [ref=e545]: stdin
+            - text: as JSON and should return output via
+            - strong [ref=e546]: stdout
+            - text: as JSON. Field names use camelCase.
+          - heading "Common Input Fields Link to section" [level=3] [ref=e548]:
+            - text: Common Input Fields
+            - link "Link to section" [ref=e549] [cursor=pointer]:
+              - /url: "#common-input-fields"
+              - text: link
+          - paragraph [ref=e551]:
+            - text: All hooks receive the following system metadata fields in their input payload on
+            - code [ref=e552]: stdin
+            - text: ":"
+          - paragraph [ref=e554]:
+            - table [ref=e555]:
+              - rowgroup [ref=e556]:
+                - row "Field Type Description" [ref=e557]:
+                  - columnheader "Field" [ref=e558]
+                  - columnheader "Type" [ref=e559]
+                  - columnheader "Description" [ref=e560]
+              - rowgroup [ref=e561]:
+                - row "conversationId string The unique UUID of the active agent conversation." [ref=e562]:
+                  - cell "conversationId" [ref=e563]:
+                    - code [ref=e564]: conversationId
+                  - cell "string" [ref=e565]
+                  - cell "The unique UUID of the active agent conversation." [ref=e566]
+                - row "workspacePaths array of strings Absolute directory paths representing the user's mounted workspaces." [ref=e567]:
+                  - cell "workspacePaths" [ref=e568]:
+                    - code [ref=e569]: workspacePaths
+                  - cell "array of strings" [ref=e570]
+                  - cell "Absolute directory paths representing the user's mounted workspaces." [ref=e571]
+                - 'row "transcriptPath string The absolute path to the persistent transcript.jsonl conversation logs. Note: This file lives in: <app_data_dir>/brain/<conversationId>/.system_generated/logs/transcript.jsonl where <app_data_dir> is: ~/.gemini/antigravity for Antigravity 2.0 ~/.gemini/antigravity-cli for CLI" [ref=e572]':
+                  - cell "transcriptPath" [ref=e573]:
+                    - code [ref=e574]: transcriptPath
+                  - cell "string" [ref=e575]
+                  - 'cell "The absolute path to the persistent transcript.jsonl conversation logs. Note: This file lives in: <app_data_dir>/brain/<conversationId>/.system_generated/logs/transcript.jsonl where <app_data_dir> is: ~/.gemini/antigravity for Antigravity 2.0 ~/.gemini/antigravity-cli for CLI" [ref=e576]':
+                    - text: The absolute path to the persistent
+                    - code [ref=e577]: transcript.jsonl
+                    - text: conversation logs.
+                    - strong [ref=e578]: Note
+                    - text: ": This file lives in:"
+                    - code [ref=e579]: <app_data_dir>/brain/<conversationId>/.system_generated/logs/transcript.jsonl
+                    - text: where
+                    - code [ref=e580]: <app_data_dir>
+                    - text: "is:"
+                    - list [ref=e581]:
+                      - listitem [ref=e582]:
+                        - code [ref=e583]: ~/.gemini/antigravity
+                        - text: for Antigravity 2.0
+                      - listitem [ref=e584]:
+                        - code [ref=e585]: ~/.gemini/antigravity-cli
+                        - text: for CLI
+                - row "artifactDirectoryPath string The absolute path to the directory containing all conversation artifacts and screenshots." [ref=e586]:
+                  - cell "artifactDirectoryPath" [ref=e587]:
+                    - code [ref=e588]: artifactDirectoryPath
+                  - cell "string" [ref=e589]
+                  - cell "The absolute path to the directory containing all conversation artifacts and screenshots." [ref=e590]
+          - paragraph [ref=e592]: "---"
+          - heading "PreToolUse Link to section" [level=3] [ref=e594]:
+            - text: PreToolUse
+            - link "Link to section" [ref=e595] [cursor=pointer]:
+              - /url: "#pretooluse"
+              - text: link
+          - paragraph [ref=e597]: Fires before a tool is executed.
+          - paragraph [ref=e599]:
+            - strong [ref=e600]: Schema
+          - paragraph [ref=e602]:
+            - strong [ref=e603]: Input Fields (stdin)
+            - text: ":"
+          - paragraph [ref=e605]:
+            - table [ref=e606]:
+              - rowgroup [ref=e607]:
+                - row "Field Type Description" [ref=e608]:
+                  - columnheader "Field" [ref=e609]
+                  - columnheader "Type" [ref=e610]
+                  - columnheader "Description" [ref=e611]
+              - rowgroup [ref=e612]:
+                - row "toolCall object Details of the proposed tool call." [ref=e613]:
+                  - cell "toolCall" [ref=e614]:
+                    - code [ref=e615]: toolCall
+                  - cell "object" [ref=e616]
+                  - cell "Details of the proposed tool call." [ref=e617]
+                - row "toolCall.name string The name of the tool being executed (e.g., run_command)." [ref=e618]:
+                  - cell "toolCall.name" [ref=e619]:
+                    - code [ref=e620]: toolCall.name
+                  - cell "string" [ref=e621]
+                  - cell "The name of the tool being executed (e.g., run_command)." [ref=e622]:
+                    - text: The name of the tool being executed (e.g.,
+                    - code [ref=e623]: run_command
+                    - text: ).
+                - row "toolCall.args object The arguments passed to the tool." [ref=e624]:
+                  - cell "toolCall.args" [ref=e625]:
+                    - code [ref=e626]: toolCall.args
+                  - cell "object" [ref=e627]
+                  - cell "The arguments passed to the tool." [ref=e628]
+                - row "stepIdx integer The 0-based index of the current step in the trajectory." [ref=e629]:
+                  - cell "stepIdx" [ref=e630]:
+                    - code [ref=e631]: stepIdx
+                  - cell "integer" [ref=e632]
+                  - cell "The 0-based index of the current step in the trajectory." [ref=e633]
+                - row "(Common Fields) Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e634]:
+                  - cell "(Common Fields)" [ref=e635]:
+                    - emphasis [ref=e636]: (Common Fields)
+                  - cell "Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e637]:
+                    - text: Includes
+                    - code [ref=e638]: conversationId
+                    - text: ","
+                    - code [ref=e639]: workspacePaths
+                    - text: ","
+                    - code [ref=e640]: transcriptPath
+                    - text: ","
+                    - code [ref=e641]: artifactDirectoryPath
+                    - text: .
+          - paragraph [ref=e643]:
+            - strong [ref=e644]: Output Fields (stdout)
+            - text: ":"
+          - paragraph [ref=e646]:
+            - table [ref=e647]:
+              - rowgroup [ref=e648]:
+                - row "Field Type Description" [ref=e649]:
+                  - columnheader "Field" [ref=e650]
+                  - columnheader "Type" [ref=e651]
+                  - columnheader "Description" [ref=e652]
+              - rowgroup [ref=e653]:
+                - 'row "decision string Required. Controls how the tool call is gated: - \"allow\": Automatically allows the tool execution. - \"deny\": Hard blocks execution immediately. - \"ask\": Prompts the user, but respects \"Always Allow\" settings. - \"force_ask\": Always prompts the user, ignoring cached permissions." [ref=e654]':
+                  - cell "decision" [ref=e655]:
+                    - code [ref=e656]: decision
+                  - cell "string" [ref=e657]
+                  - 'cell "Required. Controls how the tool call is gated: - \"allow\": Automatically allows the tool execution. - \"deny\": Hard blocks execution immediately. - \"ask\": Prompts the user, but respects \"Always Allow\" settings. - \"force_ask\": Always prompts the user, ignoring cached permissions." [ref=e658]':
+                    - strong [ref=e659]: Required.
+                    - text: "Controls how the tool call is gated:"
+                    - text: "-"
+                    - code [ref=e660]: "\"allow\""
+                    - text: ": Automatically allows the tool execution."
+                    - text: "-"
+                    - code [ref=e661]: "\"deny\""
+                    - text: ": Hard blocks execution immediately."
+                    - text: "-"
+                    - code [ref=e662]: "\"ask\""
+                    - text: ": Prompts the user, but respects \"Always Allow\" settings."
+                    - text: "-"
+                    - code [ref=e663]: "\"force_ask\""
+                    - text: ": Always prompts the user, ignoring cached permissions."
+                - row "reason string Optional. The explanation shown to the agent or user for the decision." [ref=e664]:
+                  - cell "reason" [ref=e665]:
+                    - code [ref=e666]: reason
+                  - cell "string" [ref=e667]
+                  - cell "Optional. The explanation shown to the agent or user for the decision." [ref=e668]:
+                    - strong [ref=e669]: Optional.
+                    - text: The explanation shown to the agent or user for the decision.
+                - row "permissionOverrides array of strings Optional. A list of resource strings (e.g. [\"read_file(/path)\", \"command(args)\"]) to override default tool permissions." [ref=e670]:
+                  - cell "permissionOverrides" [ref=e671]:
+                    - code [ref=e672]: permissionOverrides
+                  - cell "array of strings" [ref=e673]
+                  - cell "Optional. A list of resource strings (e.g. [\"read_file(/path)\", \"command(args)\"]) to override default tool permissions." [ref=e674]:
+                    - strong [ref=e675]: Optional.
+                    - text: A list of resource strings (e.g.
+                    - code [ref=e676]: "[\"read_file(/path)\", \"command(args)\"]"
+                    - text: ) to override default tool permissions.
+          - paragraph [ref=e678]:
+            - strong [ref=e679]: Example
+          - list [ref=e681]:
+            - listitem [ref=e682]:
+              - generic [ref=e683]:
+                - strong [ref=e684]: Input (stdin)
+                - text: ":"
+          - generic [ref=e687]:
+            - generic [ref=e689]: json
+            - button "content_copy" [ref=e690] [cursor=pointer]
+            - code [ref=e693]: "{ \"toolCall\": { \"name\": \"run_command\", \"args\": { \"CommandLine\": \"npm test\", \"Cwd\": \"/workspace/project\", \"WaitMsBeforeAsync\": 5000 } }, \"stepIdx\": 19, \"conversationId\": \"ec33ebf9-0cba-4100-8142-c61503f6c587\", \"workspacePaths\": [ \"/workspace/project\" ], \"transcriptPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587/.system_generated/logs/transcript.jsonl\", \"artifactDirectoryPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587\" }"
+          - list [ref=e695]:
+            - listitem [ref=e696]:
+              - generic [ref=e697]:
+                - strong [ref=e698]: Output (stdout)
+                - text: ":"
+          - generic [ref=e701]:
+            - generic [ref=e703]: json
+            - button "content_copy" [ref=e704] [cursor=pointer]
+            - code [ref=e707]: "{ \"decision\": \"ask\", \"reason\": \"Requires confirmation for test execution.\", \"permissionOverrides\": [ \"command(npm test)\" ] }"
+          - paragraph [ref=e709]: "---"
+          - heading "PostToolUse Link to section" [level=3] [ref=e711]:
+            - text: PostToolUse
+            - link "Link to section" [ref=e712] [cursor=pointer]:
+              - /url: "#posttooluse"
+              - text: link
+          - paragraph [ref=e714]: Fires after a tool completes.
+          - paragraph [ref=e716]:
+            - strong [ref=e717]: Schema
+          - paragraph [ref=e719]:
+            - strong [ref=e720]: Input Fields (stdin)
+            - text: ":"
+          - paragraph [ref=e722]:
+            - table [ref=e723]:
+              - rowgroup [ref=e724]:
+                - row "Field Type Description" [ref=e725]:
+                  - columnheader "Field" [ref=e726]
+                  - columnheader "Type" [ref=e727]
+                  - columnheader "Description" [ref=e728]
+              - rowgroup [ref=e729]:
+                - row "stepIdx integer The 0-based index of the completed step." [ref=e730]:
+                  - cell "stepIdx" [ref=e731]:
+                    - code [ref=e732]: stepIdx
+                  - cell "integer" [ref=e733]
+                  - cell "The 0-based index of the completed step." [ref=e734]
+                - row "error string Optional. The detailed runtime error message if the tool call failed. Empty if successful." [ref=e735]:
+                  - cell "error" [ref=e736]:
+                    - code [ref=e737]: error
+                  - cell "string" [ref=e738]
+                  - cell "Optional. The detailed runtime error message if the tool call failed. Empty if successful." [ref=e739]
+                - row "(Common Fields) Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e740]:
+                  - cell "(Common Fields)" [ref=e741]:
+                    - emphasis [ref=e742]: (Common Fields)
+                  - cell "Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e743]:
+                    - text: Includes
+                    - code [ref=e744]: conversationId
+                    - text: ","
+                    - code [ref=e745]: workspacePaths
+                    - text: ","
+                    - code [ref=e746]: transcriptPath
+                    - text: ","
+                    - code [ref=e747]: artifactDirectoryPath
+                    - text: .
+          - paragraph [ref=e749]:
+            - strong [ref=e750]: Output Fields (stdout)
+            - text: ": Returns an empty JSON object"
+            - code [ref=e751]: "{}"
+            - text: .
+          - paragraph [ref=e753]:
+            - strong [ref=e754]: Example
+          - list [ref=e756]:
+            - listitem [ref=e757]:
+              - generic [ref=e758]:
+                - strong [ref=e759]: Input (stdin)
+                - text: ":"
+          - generic [ref=e762]:
+            - generic [ref=e764]: json
+            - button "content_copy" [ref=e765] [cursor=pointer]
+            - code [ref=e768]: "{ \"stepIdx\": 5, \"error\": \"exit status 1\", \"conversationId\": \"ec33ebf9-0cba-4100-8142-c61503f6c587\", \"workspacePaths\": [ \"/workspace/project\" ], \"transcriptPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587/.system_generated/logs/transcript.jsonl\", \"artifactDirectoryPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587\" }"
+          - list [ref=e770]:
+            - listitem [ref=e771]:
+              - generic [ref=e772]:
+                - strong [ref=e773]: Output (stdout)
+                - text: ":"
+              - code [ref=e775]: "{}"
+          - paragraph [ref=e777]: "---"
+          - heading "PreInvocation Link to section" [level=3] [ref=e779]:
+            - text: PreInvocation
+            - link "Link to section" [ref=e780] [cursor=pointer]:
+              - /url: "#preinvocation"
+              - text: link
+          - paragraph [ref=e782]: Fires before the model is called.
+          - paragraph [ref=e784]:
+            - strong [ref=e785]: Schema
+          - paragraph [ref=e787]:
+            - strong [ref=e788]: Input Fields (stdin)
+            - text: ":"
+          - paragraph [ref=e790]:
+            - table [ref=e791]:
+              - rowgroup [ref=e792]:
+                - row "Field Type Description" [ref=e793]:
+                  - columnheader "Field" [ref=e794]
+                  - columnheader "Type" [ref=e795]
+                  - columnheader "Description" [ref=e796]
+              - rowgroup [ref=e797]:
+                - row "invocationNum integer The 0-indexed sequence number of the current model invocation (the first invocation is 0)." [ref=e798]:
+                  - cell "invocationNum" [ref=e799]:
+                    - code [ref=e800]: invocationNum
+                  - cell "integer" [ref=e801]
+                  - cell "The 0-indexed sequence number of the current model invocation (the first invocation is 0)." [ref=e802]
+                - row "initialNumSteps integer The number of steps currently in the trajectory." [ref=e803]:
+                  - cell "initialNumSteps" [ref=e804]:
+                    - code [ref=e805]: initialNumSteps
+                  - cell "integer" [ref=e806]
+                  - cell "The number of steps currently in the trajectory." [ref=e807]
+                - row "(Common Fields) Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e808]:
+                  - cell "(Common Fields)" [ref=e809]:
+                    - emphasis [ref=e810]: (Common Fields)
+                  - cell "Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e811]:
+                    - text: Includes
+                    - code [ref=e812]: conversationId
+                    - text: ","
+                    - code [ref=e813]: workspacePaths
+                    - text: ","
+                    - code [ref=e814]: transcriptPath
+                    - text: ","
+                    - code [ref=e815]: artifactDirectoryPath
+                    - text: .
+          - paragraph [ref=e817]:
+            - strong [ref=e818]: Output Fields (stdout)
+            - text: ":"
+          - paragraph [ref=e820]:
+            - table [ref=e821]:
+              - rowgroup [ref=e822]:
+                - row "Field Type Description" [ref=e823]:
+                  - columnheader "Field" [ref=e824]
+                  - columnheader "Type" [ref=e825]
+                  - columnheader "Description" [ref=e826]
+              - rowgroup [ref=e827]:
+                - row "injectSteps array of objects Optional. List of steps to inject into the conversation trajectory before the model is called." [ref=e828]:
+                  - cell "injectSteps" [ref=e829]:
+                    - code [ref=e830]: injectSteps
+                  - cell "array of objects" [ref=e831]
+                  - cell "Optional. List of steps to inject into the conversation trajectory before the model is called." [ref=e832]:
+                    - strong [ref=e833]: Optional.
+                    - text: List of steps to inject into the conversation trajectory before the model is called.
+          - paragraph [ref=e835]:
+            - emphasis [ref=e836]: Injected Step Schema
+            - text: ": Each object in the"
+            - code [ref=e837]: injectSteps
+            - text: "array can have one of the following fields:"
+          - list [ref=e839]:
+            - listitem [ref=e840]:
+              - generic [ref=e841]:
+                - code [ref=e842]: toolCall
+                - text: "(object): A tool call to execute."
+            - listitem [ref=e843]:
+              - generic [ref=e844]:
+                - code [ref=e845]: userMessage
+                - text: "(string): A message from the user."
+            - listitem [ref=e846]:
+              - generic [ref=e847]:
+                - code [ref=e848]: ephemeralMessage
+                - text: "(string): A transient system message."
+          - paragraph [ref=e850]:
+            - strong [ref=e851]: Example
+          - list [ref=e853]:
+            - listitem [ref=e854]:
+              - generic [ref=e855]:
+                - strong [ref=e856]: Input (stdin)
+                - text: ":"
+          - generic [ref=e859]:
+            - generic [ref=e861]: json
+            - button "content_copy" [ref=e862] [cursor=pointer]
+            - code [ref=e865]: "{ \"invocationNum\": 3, \"initialNumSteps\": 10, \"conversationId\": \"ec33ebf9-0cba-4100-8142-c61503f6c587\", \"workspacePaths\": [ \"/workspace/project\" ], \"transcriptPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587/.system_generated/logs/transcript.jsonl\", \"artifactDirectoryPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587\" }"
+          - list [ref=e867]:
+            - listitem [ref=e868]:
+              - generic [ref=e869]:
+                - strong [ref=e870]: Output (stdout)
+                - text: ":"
+          - generic [ref=e873]:
+            - generic [ref=e875]: json
+            - button "content_copy" [ref=e876] [cursor=pointer]
+            - code [ref=e879]: "{ \"injectSteps\": [ { \"ephemeralMessage\": \"Remember to lint\" } ] }"
+          - paragraph [ref=e881]: "---"
+          - heading "PostInvocation Link to section" [level=3] [ref=e883]:
+            - text: PostInvocation
+            - link "Link to section" [ref=e884] [cursor=pointer]:
+              - /url: "#postinvocation"
+              - text: link
+          - paragraph [ref=e886]: Fires after tool calls finish.
+          - paragraph [ref=e888]:
+            - strong [ref=e889]: Schema
+          - paragraph [ref=e891]:
+            - strong [ref=e892]: Input Fields (stdin)
+            - text: ": Same as"
+            - code [ref=e893]: PreInvocation
+            - text: input fields.
+          - paragraph [ref=e895]:
+            - strong [ref=e896]: Output Fields (stdout)
+            - text: ":"
+          - paragraph [ref=e898]:
+            - table [ref=e899]:
+              - rowgroup [ref=e900]:
+                - row "Field Type Description" [ref=e901]:
+                  - columnheader "Field" [ref=e902]
+                  - columnheader "Type" [ref=e903]
+                  - columnheader "Description" [ref=e904]
+              - rowgroup [ref=e905]:
+                - row "injectSteps array of objects Optional. List of steps to inject after the invocation completes (same schema as PreInvocation inject steps)." [ref=e906]:
+                  - cell "injectSteps" [ref=e907]:
+                    - code [ref=e908]: injectSteps
+                  - cell "array of objects" [ref=e909]
+                  - cell "Optional. List of steps to inject after the invocation completes (same schema as PreInvocation inject steps)." [ref=e910]:
+                    - strong [ref=e911]: Optional.
+                    - text: List of steps to inject after the invocation completes (same schema as
+                    - code [ref=e912]: PreInvocation
+                    - text: inject steps).
+                - 'row "terminationBehavior string Optional. Controls the execution flow after injection: - \"force_continue\": Forces the loop to continue. - \"terminate\": Forces the loop to terminate. - \"\" (or omitted): Default behavior." [ref=e913]':
+                  - cell "terminationBehavior" [ref=e914]:
+                    - code [ref=e915]: terminationBehavior
+                  - cell "string" [ref=e916]
+                  - 'cell "Optional. Controls the execution flow after injection: - \"force_continue\": Forces the loop to continue. - \"terminate\": Forces the loop to terminate. - \"\" (or omitted): Default behavior." [ref=e917]':
+                    - strong [ref=e918]: Optional.
+                    - text: "Controls the execution flow after injection:"
+                    - text: "-"
+                    - code [ref=e919]: "\"force_continue\""
+                    - text: ": Forces the loop to continue."
+                    - text: "-"
+                    - code [ref=e920]: "\"terminate\""
+                    - text: ": Forces the loop to terminate."
+                    - text: "-"
+                    - code [ref=e921]: "\"\""
+                    - text: "(or omitted): Default behavior."
+          - paragraph [ref=e923]:
+            - strong [ref=e924]: Example
+          - list [ref=e926]:
+            - listitem [ref=e927]:
+              - generic [ref=e928]:
+                - strong [ref=e929]: Input (stdin)
+                - text: ":"
+              - generic [ref=e930]:
+                - text: Same as
+                - code [ref=e931]: PreInvocation
+            - listitem [ref=e932]:
+              - generic [ref=e933]:
+                - strong [ref=e934]: Output (stdout)
+                - text: ":"
+          - generic [ref=e937]:
+            - generic [ref=e939]: json
+            - button "content_copy" [ref=e940] [cursor=pointer]
+            - code [ref=e943]: "{ \"injectSteps\": [], \"terminationBehavior\": \"\" }"
+          - paragraph [ref=e945]: "---"
+          - heading "Stop Link to section" [level=3] [ref=e947]:
+            - text: Stop
+            - link "Link to section" [ref=e948] [cursor=pointer]:
+              - /url: "#stop"
+              - text: link
+          - paragraph [ref=e950]: Fires when the execution loop terminates.
+          - paragraph [ref=e952]:
+            - strong [ref=e953]: Schema
+          - paragraph [ref=e955]:
+            - strong [ref=e956]: Input Fields (stdin)
+            - text: ":"
+          - paragraph [ref=e958]:
+            - table [ref=e959]:
+              - rowgroup [ref=e960]:
+                - row "Field Type Description" [ref=e961]:
+                  - columnheader "Field" [ref=e962]
+                  - columnheader "Type" [ref=e963]
+                  - columnheader "Description" [ref=e964]
+              - rowgroup [ref=e965]:
+                - row "executionNum integer The sequence number of the execution attempt." [ref=e966]:
+                  - cell "executionNum" [ref=e967]:
+                    - code [ref=e968]: executionNum
+                  - cell "integer" [ref=e969]
+                  - cell "The sequence number of the execution attempt." [ref=e970]
+                - row "terminationReason string The reason why the execution is stopping (e.g., \"model_stop\", \"max_steps_exceeded\", \"error\")." [ref=e971]:
+                  - cell "terminationReason" [ref=e972]:
+                    - code [ref=e973]: terminationReason
+                  - cell "string" [ref=e974]
+                  - cell "The reason why the execution is stopping (e.g., \"model_stop\", \"max_steps_exceeded\", \"error\")." [ref=e975]:
+                    - text: The reason why the execution is stopping (e.g.,
+                    - code [ref=e976]: "\"model_stop\""
+                    - text: ","
+                    - code [ref=e977]: "\"max_steps_exceeded\""
+                    - text: ","
+                    - code [ref=e978]: "\"error\""
+                    - text: ).
+                - row "error string Optional. The error message if termination was caused by a system error." [ref=e979]:
+                  - cell "error" [ref=e980]:
+                    - code [ref=e981]: error
+                  - cell "string" [ref=e982]
+                  - cell "Optional. The error message if termination was caused by a system error." [ref=e983]
+                - row "fullyIdle boolean Required. true if the agent is completely finished and all background commands or asynchronous tasks have completed. false if active background tasks are still running." [ref=e984]:
+                  - cell "fullyIdle" [ref=e985]:
+                    - code [ref=e986]: fullyIdle
+                  - cell "boolean" [ref=e987]
+                  - cell "Required. true if the agent is completely finished and all background commands or asynchronous tasks have completed. false if active background tasks are still running." [ref=e988]:
+                    - strong [ref=e989]: Required.
+                    - code [ref=e990]: "true"
+                    - text: if the agent is completely finished and all background commands or asynchronous tasks have completed.
+                    - code [ref=e991]: "false"
+                    - text: if active background tasks are still running.
+                - row "(Common Fields) Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e992]:
+                  - cell "(Common Fields)" [ref=e993]:
+                    - emphasis [ref=e994]: (Common Fields)
+                  - cell "Includes conversationId, workspacePaths, transcriptPath, artifactDirectoryPath." [ref=e995]:
+                    - text: Includes
+                    - code [ref=e996]: conversationId
+                    - text: ","
+                    - code [ref=e997]: workspacePaths
+                    - text: ","
+                    - code [ref=e998]: transcriptPath
+                    - text: ","
+                    - code [ref=e999]: artifactDirectoryPath
+                    - text: .
+          - paragraph [ref=e1001]:
+            - strong [ref=e1002]: Output Fields (stdout)
+            - text: ":"
+          - paragraph [ref=e1004]:
+            - table [ref=e1005]:
+              - rowgroup [ref=e1006]:
+                - row "Field Type Description" [ref=e1007]:
+                  - columnheader "Field" [ref=e1008]
+                  - columnheader "Type" [ref=e1009]
+                  - columnheader "Description" [ref=e1010]
+              - rowgroup [ref=e1011]:
+                - row "decision string Required. Set to \"continue\" to prevent the agent from stopping and re-enter the execution loop. Any other value allows the stop." [ref=e1012]:
+                  - cell "decision" [ref=e1013]:
+                    - code [ref=e1014]: decision
+                  - cell "string" [ref=e1015]
+                  - cell "Required. Set to \"continue\" to prevent the agent from stopping and re-enter the execution loop. Any other value allows the stop." [ref=e1016]:
+                    - strong [ref=e1017]: Required.
+                    - text: Set to
+                    - code [ref=e1018]: "\"continue\""
+                    - text: to prevent the agent from stopping and re-enter the execution loop. Any other value allows the stop.
+                - row "reason string Optional. If decision is \"continue\", this message is injected as a system message into the conversation." [ref=e1019]:
+                  - cell "reason" [ref=e1020]:
+                    - code [ref=e1021]: reason
+                  - cell "string" [ref=e1022]
+                  - cell "Optional. If decision is \"continue\", this message is injected as a system message into the conversation." [ref=e1023]:
+                    - strong [ref=e1024]: Optional.
+                    - text: If
+                    - code [ref=e1025]: decision
+                    - text: is
+                    - code [ref=e1026]: "\"continue\""
+                    - text: ", this message is injected as a system message into the conversation."
+          - paragraph [ref=e1028]:
+            - strong [ref=e1029]: Example
+          - list [ref=e1031]:
+            - listitem [ref=e1032]:
+              - generic [ref=e1033]:
+                - strong [ref=e1034]: Input (stdin)
+                - text: ":"
+          - generic [ref=e1037]:
+            - generic [ref=e1039]: json
+            - button "content_copy" [ref=e1040] [cursor=pointer]
+            - code [ref=e1043]:
+              - text: "{ \"executionNum\": 1, \"terminationReason\": \"model_stop\", \"error\": \"\", \"fullyIdle\":"
+              - generic [ref=e1044]: "true"
+              - text: ", \"conversationId\": \"ec33ebf9-0cba-4100-8142-c61503f6c587\", \"workspacePaths\": [ \"/workspace/project\" ], \"transcriptPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587/.system_generated/logs/transcript.jsonl\", \"artifactDirectoryPath\": \"~/.gemini/antigravity/brain/ec33ebf9-0cba-4100-8142-c61503f6c587\" }"
+          - list [ref=e1046]:
+            - listitem [ref=e1047]:
+              - generic [ref=e1048]:
+                - strong [ref=e1049]: Output (stdout)
+                - text: ":"
+          - generic [ref=e1052]:
+            - generic [ref=e1054]: json
+            - button "content_copy" [ref=e1055] [cursor=pointer]
+            - code [ref=e1058]: "{ \"decision\": \"continue\", \"reason\": \"Not done yet\" }"
+          - navigation [ref=e1059]:
+            - link "keyboard_arrow_left Plugins" [ref=e1061] [cursor=pointer]:
+              - /url: /docs/plugins
+            - link "Sidecars keyboard_arrow_right" [ref=e1063] [cursor=pointer]:
+              - /url: /docs/sidecars
+        - generic [ref=e1065]:
+          - generic [ref=e1066]: On this Page
+          - navigation [ref=e1067]:
+            - list [ref=e1069]:
+              - listitem [ref=e1070] [cursor=pointer]:
+                - generic [ref=e1071]: Hooks
+              - listitem [ref=e1072] [cursor=pointer]:
+                - generic [ref=e1073]: Configuration
+              - listitem [ref=e1074] [cursor=pointer]:
+                - generic [ref=e1075]: Schema and File Format
+              - listitem [ref=e1076] [cursor=pointer]:
+                - generic [ref=e1077]: Supported Events
+              - listitem [ref=e1078] [cursor=pointer]:
+                - generic [ref=e1079]: Supported Tools
+              - listitem [ref=e1080] [cursor=pointer]:
+                - generic [ref=e1081]: Hook Handler Configuration
+              - listitem [ref=e1082] [cursor=pointer]:
+                - generic [ref=e1083]: Input/Output Contract

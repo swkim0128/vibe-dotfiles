@@ -1,0 +1,30 @@
+- generic [active] [ref=e1]:
+  - region "antigravity.google uses cookies to deliver and enhance the quality of its services and to analyze traffic. If you agree, cookies are also used to serve advertising and to personalize the content and advertisements that you see." [ref=e2]:
+    - paragraph [ref=e3]:
+      - text: antigravity.google uses cookies to deliver and enhance the quality of its services and to analyze traffic. If you agree, cookies are also used to serve advertising and to personalize the content and advertisements that you see.
+      - link "Learn more about how Google uses cookies. Opens in a new tab." [ref=e4] [cursor=pointer]:
+        - /url: https://policies.google.com/technologies/cookies?hl=en
+        - text: Learn more
+    - button "Agree" [ref=e5] [cursor=pointer]
+    - button "No thanks" [ref=e6] [cursor=pointer]
+  - main:
+    - generic [ref=e9]:
+      - link "Google Antigravity" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e12]
+      - generic [ref=e55]:
+        - navigation [ref=e56] [cursor=pointer]:
+          - button "Products" [ref=e59]:
+            - text: Products
+            - generic [ref=e60]: keyboard_arrow_down
+          - button "Use Cases" [ref=e63]:
+            - text: Use Cases
+            - generic [ref=e64]: keyboard_arrow_down
+          - button "Pricing" [expanded] [ref=e67]
+          - button "Blog" [expanded] [ref=e70]
+          - button "Resources" [ref=e73]:
+            - text: Resources
+            - generic [ref=e74]: keyboard_arrow_down
+        - button "Download download" [ref=e76] [cursor=pointer]:
+          - text: Download
+          - generic [ref=e77]: download
