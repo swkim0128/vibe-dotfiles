@@ -1,0 +1,22 @@
+# ~/.my-commands.txt (vibe-dotfiles backup)
+# 형식: 화면에 보일 이름 | 실행할 명령어
+
+# ── PARA Work ───────────────────────────────────────
+📦 PARA 볼트 백업 (git commit & push) | para-work backup
+📋 NEXT-SESSION 브리핑 열람/갱신 | para-work briefing
+🍱 Notion 루틴 SOP (일기·식단·예산) 열람 | para-work notion
+
+# ── AI ──────────────────────────────────────────────
+🤖 Claude Code: 현재 프로젝트 분석 | claude -p '이 프로젝트의 구조와 핵심 로직을 분석해서 요약해줘'
+
+# ── Tmux ─────────────────────────────────────────────
+🛠️  Tmux 설정 새로고침 | tmux source-file ~/.tmux.conf
+
+# ── 개발 서버 ─────────────────────────────────────────
+🌐 로컬 서버 시작 (예시) | npm run dev
+
+# ── Docker ───────────────────────────────────────────
+🧹 Docker 사용하지 않는 자원 정리 | docker system prune -af
+
+# ── Neovim ───────────────────────────────────────────
+📂 NvChad 설정 폴더로 이동 | cd ~/.config/nvim && nvim .

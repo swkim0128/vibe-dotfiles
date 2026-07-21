@@ -1,0 +1,12 @@
+# ~/.zshrc.local (Template for machine local secrets & envs)
+# git 미추적. 머신별 로컬 설정.
+
+export HARNESS_ENV="personal"
+export VIBE_HUB_TOOL="agy"
+alias pwork="para-work"
+
+# Slack / AI Tokens (머신별 개별 설정 필요)
+# export SLACK_ALLOWED_USER_ID="YOUR_SLACK_ID"
+# export SLACK_BOT_TOKEN="xoxb-..."
+# export SLACK_APP_TOKEN="xapp-..."
+# export GITHUB_PERSONAL_ACCESS_TOKEN="github_pat_..."
