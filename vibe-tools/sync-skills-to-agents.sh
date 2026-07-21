@@ -46,7 +46,7 @@ if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR" ]; then
         rm -rf "${AGENTS_SKILLS_DIR:?}/${skill_name:?}"
         cp -r "$skill_dir" "$AGENTS_SKILLS_DIR/$skill_name"
         echo "  [📦] 마켓플레이스 스킬 갱신: $skill_name -> ~/.agents/skills/$skill_name"
-    done < <(find "$SRC_DIR" -mindepth 3 -maxdepth 3 -type f -name "SKILL.md" 2>/dev/null || true)
+    done < <(find "$SRC_DIR" -type f -name "SKILL.md" 2>/dev/null || true)
 fi
 
 is_mp_skill() {
