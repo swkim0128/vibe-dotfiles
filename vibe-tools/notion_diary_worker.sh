@@ -104,7 +104,7 @@ if [[ -d "${REPO_SCAN_DIR}" ]]; then
   while IFS= read -r repo_dir; do
     [[ -n "${repo_dir}" ]] && REPO_DIRS+=("${repo_dir}")
   done < <(
-    find "${REPO_SCAN_DIR}" -maxdepth 3 -name .git \( -type d -o -type f \) -prune 2>/dev/null \
+    find "${REPO_SCAN_DIR}" -maxdepth 5 -name .git \( -type d -o -type f \) -not -path '*/node_modules/*' -not -path '*/vendor/*' -prune 2>/dev/null \
       | while IFS= read -r gitpath; do dirname "${gitpath}"; done \
       | sort -u
   )
@@ -119,6 +119,7 @@ if [[ -d "${REPO_SCAN_DIR}" ]]; then
     repo_name="$(basename "${repo}")"
     # 오늘 자정 이후 커밋. %cd(커밋 날짜)를 HH:MM 로 포맷. 실패해도 워커는 진행.
     if git -C "${repo}" log \
+         --branches \
          --since="${TODAY} 00:00:00" \
          --format='%cd|'"${repo_name}"'|%s' \
          --date=format:'%H:%M' \
