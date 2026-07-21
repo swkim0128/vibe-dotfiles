@@ -33,14 +33,14 @@ elif [ -d "$FALLBACK_CONFIG_DIR" ]; then
 fi
 
 # 2. 동적으로 마켓플레이스 스킬 목록 수집 및 ~/.agents/skills 동기화
-declare -A MP_SKILLS=()
+MP_SKILL_NAMES=" "
 
 if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR" ]; then
     while IFS= read -r skill_file; do
         [ -n "$skill_file" ] || continue
         skill_dir=$(dirname "$skill_file")
         skill_name=$(basename "$skill_dir")
-        MP_SKILLS["$skill_name"]=1
+        MP_SKILL_NAMES="${MP_SKILL_NAMES}${skill_name} "
 
         # ~/.agents/skills 로 최신 복사 (SSoT 최신화)
         rm -rf "${AGENTS_SKILLS_DIR:?}/${skill_name:?}"
@@ -49,13 +49,18 @@ if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR" ]; then
     done < <(find "$SRC_DIR" -mindepth 3 -maxdepth 3 -type f -name "SKILL.md" 2>/dev/null || true)
 fi
 
+is_mp_skill() {
+    local target="$1"
+    [[ "$MP_SKILL_NAMES" == *" ${target} "* ]]
+}
+
 # 3. 고아 스킬 (Prune): 이전에 마켓플레이스 유래로 동기화되었으나 현재 소스에서 제거된 폐기 스킬 정리
 # 비마켓플레이스 스킬(para-work, learned, local, deploy-to-vercel, find-skills 등)은 보존
 for item in "$AGENTS_SKILLS_DIR"/*; do
     [ -e "$item" ] || continue
     name=$(basename "$item")
 
-    if [ -z "${MP_SKILLS[$name]:-}" ]; then
+    if ! is_mp_skill "$name"; then
         if [ "$name" = "para-work" ] || [ "$name" = "learned" ] || [ "$name" = "local" ] || \
            [ "$name" = "deploy-to-vercel" ] || [ "$name" = "find-skills" ] || \
            [[ "$name" == vercel-* ]] || [[ "$name" == web-design-* ]] || [[ "$name" == writing-* ]]; then
@@ -76,7 +81,7 @@ for item in "$AGENTS_SKILLS_DIR"/*; do
     [ -e "$item" ] || continue
     name=$(basename "$item")
 
-    if [ -z "${MP_SKILLS[$name]:-}" ]; then
+    if ! is_mp_skill "$name"; then
         rm -rf "${CLAUDE_SKILLS_DIR:?}/${name:?}"
         ln -sfn "$AGENTS_SKILLS_DIR/$name" "$CLAUDE_SKILLS_DIR/$name"
         echo "  [🔗] 비플러그인 고유 스킬 Claude 심링크 연결: $name -> ~/.agents/skills/$name"
