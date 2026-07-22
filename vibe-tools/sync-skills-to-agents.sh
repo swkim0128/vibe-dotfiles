@@ -6,8 +6,9 @@ set -euo pipefail
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 AGENTS_SKILLS_DIR="$HOME/.agents/skills"
 MANIFEST_FILE="$AGENTS_SKILLS_DIR/.marketplace-manifest.txt"
-MARKETPLACE_DIR="$HOME/.claude/plugins/marketplaces/swkim0128/claude-config/plugins"
-FALLBACK_CONFIG_DIR="$HOME/Project/vibe-ai-config/claude-config/plugins"
+MARKETPLACE_DIR="$HOME/.claude/plugins/marketplaces/swkim0128/skills"
+FALLBACK_CONFIG_DIR="$HOME/Project/vibe-ai-config/skills"
+SKILLS_REPO="swkim0128/vibe-ai-config"
 
 mkdir -p "$AGENTS_SKILLS_DIR"
 mkdir -p "$CLAUDE_SKILLS_DIR"
@@ -25,7 +26,7 @@ EOF
     echo "  [+] skills CLI 래퍼 생성 완료 (~/.local/bin/skills)"
 fi
 
-# 소스 디렉터리 결정 (버전 디렉터리 미의존 최신 마켓플레이스 소스)
+# 소스 디렉터리 결정 (P3: 스킬 정본은 레포 최상위 skills/ — 마켓플레이스 우선, 레포 폴백)
 SRC_DIR=""
 if [ -d "$MARKETPLACE_DIR" ]; then
     SRC_DIR="$MARKETPLACE_DIR"
@@ -64,18 +65,16 @@ is_mp_skill() {
     [[ "$MP_SKILL_NAMES" == *" ${target} "* ]]
 }
 
-# 3. 매니페스트 기반 안전한 고아 스킬 정리 (Prune):
-# 과거 매니페스트에 등록되었으나 현재 마켓플레이스 소스에서 제거된 스킬만 prune 처리.
+# 3. 매니페스트 기반 안전한 고아 스킬 정리 (Prune) — ~/.agents/skills 한정:
+# 과거 매니페스트에 등록되었으나 현재 최상위 skills/ 소스에서 제거된 스킬만 prune 처리.
 # 매니페스트에 존재하지 않는 사용자의 개인 로컬 스킬은 100% 보존.
+# ~/.claude/skills 는 npx skills add 가 관리하므로 이 스크립트가 직접 prune 하지 않는다.
 if [ -n "$PREV_MANIFEST" ]; then
     for old_skill in $PREV_MANIFEST; do
         [ -n "$old_skill" ] || continue
         if ! is_mp_skill "$old_skill"; then
             echo "  [🧹] 폐기 스킬 정리(Prune - 매니페스트 대상): $old_skill (from ~/.agents/skills)"
             rm -rf "${AGENTS_SKILLS_DIR:?}/${old_skill:?}"
-            if [ -L "$CLAUDE_SKILLS_DIR/$old_skill" ] || [ -d "$CLAUDE_SKILLS_DIR/$old_skill" ]; then
-                rm -rf "${CLAUDE_SKILLS_DIR:?}/${old_skill:?}"
-            fi
         fi
     done
 fi
@@ -86,22 +85,13 @@ if [ -f "$NEW_MANIFEST_FILE" ]; then
     rm -f "$NEW_MANIFEST_FILE"
 fi
 
-# 4. ~/.agents/skills 스킬 중 마켓플레이스에 없는 고유 스킬만 ~/.claude/skills 에 심링크 연결
-# (마켓플레이스 스킬은 Claude Code 가 플러그인에서 직접 로드하므로 ~/.claude/skills 중복 심링크 생성 안 함)
-for item in "$AGENTS_SKILLS_DIR"/*; do
-    [ -e "$item" ] || continue
-    name=$(basename "$item")
+# 4. Claude Code 스킬 배포 — P3: npx skills add 위임 (플러그인 이중 로드 위험 제거로 "Claude 금지" 규칙 폐기).
+# ~/.claude/skills 심링크는 skills CLI 가 관리하며, 이 스크립트는 ~/.claude/skills 를 직접 생성/삭제하지 않는다.
+if command -v npx >/dev/null 2>&1; then
+    echo "  [🔗] Claude Code 스킬 배포 위임: npx skills add $SKILLS_REPO --all -g -y"
+    npx -y skills add "$SKILLS_REPO" --all -g -y || echo "  [⚠️] npx skills add 실패 — Claude 스킬 배포 건너뜀 (Antigravity 동기화는 완료)"
+else
+    echo "  [⚠️] npx 미존재 — Claude 스킬 배포(npx skills add) 건너뜀"
+fi
 
-    if ! is_mp_skill "$name"; then
-        rm -rf "${CLAUDE_SKILLS_DIR:?}/${name:?}"
-        ln -sfn "$AGENTS_SKILLS_DIR/$name" "$CLAUDE_SKILLS_DIR/$name"
-        echo "  [🔗] 비플러그인 고유 스킬 Claude 심링크 연결: $name -> ~/.agents/skills/$name"
-    else
-        if [ -L "$CLAUDE_SKILLS_DIR/$name" ] || [ -d "$CLAUDE_SKILLS_DIR/$name" ]; then
-            rm -rf "${CLAUDE_SKILLS_DIR:?}/${name:?}"
-            echo "  [🚫] Claude Code 중복 심링크 제거: ~/.claude/skills/$name"
-        fi
-    fi
-done
-
-echo "✅ Skills.sh 글로벌 동기화 완료! (매니페스트 기반 안전 Prune 적용)"
+echo "✅ Skills.sh 글로벌 동기화 완료! (Antigravity 복사 + Claude npx 위임)"
