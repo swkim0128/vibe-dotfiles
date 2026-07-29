@@ -1,36 +1,46 @@
 # HANDOFF — Session Context Transfer
 
-> 이전 세션 작업 컨텍스트. 새 세션에서 이 파일을 읽고 이어서 작업.
-> (구 2026-06-29 핸드오프는 완료되어 대체됨.)
+> 이전 세션 작업 컨텍스트. 새 세션(다른 PC 포함)에서 이 파일을 읽고 이어서 작업.
+> (구 2026-07-07 핸드오프는 완료되어 대체됨.)
 
 ## Session Info
-- Date: 2026-07-07
-- Branch: master (vibe-dotfiles) / master (vibe-ai-config)
-- Goal: 하네스 개편(콜백 제거·cmux 오픈 강제) + 세션 레이아웃 정리 + 야간 자동화 2종 신규 구축
+- Date: 2026-07-29
+- Machine: 회사 PC → **개인 PC에서 이어서 작업 예정** (git pull 후 이 파일 확인)
+- Repos: vibe-dotfiles (master 직접) / vibe-ai-config (이번 세션 변경 없음, clean·07-23 핸드오프 유효)
+- Context: DWDEV-4996 워크스페이스에서 **Kotlin neovim 소스 추적 환경** 셋업 요청 → nvim 설정 보완
+- 대상 프로젝트: shopping-danuri (순수 Kotlin 4312 파일, Java 0, 멀티모듈)
 
-## What Succeeded (모두 완료·검증·커밋)
-1. **기본 모델 복원**: settings.local.json 의 `model` 고정 제거 → default(Opus 4.8) 사용.
-2. **세션간 완료 콜백 제거 + cmux 오픈 강제 라우팅** (vibe-ai-config `02be323`·`5905f86`): claude-send.sh/vibe.sh cast 콜백 주입 제거, claude-callback.sh 심링크 삭제, claude-ipc/tmux-session-comm/multi-dispatch/task-delegate/CLAUDE-delegation 문서 반영. **origin push + 마켓플레이스 클론 ff 동기화 → 런타임 반영 검증 완료**.
-3. **cmux 워크스페이스 제외 목록** (vibe-dotfiles `6ae1593`): `vibe-tools/cmux-no-workspace.txt` + cmux-lib.sh `cmux_is_excluded` + cmux-proj.sh 분기. vibe-ai-config 는 워크스페이스 안 열고 tmux-only.
-4. **세션 레이아웃 3창화**: cmux-proj.sh(`*` case)·vibe.sh `_do_start` 에서 lazygit(review) 윈도우 제거 → claude/edit/verify. 열려있던 세션(vibe-dotfiles·vibe-ai-config·ashop_PO20D·ashop_DWDEV-4681)도 런타임 window 3 삭제+재넘버링 완료.
-5. **야간 자동화 2종 신규 (launchd, 활성)**:
-   - **skill-audit @ 22:00**: `vibe-tools/skill_audit_worker.sh` + `com.swkim0128.skill-audit.plist`. 스킬/플러그인/에이전트 사용(트랜스크립트) vs 설정 비교 → `~/Library/Logs/skill-audit/YYYY-MM-DD.md`. 순수 셸.
-   - **notion-diary @ 18:00**: `vibe-tools/notion_diary_worker.sh` + `com.swkim0128.notion-diary.plist`. 오늘 git 커밋을 시간대별 수집 → `claude --print`(Notion MCP + notion-diary 스킬)로 다이어리 기록. 로그 `~/Library/Logs/notion-diary/`.
-   - 둘 다 `~/Library/LaunchAgents/` 복사 + `launchctl bootstrap` 완료(state=not running, 정각 대기).
+## What Succeeded (vibe-dotfiles master 커밋+push 완료, origin 동기화)
+1. **Kotlin LSP 활성화** (`5784065`, `nvim/lua/configs/lspconfig.lua`)
+   - 원인: mason에 JetBrains `kotlin-lsp` 바이너리는 설치돼 있었으나 lspconfig 활성 목록에서 누락 + mason-lspconfig 미설치라 기본 cmd(`intellij-server`)가 mason 바이너리명(`kotlin-lsp`)과 불일치.
+   - 조치: `vim.lsp.config("kotlin_lsp", { cmd = { <mason>/bin/kotlin-lsp, "--stdio" } })` + `vim.lsp.enable "kotlin_lsp"`.
+   - 검증(배선): cmd 해석·바이너리 실행 가능·root_markers(`settings.gradle.kts`)→shopping-danuri 루트 감지·nvim이 서버 spawn(rpc 통신 로그 확인) 모두 PASS.
+2. **treesitter kotlin 파서** (`5784065`, `nvim/lua/plugins/init.lua`)
+   - 주석 처리돼 있던 treesitter 스펙 활성화 + `ensure_installed`에 `kotlin` 추가 (NvChad 기본 파서 유지).
+3. **`<leader>H` 커서 단어 노란색 표시 토글** (`ab475c6`, `nvim/lua/mappings.lua`)
+   - kotlin-lsp가 `documentHighlightProvider` **미지원 확정**(`:lua vim.lsp.buf.document_highlight()` → "not supported")이라 LSP 비의존 `matchadd` 기반으로 구현.
+   - bg `#FAE3B0`(catppuccin yellow), 창 로컬, 커서 이동해도 유지, 같은 단어 재입력 시 해제. `<leader>h`(NvChad 수평분할)와 충돌 피해 대문자 `H`.
 
 ## Current State
-- vibe-dotfiles: clean, master, origin 동기화됨.
-- vibe-ai-config: master, origin push 완료, 마켓플레이스 클론 ff 동기화됨.
-- 미결/보류 없음. (skill-audit 첫 리포트는 누적 원장 축적 전이라 대부분 "미사용"으로 나옴 — 며칠 관찰 필요.)
+- vibe-dotfiles: **clean, master, origin 동기화 완료**(미push 0). nvim 변경은 auto-commit 훅으로 자동 커밋·푸시됨.
+- vibe-ai-config: 이번 세션 변경 없음. 기존 handoff(2026-07-23) 유효.
+- ⚠️ 회사 PC의 실행 중 nvim(pane %12)은 **재시작 전이라 이전 설정** — 아래 검증은 nvim 재기동 후 수행.
 
-## Next Steps
-1. **Claude Code 재시작** — 업데이트된 vibe-ai-config 플러그인(tmux-suite/task-mgmt: 콜백 제거·cmux 라우팅)을 실행 세션에 반영하려면 재시작 필요.
-2. (관찰) 오늘 18:00 notion-diary, 22:00 skill-audit 첫 실행 결과를 `~/Library/Logs/{notion-diary,skill-audit}/` 에서 확인.
-3. (선택) skill-audit "거의 안 씀" 판정을 며칠 누적 후 실제 플러그인 정리에 활용.
+## Next Steps (개인 PC에서, nvim 재시작 후 검증)
+1. **kotlin_lsp attach 확인** — `:LspInfo` 또는 `:lua =vim.lsp.get_clients()`에 `kotlin_lsp`. JetBrains 서버라 첫 실행 시 Gradle 인덱싱으로 수십 초~수 분 소요(정상). `:LspLog`에 error/exit 없으면 대기.
+2. **treesitter kotlin** — 재시작 시 자동 컴파일. `.kt`에서 `:InspectTree`로 확인.
+3. **`<leader>H`** — 커서 단어 노란색 표시·토글 실동작 확인.
+4. **소스 사용처 확인 수단** (요청 맥락 정리):
+   - 현재 파일 내 표시 → `<leader>H`(구현 완료).
+   - 정의 이동 → `gd` / Ctrl+클릭. 참조 목록 → `grr`(→quickfix, `referencesProvider` 지원 시).
+   - 콜 계층 트리 → 내장 `vim.lsp.buf.incoming_calls()`/`outgoing_calls()`(quickfix, `callHierarchyProvider` 지원 시. kotlin-lsp pre-alpha라 미지원 가능 — capability로 확인).
+5. **(선택) 추가 보완 후보** — 아직 미설치:
+   - IntelliJ식 사용처 **펼침 트리 UI**: `trouble.nvim`(가벼움) 또는 `lspsaga.nvim`.
+   - 자동 하이라이트(커서 멈추면 자동): `vim-illuminate`(treesitter/regex 폴백 → kotlin-lsp 미지원과 무관하게 동작).
+   - Java 프로젝트용: mason `jdtls` 설치돼 있으나 미활성(shopping-danuri는 Java 0이라 현재 불요).
 
-## Key Files (vibe-dotfiles/vibe-tools/)
-- `skill_audit_worker.sh` / `com.swkim0128.skill-audit.plist` — 22시 스킬 감사
-- `notion_diary_worker.sh` / `com.swkim0128.notion-diary.plist` — 18시 다이어리 기록
-- `cmux-no-workspace.txt` / `cmux-lib.sh` / `cmux-proj.sh` — cmux 워크스페이스 제외 목록
-- `overnight_worker.sh` — 기존 2시 워커(패턴 레퍼런스)
-- 메모리: `skill-audit-nightly`, `notion-diary-nightly`, `callback-removal-refactor`, `pre-delegation-cmux-open` (자동 로드됨)
+## Key Files (vibe-dotfiles/)
+- `nvim/lua/configs/lspconfig.lua` — LSP 서버 활성(html/cssls/intelephense/**kotlin_lsp**)
+- `nvim/lua/plugins/init.lua` — 플러그인 스펙(treesitter kotlin 포함)
+- `nvim/lua/mappings.lua` — 커스텀 키맵(Ctrl+클릭 정의이동, **`<leader>H`** 노란색 표시)
+- (레퍼런스, 유지 중) `vibe-tools/`: `skill_audit_worker.sh`(22시), `notion_diary_worker.sh`(18시), `cmux-no-workspace.txt`/`cmux-lib.sh`/`cmux-proj.sh`, `overnight_worker.sh`(2시)
