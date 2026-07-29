@@ -103,3 +103,22 @@ end, { desc = "Terminal: Floating (large)" })
 
 -- LSP: Ctrl+클릭으로 함수/심볼 선언부 이동 (VSCode식). gd 키맵은 NvChad 기본 유지.
 map("n", "<C-LeftMouse>", "<LeftMouse><cmd>lua vim.lsp.buf.definition()<CR>", { desc = "LSP: Go to definition (Ctrl+Click)" })
+
+-- <leader>H: 커서 단어를 현재 파일에서 노란색 표시(토글). LSP document_highlight 미지원 서버
+-- (kotlin-lsp pre-alpha)에서도 동작하도록 matchadd 기반 — 창 로컬, 커서 이동해도 유지.
+local word_hl_id = nil
+local word_hl_word = nil
+map("n", "<leader>H", function()
+  local w = vim.fn.expand "<cword>"
+  if word_hl_id then
+    pcall(vim.fn.matchdelete, word_hl_id)
+    word_hl_id = nil
+  end
+  if word_hl_word == w or w == "" then -- 같은 단어 재입력 또는 빈 단어 → 해제
+    word_hl_word = nil
+    return
+  end
+  vim.api.nvim_set_hl(0, "CursorWordYellow", { bg = "#FAE3B0", fg = "#1e1e2e", bold = true })
+  word_hl_id = vim.fn.matchadd("CursorWordYellow", "\\<" .. vim.fn.escape(w, "\\/.*$^~[]") .. "\\>")
+  word_hl_word = w
+end, { desc = "커서 단어 노란색 표시 토글" })
