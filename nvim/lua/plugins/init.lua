@@ -17,16 +17,17 @@ return {
   -- test new blink
   -- { import = "nvchad.blink.lazyspec" },
 
-  -- {
-  -- 	"nvim-treesitter/nvim-treesitter",
-  -- 	opts = {
-  -- 		ensure_installed = {
-  -- 			"vim", "lua", "vimdoc",
-  --      "html", "css"
-  -- 		},
-  -- 	},
-  -- },
-  --
+  -- Kotlin 구문 하이라이팅·구조 이동(treesitter) — NvChad 기본 파서 + kotlin 추가
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = {
+      ensure_installed = {
+        "lua", "luadoc", "printf", "vim", "vimdoc",
+        "kotlin",
+      },
+    },
+  },
+
   {
     "MeanderingProgrammer/render-markdown.nvim",
     dependencies = {
