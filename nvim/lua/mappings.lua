@@ -18,6 +18,30 @@ map("v", "<C-_>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.v
 -- lazygit
 map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 
+-- diffview: 작업 후 변경 리뷰 (좌측 변경파일 목록 + 우측 diff, <Tab>/<S-Tab>로 파일 순회)
+map("n", "<leader>gd", "<cmd>DiffviewOpen<CR>", { desc = "Git: 변경 리뷰 (diffview 열기)" })
+map("n", "<leader>gD", "<cmd>DiffviewClose<CR>", { desc = "Git: 변경 리뷰 닫기" })
+map("n", "<leader>gh", "<cmd>DiffviewFileHistory %<CR>", { desc = "Git: 현재 파일 변경 이력" })
+
+-- gitsigns: 파일 내 변경 hunk 이동 + 인라인 미리보기 + blame (NvChad 기본 미매핑분 보강).
+-- ]c/[c 는 diff 모드에선 vim 기본 change 이동을 유지(diffview 내부 호환).
+map("n", "]c", function()
+  if vim.wo.diff then
+    vim.cmd.normal { "]c", bang = true }
+  else
+    require("gitsigns").nav_hunk "next"
+  end
+end, { desc = "Git: 다음 변경 hunk" })
+map("n", "[c", function()
+  if vim.wo.diff then
+    vim.cmd.normal { "[c", bang = true }
+  else
+    require("gitsigns").nav_hunk "prev"
+  end
+end, { desc = "Git: 이전 변경 hunk" })
+map("n", "<leader>gp", function() require("gitsigns").preview_hunk() end, { desc = "Git: hunk 미리보기" })
+map("n", "<leader>gb", function() require("gitsigns").blame_line() end, { desc = "Git: 현재 라인 blame" })
+
 -- render-markdown: raw ↔ rendered 토글 (마크다운 표 컬럼 블록 선택 시 raw로 전환)
 map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<CR>", { desc = "Markdown: Toggle render (raw/rendered)" })
 

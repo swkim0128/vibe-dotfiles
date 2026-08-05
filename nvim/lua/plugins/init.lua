@@ -139,4 +139,15 @@ return {
       },
     },
   },
+
+  -- diffview.nvim: 작업 후 변경 리뷰 — 좌측 변경파일 목록 + 우측 좌우 diff.
+  -- nvim-tree 경로 드릴링 없이 "바뀐 파일만" 순회(<Tab>)하며 변경 부분을 하이라이트로 확인.
+  {
+    "sindrets/diffview.nvim",
+    cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewToggleFiles", "DiffviewFocusFiles", "DiffviewFileHistory" },
+    dependencies = { "nvim-lua/plenary.nvim" },
+    config = function()
+      require("diffview").setup {}
+    end,
+  },
 }
