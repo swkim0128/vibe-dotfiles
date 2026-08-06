@@ -18,6 +18,11 @@ map("v", "<C-_>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.v
 -- lazygit
 map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
 
+-- LSP 심볼 검색: 함수/클래스명으로 바로 점프 (소스 확인 간편화)
+map("n", "<leader>fs", "<cmd>Telescope lsp_document_symbols<CR>", { desc = "LSP: 현재 파일 심볼 목록" })
+map("n", "<leader>fS", "<cmd>Telescope lsp_dynamic_workspace_symbols<CR>", { desc = "LSP: 프로젝트 전역 심볼 검색" })
+map("n", "<leader>fr", "<cmd>Telescope lsp_references<CR>", { desc = "LSP: 참조 목록 (telescope)" })
+
 -- diffview: 작업 후 변경 리뷰 (좌측 변경파일 목록 + 우측 diff, <Tab>/<S-Tab>로 파일 순회)
 map("n", "<leader>gd", "<cmd>DiffviewOpen<CR>", { desc = "Git: 변경 리뷰 (diffview 열기)" })
 map("n", "<leader>gD", "<cmd>DiffviewClose<CR>", { desc = "Git: 변경 리뷰 닫기" })
