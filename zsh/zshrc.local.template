@@ -2,7 +2,7 @@
 # git 미추적. 머신별 로컬 설정.
 
 export HARNESS_ENV="personal"
-export VIBE_HUB_TOOL="agy"
+export VIBE_HUB_TOOL="claude"
 alias pwork="para-work"
 
 # Slack / AI Tokens (머신별 개별 설정 필요)
