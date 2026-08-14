@@ -1,0 +1,12 @@
+{
+  "controls": [
+    {
+      "id": "dock-badges",
+      "title": "Notifications",
+      "type": "terminal",
+      "command": "while true; do clear; printf '=== Dock badges (%s) ===\\n' \"$(date '+%H:%M:%S')\"; if [ -z \"$(find \"$HOME/.cache/vibe/dock-badges.raw\" -mmin -0.25 2>/dev/null)\" ]; then \"$HOME/Project/vibe-dotfiles/bin/dock-badges.sh\" >/dev/null 2>&1; fi; cat \"$HOME/.cache/vibe/dock-badges.raw\" 2>/dev/null; sleep 5; done",
+      "cwd": ".",
+      "height": 180
+    }
+  ]
+}

@@ -64,6 +64,10 @@ jq empty path/to/settings.json
 
 # 야간 워커 dry-run (외부 의존 fallback 검증 포함)
 DRY_RUN=1 bash vibe-tools/overnight_worker.sh
+
+# tmux 설정 검증 — 현재 세션에 영향 없는 별도 서버로 로드 후 종료 (2단계, 각각 단일 명령)
+tmux -L verifytest -f tmux/.tmux.conf new-session -d -s verify
+tmux -L verifytest kill-server
 ```
 
 복합 체이닝(`./gradlew clean build test`)·redirect/파이프 포함 명령은 **금지** — Bash 권한 패턴 매칭 실패로 매번 프롬프트 발생.
@@ -91,7 +95,14 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh
 - 두 진입점 독립. `setup.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
 ## 🛠️ 구조
-- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start·cmux 런처), `zsh/aliases.zsh`, `ghostty/` (ghostty·cmux 테마/폰트 설정), `cmux/` (cmux 자체 설정 cmux.json), `docs/knowledge-base/` (KB SSoT)
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start·cmux 런처), `bin/` (독립 실행 유틸 — `dock-badges*.sh`), `zsh/aliases.zsh`, `ghostty/` (ghostty·cmux 테마/폰트 설정), `cmux/` (cmux 자체 설정 cmux.json·dock.json), `docs/knowledge-base/` (KB SSoT)
+
+### macOS Dock 뱃지 (알림 개수) 함정
+- 뱃지 조회는 `osascript` + `System Events > process Dock > list 1` 의 `AXStatusLabel`. 접근성 권한만 필요(FDA 불필요) — LaunchAgent 로 옮기지 말 것(권한이 터미널 responsible process 로 상속되는 현재 경로가 검증됨).
+- AppleScript 함정 ①: `tell process "Dock"` 블록 안에서 누산기 변수명 `outLines` 사용 시 terminology 충돌로 `-10000` 사망 → `acc` 등으로 명명.
+- AppleScript 함정 ②: UI element 를 변수에 담아 재사용하면 `-10000` → `of UI element idx of list 1` 인라인 접근 사용. 뱃지 없는 항목은 `missing value` 이므로 coercion 전 판별.
+- 셸 함정: `trap cleanup INT TERM` 핸들러는 `exit` 까지 해야 한다 — 안 그러면 pidfile 만 지워지고 루프는 계속 도는 좀비 폴러가 남는다.
+- cmux Dock 설정 스펙 확인은 `cmux docs dock` (`~/.config/cmux/dock.json` 은 `cmux/dock.json` 심링크, 전역 config 의 상대 `cwd` 기준은 홈 디렉토리).
 
 ## 세션 인수인계
 중단 전 `todo.md` 또는 (외부 하네스 설치 시) `harness:handoff` 스킬로 `HANDOFF.md` 기록. 재개 시 먼저 읽음.
