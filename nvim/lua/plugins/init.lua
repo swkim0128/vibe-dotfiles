@@ -85,9 +85,16 @@ return {
       quote = {
         icon = '┃',
       },
-      table = {
-        style = 'round', -- 표의 모서리를 둥글게(╭, ╮, ╰, ╯) 처리
+      -- 표: 옵션 키는 'table' 이 아니라 'pipe_table' 이다 (settings.lua M.pipe_table).
+      -- 둥근 모서리는 style 이 아니라 preset 소관 (style enum = full|normal|none).
+      pipe_table = {
+        preset = 'round',
         cell = 'padded',
+      },
+      -- 표가 창 폭을 넘으면 본문만 wrap 되고 테두리(가상 텍스트)는 잘려 박스가 무너진다.
+      -- 렌더 중에는 wrap 을 끄고 가로 스크롤로 본다. 편집 중에는 원래 값으로 복귀.
+      win_options = {
+        wrap = { default = vim.o.wrap, rendered = false },
       },
     },
   },
