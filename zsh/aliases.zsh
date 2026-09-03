@@ -76,3 +76,9 @@ function tools() {
   local cmd="${selected%%:*}"
   [[ -n "$cmd" ]] && eval "$cmd"
 }
+
+# ── codex-hud ─────────────────────────────────────────────────────────────────
+# HUD 본체는 서드파티(~/Project/codex-hud)가 자체 installer 로 각 rc 에 alias(cx 등)를
+# 심는다. 여기서는 자동 업데이트만 끈다 — 하네스 자산은 install.sh 로만 바뀌어야 하고,
+# 12시간마다 도는 자가 업데이트는 그 결정론을 깬다. 갱신은 codex-hud-upgrade 로 수동.
+export CODEX_HUD_UPDATE_CHECK=0
