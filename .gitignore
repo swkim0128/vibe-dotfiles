@@ -2,8 +2,10 @@
 prompts.bak/
 .claude/
 /.worktrees/
-# 타임스탬프 백업 아티팩트 (예: cmux.json.bak-YYYYMMDD-HHMMSS) — 자동 커밋 유입 차단
+# 타임스탬프 백업 아티팩트 (예: cmux.json.bak-YYYYMMDD-HHMMSS,
+# .tmux.conf.bak.YYYYMMDD-HHMMSS) — 구분자가 - 와 . 둘 다 쓰이므로 양쪽 모두 차단
 *.bak-*
+*.bak.*
 # cmux 머신로컬 오버레이 (회사 경로 비커밋)
 /vibe-tools/cmux-projects.local.txt
 /vibe-tools/cmux-ops.local.txt

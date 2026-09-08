@@ -8,7 +8,8 @@
 #
 # 동작:
 #   1. cmux-projects.txt 에서 name 매칭 (name|path|hexcolor|description).
-#   2. tmux 세션(claude/edit 2창) 미존재 시 생성 — claude=para 허브 cwd, edit=프로젝트 cwd 에서 nvim 자동 실행.
+#   2. tmux 세션(claude/edit/verify 3창) 미존재 시 생성 — claude=para 허브 cwd,
+#      edit=프로젝트 cwd 에서 nvim 자동 실행, verify=프로젝트 cwd 셸(스크립트·빌드·테스트 실행용).
 #   3. cmux 워크스페이스 생성 후 tmux attach + 메타(색/설명/pin) 적용.
 #   cmux CLI 미설치 시 tmux 세션만 만들고 안내 후 종료 (graceful degradation).
 
@@ -139,8 +140,11 @@ if [[ "$create_new" == true ]]; then
       tmux new-session -d -s "$name" -n claude -c "$HOME/Project/para"
       tmux new-window -t "$name" -n edit -c "$path"
       tmux send-keys -t "$name:edit" 'nvim .' Enter
+      # claude 창 cwd 가 para 허브이므로, 상대경로 산출물이 허브에 떨어지지 않도록
+      # 스크립트·빌드·테스트 실행 전용 프로젝트 cwd 셸을 표준 구성에 포함한다.
+      tmux new-window -t "$name" -n verify -c "$path"
       tmux select-window -t "$name:claude"
-      layout_desc='claude(para 허브 cwd — AI 작업) / edit(nvim, 프로젝트 cwd — 변경 확인)'
+      layout_desc='claude(para 허브 cwd — AI 작업) / edit(nvim, 프로젝트 cwd — 변경 확인) / verify(셸, 프로젝트 cwd — 스크립트·빌드·테스트 실행)'
       ;;
   esac
   session_created=true
@@ -180,5 +184,8 @@ echo "   tmux 세션: $target"
 if [[ "$session_created" == true ]]; then
   echo "   창 구성: $layout_desc (신규 생성)"
 else
-  echo "   기존 tmux 세션 재사용 (창 구성 유지)"
+  # 재사용 세션은 진행 중 작업 파괴를 막기 위해 재구성하지 않는다 — 현재 창 목록만 노출해
+  # 표준 구성과 어긋난 오래된 세션을 사용자가 알아볼 수 있게 한다.
+  cur_wins="$(tmux list-windows -t "$target" -F '#{window_name}' 2>/dev/null | tr '\n' ' ')" || cur_wins=""
+  echo "   기존 tmux 세션 재사용 (창 구성 자동 변경 안 함) — 현재 창: ${cur_wins:-확인 불가}"
 fi
