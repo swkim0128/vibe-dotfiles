@@ -1,1 +1,1 @@
-/Users/eunsol/Project/vibe-ai-config/claude/plugins/tmux-suite/scripts/claude-send.sh
+/Users/eunsol/Project/vibe-ai-config/shared/scripts/tmux-suite/claude-send.sh

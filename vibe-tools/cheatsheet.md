@@ -1,1 +1,1 @@
-/Users/eunsol/Project/vibe-ai-config/claude/plugins/tmux-suite/scripts/cheatsheet.md
+/Users/eunsol/Project/vibe-ai-config/shared/scripts/tmux-suite/cheatsheet.md
