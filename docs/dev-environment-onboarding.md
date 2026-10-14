@@ -134,7 +134,7 @@ para|$HOME/Project/para|#006B6B|작업 허브|pin
 
 | 워커 | 스케줄 | 역할 | LLM 의존 |
 |---|---|---|---|
-| **overnight** | 매일 02:00 | PARA 프로젝트 git 활동 스캔 → 다음 날 1순위 과제 블루프린트 생성 | 선택 (claude CLI) |
+| **overnight** | 화~금 02:00 (월~목 근무일 밤) | PARA 프로젝트 git 활동 스캔 → 다음 날 1순위 과제 블루프린트 생성 | 선택 (claude CLI) |
 | **skill-audit** | 매일 22:00 | 당일 스킬/에이전트 호출 집계 vs 설정 인벤토리 비교 → 제거 후보 리포트 | 없음 (순수 셸) |
 | **notion-diary** | 매일 18:00 | 오늘 git 커밋을 시간대별 수집 → Notion 다이어리에 append-only 기록 | 있음 (`claude --print` 헤드리스) |
 

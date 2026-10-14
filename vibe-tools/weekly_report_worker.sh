@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# weekly_report_worker.sh — 주간보고 송부용 초안을 무인 생성하는 금요일 워커
+# weekly_report_worker.sh — 주간보고 송부용 초안을 무인 생성하는 목요일 워커
 #
-# 금요일 오후 15:50 launchd 에 의해 실행됨 (16:00 메신저 송부 10분 전, caffeinate -i -s 래핑).
+# 목요일 오후 15:50 launchd 에 의해 실행됨 (16:00 메신저 송부 10분 전, caffeinate -i -s 래핑).
+# 금요일이 정기 연차(2026-10-16~)라 목요일이 주간보고 시기다.
+# 모델: claude-opus-5-5 — 단일 프로젝트 일상 작업 기본값(Opus).
 #
 # 동작:
 #   PARA 볼트를 cwd 로 두고 헤드리스 claude 에 `/weekly-report` 을 던져,
@@ -30,7 +32,7 @@
 # 안전 가드:
 #   - 스킬 1~3단계(GROUND~VERIFY)는 PARA 노트 읽기 위주. 4단계 ADAPT(노트 갱신)는
 #     "사용자 송부 완료 보고 후" 단계라 무인 실행에서는 자연히 수행되지 않는다.
-#   - 토·일 결정론 skip (plist 는 금요일만 돌지만 수동 실행 대비).
+#   - 토·일 결정론 skip (plist 는 목요일만 돌지만 수동 실행 대비).
 #   - launchd 에서 caffeinate 로 래핑하므로 이 스크립트는 직접 caffeinate 호출 안 함.
 #
 # 사용법:
@@ -150,7 +152,7 @@ set +e
 "${CLAUDE_BIN}" \
   --print "/weekly-report" \
   --dangerously-skip-permissions \
-  --model "claude-sonnet-4-6" \
+  --model "claude-opus-5-5" \
   --output-format text \
   --allowedTools "Read,Glob,Grep,Bash,Skill" \
   > "${OUT_FILE}" 2>> "${LOG_FILE}"

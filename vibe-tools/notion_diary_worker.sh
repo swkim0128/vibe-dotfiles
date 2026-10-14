@@ -2,6 +2,7 @@
 # notion_diary_worker.sh — 오늘 업무를 노션 주간 일지의 요일별 WORK 슬롯에 기록하는 야간 워커
 #
 # 매일 오후 18:00 launchd 에 의해 실행됨 (caffeinate -i -s 래핑).
+# 모델: claude-opus-5-5 (NOTION_MODEL) — 단일 프로젝트 일상 작업 기본값(Opus).
 # 두 단계로 동작한다:
 #   (A) 결정론적 수집(셸): REPO_SCAN_DIR 하위 각 git 레포에서 오늘 자정 이후 커밋을
 #       "HH:MM|레포명|커밋제목" 형태로 모아 시각 오름차순 정렬한 WORK_LOG 를 만든다.
@@ -74,7 +75,7 @@ WEEKLY_LIST="${WEEKLY_LIST:-0}"
 PARA_VAULT="${PARA_VAULT:-${HOME}/Project/para}"
 ISO_WEEK="$(date +%G-W%V)"
 WEEK_REPORT_FILE="${PARA_VAULT}/02.Areas/01.주간보고/${ISO_WEEK}.md"
-NOTION_MODEL="claude-sonnet-4-6"
+NOTION_MODEL="claude-opus-5-5"
 NOTION_TOOLS="Read,Glob,Grep,mcp__claude_ai_Notion__notion-search,mcp__claude_ai_Notion__notion-fetch,mcp__claude_ai_Notion__notion-update-page"
 
 FORCE_FRIDAY="${FORCE_FRIDAY:-0}"

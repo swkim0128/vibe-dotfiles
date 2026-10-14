@@ -7,16 +7,22 @@
   <key>Label</key>
   <string>com.swkim0128.weekly-report</string>
 
-  <!-- 매주 금요일(Weekday=5) 오후 15:50 실행 — 16:00 메신저 송부 10분 전 -->
+  <!--
+    매주 목요일(Weekday=4) 오후 15:50 실행 — 16:00 메신저 송부 10분 전.
+    금요일은 정기 연차(2026-10-16~)라 목요일이 주간보고 시기다.
+    (요일별 dict 배열 형식 — 다른 워커 plist 와 통일)
+  -->
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Weekday</key>
-    <integer>5</integer>
-    <key>Hour</key>
-    <integer>15</integer>
-    <key>Minute</key>
-    <integer>50</integer>
-  </dict>
+  <array>
+    <dict>
+      <key>Weekday</key>
+      <integer>4</integer>
+      <key>Hour</key>
+      <integer>15</integer>
+      <key>Minute</key>
+      <integer>50</integer>
+    </dict>
+  </array>
 
   <!--
     ProgramArguments:

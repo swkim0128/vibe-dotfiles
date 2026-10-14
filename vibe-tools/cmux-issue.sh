@@ -23,7 +23,8 @@
 # 구성 (win1 = work, main-vertical):
 #   좌측 main pane  : para cwd 의 claude 단일 pane (작업 추적·오케스트레이션·PARA 노트)
 #                     — vibe start 현행 동작과 동일하게 메인은 단일 pane 이 기본
-#   우측 스택       : 수정 대상 프로젝트별 pane, 각 프로젝트 cwd 로 claude 실행
+#                     모델: claude-fable-5-1 — 선행 계획·다중 레포 병렬 오케스트레이션 담당
+#   우측 스택       : 수정 대상 프로젝트별 pane, 각 프로젝트 cwd 로 claude 실행(모델 기본값)
 #                     첫 인자(주 작업 레포)가 최상단
 #   win2 = view     : 주 작업 레포 cwd 셸 — 파일 육안 확인 시 vim 열람 (cmux 신규 탭도 가능)
 #                     프로젝트 pane 이 처음 생길 때 생성됨(para 단독 단계엔 없음).
@@ -251,7 +252,7 @@ else
   # win1 work — 좌측 main pane = para claude (단일 pane, 추적·오케스트레이션)
   # -x/-y 로 넓은 베이스를 줘서 main-vertical 우측 스택이 붕괴하지 않게 함.
   tmux new-session -d -s "$ISSUE" -n work -c "$para_path" -x "$WORK_COLS" -y "$WORK_ROWS"
-  tmux send-keys -t "$ISSUE:work" 'claude' Enter
+  tmux send-keys -t "$ISSUE:work" 'claude --model claude-fable-5-1' Enter
   tmux select-pane -t "$ISSUE:work" -T "$ISSUE · para(추적)"
 
   # 프로젝트 pane 선생성 (0개면 para 단독 — ③ 단계에서 --add 로 추가)

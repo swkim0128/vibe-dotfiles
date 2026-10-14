@@ -8,8 +8,9 @@
   <string>com.swkim0128.daily-scrum</string>
 
   <!--
-    평일(월~금) 오전 09:50 실행 — 10:00 스크럼 게시 10분 전.
-    Weekday 를 단일 dict 로 줄 수 없으므로 dict 5개 배열로 평일만 지정한다.
+    월~목 오전 09:50 실행 — 10:00 스크럼 게시 10분 전.
+    금요일은 정기 연차(2026-10-16~)라 제외한다.
+    Weekday 를 단일 dict 로 여러 개 줄 수 없으므로 dict 4개 배열로 근무일만 지정한다.
     (Weekday: 1=월 … 5=금. 0/7=일)
   -->
   <key>StartCalendarInterval</key>
@@ -41,14 +42,6 @@
     <dict>
       <key>Weekday</key>
       <integer>4</integer>
-      <key>Hour</key>
-      <integer>9</integer>
-      <key>Minute</key>
-      <integer>50</integer>
-    </dict>
-    <dict>
-      <key>Weekday</key>
-      <integer>5</integer>
       <key>Hour</key>
       <integer>9</integer>
       <key>Minute</key>

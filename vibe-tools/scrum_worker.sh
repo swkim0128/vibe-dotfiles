@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # scrum_worker.sh — 데일리 스크럼 발표용 초안을 무인 생성하는 아침 워커
 #
-# 평일 오전 09:50 launchd 에 의해 실행됨 (10:00 팀 채널 게시 10분 전, caffeinate -i -s 래핑).
+# 월~목 오전 09:50 launchd 에 의해 실행됨 (10:00 팀 채널 게시 10분 전, caffeinate -i -s 래핑).
+# 금요일은 정기 연차(2026-10-16~)라 plist 에서 제외.
+# 모델: claude-opus-5-5 — 단일 프로젝트 일상 작업 기본값(Opus).
 #
 # 동작:
 #   PARA 볼트를 cwd 로 두고 헤드리스 claude 에 `/daily-scrum` 을 던져,
@@ -28,7 +30,7 @@
 #
 # 안전 가드:
 #   - 스킬이 읽기 전용(work-log·git log·PARA 노트 스캔)이라 어떤 레포도 변경하지 않음.
-#   - 토·일 결정론 skip (plist 는 평일만 돌지만 수동 실행 대비).
+#   - 금(정기 연차)·토·일 결정론 skip (plist 는 월~목만 돌지만 수동 실행 대비).
 #   - launchd 에서 caffeinate 로 래핑하므로 이 스크립트는 직접 caffeinate 호출 안 함.
 #
 # 사용법:
@@ -102,10 +104,15 @@ log_info "PARA 볼트: ${PARA_DIR}"
 log_info "대상 날짜: ${TODAY}"
 log_info "DRY_RUN: ${DRY_RUN}"
 
-# ── 주말 결정론 skip (스크럼은 평일 업무) ───────────────────────────────────
+# ── 금·토·일 결정론 skip (스크럼은 월~목 근무일 업무) ───────────────────────
 if [[ "${DOW_NUM}" == "6" || "${DOW_NUM}" == "7" ]]; then
   log_info "오늘(${TODAY})은 주말 — 데일리 스크럼이 없어 skip 합니다."
   log_info "===== scrum_worker 완료 (주말 skip) ====="
+  exit 0
+fi
+if [[ "${DOW_NUM}" == "5" ]]; then
+  log_info "오늘(${TODAY})은 금요일 — 정기 연차(휴무)라 데일리 스크럼이 없어 skip 합니다."
+  log_info "===== scrum_worker 완료 (정기 연차 skip) ====="
   exit 0
 fi
 
@@ -148,7 +155,7 @@ set +e
 "${CLAUDE_BIN}" \
   --print "/daily-scrum" \
   --dangerously-skip-permissions \
-  --model "claude-sonnet-4-6" \
+  --model "claude-opus-5-5" \
   --output-format text \
   --allowedTools "Read,Glob,Grep,Bash,Skill" \
   > "${OUT_FILE}" 2>> "${LOG_FILE}"

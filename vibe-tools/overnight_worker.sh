@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # overnight_worker.sh — 야간 자율 분석 파이프라인
 #
-# 매일 새벽 2시 launchd에 의해 실행됨 (caffeinate -i -s 래핑).
+# 화·수·목·금 새벽 2시 launchd에 의해 실행됨 (caffeinate -i -s 래핑).
+# = 월~목 근무일 밤. 금요일은 정기 연차(2026-10-16~)라 금→토·주말 새벽은 돌지 않는다.
+# 모델: claude-fable-5-1 — 무인 long-horizon 작업이고 주간 한도가 낮 시간 Opus 사용과 겹치지 않음.
 # 외부 PARA 볼트(선택적 의존)의 git 활동을 분석하고,
 # 다음 날 1순위 과제의 소스코드를 미리 스파이크 분석하여
-# $PARA_PATH/Retrospectives/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
+# $PARA_PATH/.claude/overnight/YYYY-MM-DD_overnight_blueprint.md 에 누적 저장.
 #
 # 추가 책무 (2026-05-26):
 #   $PARA_PATH/01.Projects/*.md 중 frontmatter status=in_progress 파일을
@@ -19,6 +21,8 @@
 #   PARA_PATH       PARA 볼트 루트. 미설정 시 폴백 = "$HOME/Project/para"
 #                   해당 경로가 존재하지 않으면 PARA 통합은 자동 skip (graceful).
 #                   본 레포 자체는 PARA 의 물리적 존재에 의존하지 않는다.
+#   RETRO_DIR       블루프린트 출력 디렉토리. 미설정 시 폴백 = "$PARA_PATH/.claude/overnight"
+#                   생성 실패 시 "$TMPDIR/overnight-blueprints" 로 폴백.
 #   REPO_SCAN_ROOT  git 레포 스캔 루트. 미설정 시 폴백 = "$HOME/Project"
 #   CLAUDE_BIN      claude CLI 경로. 미설정 시 PATH 에서 자동 탐색.
 #
@@ -33,6 +37,7 @@
 #   직접 실행은 권장하지 않음. launchd 또는 테스트 시 dry-run 플래그로 실행.
 #   DRY_RUN=1 ./overnight_worker.sh
 #   PARA_PATH=/custom/para ./overnight_worker.sh
+#   RETRO_DIR=/custom/out ./overnight_worker.sh
 
 set -euo pipefail
 
@@ -40,7 +45,7 @@ set -euo pipefail
 # 외부 PARA 볼트 — 미설정·미존재 시 PARA 통합은 자동 skip (본 레포는 PARA 의존 없음)
 PARA_ROOT="${PARA_PATH:-${HOME}/Project/para}"
 PARA_PROJECTS_DIR="${PARA_ROOT}/01.Projects"
-RETRO_DIR="${PARA_ROOT}/Retrospectives"
+RETRO_DIR="${RETRO_DIR:-${PARA_ROOT}/.claude/overnight}"
 # git 활동 스캔 루트 — 환경변수 오버라이드 가능
 REPO_SCAN_DIR="${REPO_SCAN_ROOT:-${HOME}/Project}"
 LOG_DIR="${HOME}/Library/Logs/overnight_worker"
@@ -134,7 +139,7 @@ else
     --print \
     --dangerously-skip-permissions \
     --allowedTools "Read,Glob,Grep,Write,Edit" \
-    --model "claude-sonnet-4-6" \
+    --model "claude-fable-5-1" \
     --output-format text \
     "~/.claude/CLAUDE-delegation.md에 정의된 야간 자율 운전 모드 SOP에 따라, 오늘 자정 이후 발생한 REPO_SCAN_DIR('${REPO_SCAN_DIR}') 내의 git 활동 분석 및 PARA_PROJECTS_DIR('${PARA_PROJECTS_DIR}') 내 IN_PROGRESS 파일의 본문 append 작업을 완전히 자율적으로 완수해라. (분석 결과는 '${BLUEPRINT_FILE}'에 저장)" \
     >> "${LOG_FILE}" 2>&1

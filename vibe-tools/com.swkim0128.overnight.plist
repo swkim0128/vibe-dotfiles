@@ -7,14 +7,47 @@
   <key>Label</key>
   <string>com.swkim0128.overnight</string>
 
-  <!-- 새벽 2시 정각 실행 -->
+  <!--
+    화·수·목·금 새벽 02:00 실행 — 월~목 근무일 밤(업무컴 사용일)에 해당.
+    금요일은 정기 연차(2026-10-16~)라 금→토 새벽은 돌지 않는다.
+    Weekday 를 단일 dict 로 여러 개 줄 수 없으므로 요일별 dict 배열로 지정한다.
+    (Weekday: 1=월 … 5=금. 0/7=일)
+  -->
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key>
-    <integer>2</integer>
-    <key>Minute</key>
-    <integer>0</integer>
-  </dict>
+  <array>
+    <dict>
+      <key>Weekday</key>
+      <integer>2</integer>
+      <key>Hour</key>
+      <integer>2</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key>
+      <integer>3</integer>
+      <key>Hour</key>
+      <integer>2</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key>
+      <integer>4</integer>
+      <key>Hour</key>
+      <integer>2</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key>
+      <integer>5</integer>
+      <key>Hour</key>
+      <integer>2</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+  </array>
 
   <!--
     ProgramArguments:
