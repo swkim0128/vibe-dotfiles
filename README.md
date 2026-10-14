@@ -42,6 +42,19 @@ vibe-dotfiles/
 
 ## 🚀 새 Mac에서 설치하기
 
+### 개발 설계·소스 조사 도구 (개인·업무 Mac 공통, 선택 설치)
+
+기존 `setup.sh`를 재실행하지 않고 [Brewfile.dev](Brewfile.dev)의 도구만 설치합니다. 각 Mac에서 저장소를 최신화한 뒤 아래 명령을 **각각** 실행하세요. `brew bundle check`는 설치 상태 검사이며 패키지를 설치하지 않습니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
+
+```bash
+env HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --verbose --file /path/to/vibe-dotfiles/Brewfile.dev
+brew bundle --file /path/to/vibe-dotfiles/Brewfile.dev
+```
+
+`/path/to/vibe-dotfiles`는 해당 기기의 실제 저장소 경로로 바꿉니다. `ast-grep`은 구조적 소스 검색, `graphviz`는 그래프 렌더링, `plantuml`은 텍스트 UML, `drawio`는 기존 설계 원본의 편집·내보내기에 사용합니다. PlantUML의 Java 의존성은 Homebrew가 관리합니다. 프로젝트별 구현·테스트는 기존 빌드 도구와 테스트 러너를 그대로 사용하며 이 목록에 런타임을 일괄 설치하지 않습니다.
+
+Claude Code·Codex에서 별도 MCP 없이 터미널 명령으로 사용할 수 있습니다. draw.io 공식 cask는 `drawio` 명령을 제공하며 앱 직접 실행 경로는 `/Applications/draw.io.app/Contents/MacOS/draw.io`입니다. 설치 후 `ast-grep --version`, `dot -V`, `plantuml -version`, `drawio --help`를 각각 확인하세요. draw.io는 Desktop 기반이므로 표시 세션이 없는 서버용 headless CLI로 가정하지 않습니다. 회사 코드·설계는 로컬에서 처리하며 외부 렌더 서버나 업로드 서비스를 사용하지 않습니다.
+
 ### 1단계 — 사전 요구사항 설치
 
 ```bash
