@@ -230,6 +230,12 @@ else
   warn "기존 git core.pager='$current_pager' 감지 — 덮어쓰지 않고 Delta 설정 건너뜀 (원하면 수동 적용)"
 fi
 
+# ── 12-1. Git 전역 무시 파일 (개발 도구 자동 생성물 비추적) ─────────────────
+info "Git 전역 무시 파일 적용 중..."
+safe_link "$HOME/.gitignore_global" "$DOTFILES/git/gitignore_global"
+git config --global core.excludesfile "$HOME/.gitignore_global"
+success "core.excludesfile → ~/.gitignore_global"
+
 # ── 13. Claude Code 플러그인 (vibe-ai-config 로 이관됨) ─────────────────────
 # 플러그인 설치는 vibe-ai-config install.sh 담당 (마켓플레이스 등록·개인/업무 플러그인 목록 포함).
 

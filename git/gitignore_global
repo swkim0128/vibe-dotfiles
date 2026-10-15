@@ -1,0 +1,17 @@
+# 전역 git 무시 파일 정본 — install.sh 가 ~/.gitignore_global 로 심링크하고 core.excludesfile 로 지정한다.
+# 원칙: 개발 도구가 레포마다 자동 생성하는 파일·경로는 커밋 대상에서 제외한다.
+
+# 개인 하네스 로컬 룰 — 모든 레포에서 비추적 (2026-07-03)
+CLAUDE.local.md
+# Serena MCP 가 실행된 레포마다 자동 생성하는 프로젝트 설정·캐시 (2026-10-15)
+.serena/
+# OpenSpec(openspec init) 이 생성하는 스펙·변경 제안 디렉터리
+openspec/
+# OpenSpec 이 Claude Code 용으로 생성하는 스킬
+.claude/skills/openspec-*/
+# OpenSpec 이 Claude Code 용으로 생성하는 슬래시 명령(/opsx:*)
+.claude/commands/opsx/
+# OpenSpec 이 Codex 등 AGENTS 계열 도구용으로 생성하는 스킬
+.agents/skills/openspec-*/
+# ast-grep(sg new project) 이 생성하는 프로젝트 설정
+sgconfig.yml

@@ -95,7 +95,7 @@ tmux -L verifytest kill-server
 - 두 진입점 독립(이름만 같은 `install.sh`). 본 레포 `install.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
 
 ## 🛠️ 구조
-- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start·cmux 런처), `bin/` (독립 실행 유틸 — `dock-badges*.sh`), `zsh/aliases.zsh`, `ghostty/` (ghostty·cmux 테마/폰트 설정), `cmux/` (cmux 자체 설정 cmux.json·dock.json), `docs/knowledge-base/` (KB SSoT)
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start·cmux 런처), `bin/` (독립 실행 유틸 — `dock-badges*.sh`), `zsh/aliases.zsh`, `git/gitignore_global` (전역 git 무시 정본 — install.sh 가 `~/.gitignore_global` 심링크 + `core.excludesfile` 지정. 개발 도구 자동 생성물은 도구명 주석과 함께 여기 추가), `ghostty/` (ghostty·cmux 테마/폰트 설정), `cmux/` (cmux 자체 설정 cmux.json·dock.json), `docs/knowledge-base/` (KB SSoT)
 
 ### macOS Dock 뱃지 (알림 개수) 함정
 - 뱃지 조회는 `osascript` + `System Events > process Dock > list 1` 의 `AXStatusLabel`. 접근성 권한만 필요(FDA 불필요) — LaunchAgent 로 옮기지 말 것(권한이 터미널 responsible process 로 상속되는 현재 경로가 검증됨).

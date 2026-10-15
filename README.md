@@ -30,6 +30,8 @@ vibe-dotfiles/
 ├── zsh/
 │   ├── aliases.zsh           # alias, bindkey, tools 함수
 │   └── env.zsh               # 공용 환경변수 (~/.zshenv 에서 source, 텔레메트리 끄기 등)
+├── git/
+│   └── gitignore_global      # ~/.gitignore_global 로 심볼릭 링크 (전역 core.excludesfile)
 ├── ghostty/
 │   └── config                # ~/.config/ghostty/config 로 심볼릭 링크 (cmux 가 테마·폰트 상속)
 └── cmux/
@@ -57,9 +59,10 @@ install.sh가 수행하는 작업:
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
 - `~/.zshrc` 에 `aliases.zsh`, `~/.zshenv` 에 `env.zsh` source 라인 자동 추가
+- `~/.gitignore_global` → `git/gitignore_global` 심볼릭 링크 + `git config --global core.excludesfile` 지정 (Serena·OpenSpec·ast-grep 자동 생성물을 모든 레포에서 비추적)
 
 `openspec`(스펙 주도 개발 CLI)은 익명 텔레메트리가 기본으로 켜져 있습니다. [zsh/env.zsh](zsh/env.zsh)의 `OPENSPEC_TELEMETRY=0`·`DO_NOT_TRACK=1`로 끕니다(둘 다 켜면 업데이트 확인도 꺼짐).
-⚠️ 사내 레포에서 `openspec init`이 만드는 `openspec/`·`.claude/skills/openspec-*`·`.claude/commands/opsx/`·`.agents/skills/openspec-*`는 커밋하지 말고 해당 레포의 `.git/info/exclude`에 추가하세요.
+`openspec init`이 만드는 `openspec/`·`.claude/skills/openspec-*`·`.claude/commands/opsx/`·`.agents/skills/openspec-*`는 [git/gitignore_global](git/gitignore_global)이 전역으로 무시합니다. 새 도구가 레포에 파일을 만들면 이 파일에 도구명 주석과 함께 추가하세요.
 
 ### 2단계 — NvChad 설치 (Neovim 처음 설정 시)
 
