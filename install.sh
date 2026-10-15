@@ -323,15 +323,6 @@ if command -v tmux &>/dev/null && tmux info &>/dev/null 2>&1; then
     warn "tmux 리로드 실패 (tmux 세션 없음 — 다음 실행 시 자동 적용)"
 fi
 
-# ── 16. Skills.sh CLI 및 에이전트 스킬 동기화 (Claude Code + Antigravity agy) ──
-info "Skills.sh CLI 및 에이전트 스킬 동기화 중..."
-safe_link "$HOME/.local/bin/sync-skills-to-agents" "$DOTFILES/vibe-tools/sync-skills-to-agents.sh"
-if [[ -x "$DOTFILES/vibe-tools/sync-skills-to-agents.sh" ]]; then
-  "$DOTFILES/vibe-tools/sync-skills-to-agents.sh" && \
-    success "Skills.sh 스킬 동기화 완료 (Antigravity agy + Claude Code)" || \
-    warn "Skills.sh 스킬 동기화 중 일부 경고 발생"
-fi
-
 # ── 완료 ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================================"
