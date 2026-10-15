@@ -5,5 +5,7 @@ brew "ast-grep"
 brew "graphviz"
 # 유스케이스·시퀀스·도메인·클래스·데이터 모델 UML. Java는 Homebrew 의존성으로 관리한다.
 brew "plantuml"
+# 스펙 주도 개발(변경 제안·스펙 문서) CLI. 텔레메트리는 zsh/env.zsh 에서 끈다.
+brew "openspec"
 # 기존 .drawio XML 설계 원본 편집·로컬 내보내기. 공식 cask가 drawio CLI도 제공한다.
 cask "drawio"

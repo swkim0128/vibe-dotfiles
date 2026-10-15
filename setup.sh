@@ -252,6 +252,17 @@ else
   success "~/.zshrc 에 이미 aliases.zsh 가 등록되어 있습니다."
 fi
 
+# 공용 환경변수는 비대화형 셸에도 적용되도록 ~/.zshenv 에 등록한다.
+ENV_SOURCE="source \"$DOTFILES/zsh/env.zsh\""
+if ! grep -qF "$ENV_SOURCE" "$HOME/.zshenv" 2>/dev/null; then
+  echo "" >> "$HOME/.zshenv"
+  echo "# Vibe Dotfiles env" >> "$HOME/.zshenv"
+  echo "$ENV_SOURCE" >> "$HOME/.zshenv"
+  success "~/.zshenv 에 env.zsh source 라인 추가 완료"
+else
+  success "~/.zshenv 에 이미 env.zsh 가 등록되어 있습니다."
+fi
+
 # ── 12. Git Delta 설정 ───────────────────────────────────────────────────────
 info "Git Delta 설정 중..."
 current_pager=$(git config --global --get core.pager 2>/dev/null || echo "")
