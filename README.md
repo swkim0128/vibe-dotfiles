@@ -9,6 +9,7 @@ Tmux + Neovim (NvChad) + Claude Code IPC + 커스텀 CLI 도구로 구성된 **V
 ```
 vibe-dotfiles/
 ├── setup.sh                  # 원클릭 설치 스크립트
+├── Brewfile                  # Homebrew 패키지 정본 (setup.sh 가 brew bundle 로 설치)
 ├── tmux/
 │   └── .tmux.conf            # Tmux 전체 설정
 ├── vibe-tools/               # ~/.config/vibe-tools/ 로 심볼릭 링크
@@ -43,65 +44,29 @@ vibe-dotfiles/
 
 ## 🚀 새 Mac에서 설치하기
 
-### 개발 설계·소스 조사 도구 (개인·업무 Mac 공통, 선택 설치)
-
-기존 `setup.sh`를 재실행하지 않고 [Brewfile.dev](Brewfile.dev)의 도구만 설치합니다. 각 Mac에서 저장소를 최신화한 뒤 아래 명령을 **각각** 실행하세요. `brew bundle check`는 설치 상태 검사이며 패키지를 설치하지 않습니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
+### 1단계 — 클론 후 원클릭 설치
 
 ```bash
-env HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --verbose --file /path/to/vibe-dotfiles/Brewfile.dev
-brew bundle --file /path/to/vibe-dotfiles/Brewfile.dev
-```
-
-`/path/to/vibe-dotfiles`는 해당 기기의 실제 저장소 경로로 바꿉니다. `ast-grep`은 구조적 소스 검색, `graphviz`는 그래프 렌더링, `plantuml`은 텍스트 UML, `drawio`는 기존 설계 원본의 편집·내보내기에 사용합니다. PlantUML의 Java 의존성은 Homebrew가 관리합니다. 프로젝트별 구현·테스트는 기존 빌드 도구와 테스트 러너를 그대로 사용하며 이 목록에 런타임을 일괄 설치하지 않습니다.
-
-Claude Code·Codex에서 별도 MCP 없이 터미널 명령으로 사용할 수 있습니다. draw.io 공식 cask는 `drawio` 명령을 제공하며 앱 직접 실행 경로는 `/Applications/draw.io.app/Contents/MacOS/draw.io`입니다. 설치 후 `ast-grep --version`, `dot -V`, `plantuml -version`, `drawio --help`를 각각 확인하세요. draw.io는 Desktop 기반이므로 표시 세션이 없는 서버용 headless CLI로 가정하지 않습니다. 회사 코드·설계는 로컬에서 처리하며 외부 렌더 서버나 업로드 서비스를 사용하지 않습니다.
-
-`openspec`은 스펙 주도 개발 CLI입니다. 익명 텔레메트리가 기본으로 켜져 있어 [zsh/env.zsh](zsh/env.zsh)에서 `OPENSPEC_TELEMETRY=0`·`DO_NOT_TRACK=1`로 끄며(`setup.sh`가 `~/.zshenv`에 등록, 둘 다 켜면 업데이트 확인도 꺼짐), 설치 후 `openspec --version`으로 확인합니다.
-⚠️ 사내 레포에서 `openspec init`이 만드는 `openspec/`·`.claude/skills/openspec-*`·`.claude/commands/opsx/`·`.agents/skills/openspec-*`는 커밋하지 말고 해당 레포의 `.git/info/exclude`에 추가하세요.
-
-### 1단계 — 사전 요구사항 설치
-
-```bash
-# Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 필수 CLI 도구
-brew install neovim tmux lsd bat fzf fd ripgrep git-delta btop \
-             dust duf fastfetch zoxide lazygit navi starship mise
-
-# 터미널
-brew install --cask ghostty
-
-# Oh My Zsh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-
-# Claude Code
-curl -fsSL https://claude.ai/install.sh | bash
-```
-
-### 2단계 — Dotfiles 클론
-
-```bash
-mkdir -p ~/Project
 git clone <repo-url> ~/Project/vibe-dotfiles
+~/Project/vibe-dotfiles/setup.sh
 ```
 
-### 3단계 — 원클릭 설치
-
-```bash
-cd ~/Project/vibe-dotfiles
-./setup.sh
-```
+**[Brewfile](Brewfile)이 패키지 정본입니다.** `setup.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `setup.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
 
 setup.sh가 수행하는 작업:
+- Homebrew 설치 확인 → `Brewfile` 패키지 설치
+- Oh My Zsh·Zinit·Tmux TPM 설치 확인
 - `~/.tmux.conf` → `tmux/.tmux.conf` 심볼릭 링크
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
 - `~/.claude/settings.json`, `~/.claude/hooks` 심볼릭 링크
 - `~/.claude/plugins/cache/personal/vibe-config` 심볼릭 링크 (개인 플러그인)
-- `~/.zshrc` 에 `aliases.zsh` source 라인 자동 추가
+- `~/.zshrc` 에 `aliases.zsh`, `~/.zshenv` 에 `env.zsh` source 라인 자동 추가
 
-### 4단계 — NvChad 설치 (Neovim 처음 설정 시)
+`openspec`(스펙 주도 개발 CLI)은 익명 텔레메트리가 기본으로 켜져 있습니다. [zsh/env.zsh](zsh/env.zsh)의 `OPENSPEC_TELEMETRY=0`·`DO_NOT_TRACK=1`로 끕니다(둘 다 켜면 업데이트 확인도 꺼짐).
+⚠️ 사내 레포에서 `openspec init`이 만드는 `openspec/`·`.claude/skills/openspec-*`·`.claude/commands/opsx/`·`.agents/skills/openspec-*`는 커밋하지 말고 해당 레포의 `.git/info/exclude`에 추가하세요.
+
+### 2단계 — NvChad 설치 (Neovim 처음 설정 시)
 
 ```bash
 # NvChad starter 설치 (lua/ 는 setup.sh가 이미 심볼릭 링크로 연결함)
@@ -110,7 +75,7 @@ git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
 # :MasonInstallAll  ← LSP 서버 일괄 설치
 ```
 
-### 5단계 — Alias 적용
+### 3단계 — Alias 적용
 
 ```bash
 source ~/.zshrc

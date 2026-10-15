@@ -59,17 +59,6 @@ safe_link() {
   success "$target → $source"
 }
 
-# install_cask <cask-name>
-install_cask() {
-  local cask="$1"
-  if brew list --cask "$cask" &>/dev/null 2>&1; then
-    info "  이미 설치됨: $cask"
-    return
-  fi
-  info "  설치 중: $cask"
-  brew install --cask "$cask"
-}
-
 echo ""
 echo "============================================================"
 echo "  🚀 Vibe Dotfiles 설치 시작"
@@ -91,26 +80,11 @@ else
   success "Homebrew 이미 설치됨"
 fi
 
-# ── 1. CLI 도구 ───────────────────────────────────────────────────────────────
-info "CLI 도구 설치 중..."
-FORMULAS=(
-  lsd bat fzf fd ripgrep git-delta
-  btop dust duf fastfetch
-  neovim tmux tmuxinator
-  zoxide lazygit navi starship mise
-  yazi gh jq thefuck glow
-  ktlint detekt
-  shellcheck bats-core
-)
-for formula in "${FORMULAS[@]}"; do
-  if ! brew list --formula "$formula" &>/dev/null 2>&1; then
-    info "  설치 중: $formula"
-    brew install "$formula"
-  else
-    info "  이미 설치됨: $formula"
-  fi
-done
-success "CLI 도구 설치 완료"
+# ── 1. Brewfile 패키지 (CLI·AI CLI·GUI 터미널 — 정본: Brewfile) ─────────────
+# brew bundle 은 이미 설치된 항목을 건너뛰므로 재실행해도 멱등이다.
+info "Brewfile 패키지 설치 중..."
+brew bundle --file "$DOTFILES/Brewfile"
+success "Brewfile 패키지 설치 완료"
 
 # ── 2. Oh My Zsh ──────────────────────────────────────────────────────────────
 info "Oh My Zsh 확인 중..."
@@ -133,31 +107,8 @@ else
   success "Zinit 이미 설치됨"
 fi
 
-# ── 4. AI 도구 ────────────────────────────────────────────────────────────────
-info "Claude Code 확인 중..."
-if ! command -v claude &>/dev/null; then
-  info "Claude Code 설치 중..."
-  brew install claude-code
-  success "Claude Code 설치 완료"
-else
-  success "Claude Code 이미 설치됨 ($(claude --version 2>/dev/null))"
-fi
-
-info "Gemini CLI 확인 중..."
-if ! command -v gemini &>/dev/null; then
-  info "Gemini CLI 설치 중..."
-  brew install gemini-cli
-  success "Gemini CLI 설치 완료"
-else
-  success "Gemini CLI 이미 설치됨"
-fi
-
-# ── 4b. GUI 터미널 앱 (Ghostty · cmux) ───────────────────────────────────────
-info "GUI 터미널 앱 설치 중..."
-install_cask ghostty
-
-install_cask cmux
-
+# ── 4. GUI 터미널 앱 설정 (Ghostty · cmux — 설치는 1단계 Brewfile) ──────────
+info "GUI 터미널 앱 설정 중..."
 if command -v cmux &>/dev/null; then
   success "cmux CLI 사용 가능"
 else
@@ -172,7 +123,7 @@ safe_link "$HOME/.config/ghostty/config" "$DOTFILES/ghostty/config"
 mkdir -p "$HOME/.config/cmux"
 safe_link "$HOME/.config/cmux/cmux.json" "$DOTFILES/cmux/cmux.json"
 
-success "GUI 터미널 앱 설치 완료"
+success "GUI 터미널 앱 설정 완료"
 
 # tmux ↔ cmux 소켓 제어 안내 (socketControlMode=full 활성 조건 — SoC: 안내만)
 echo ""

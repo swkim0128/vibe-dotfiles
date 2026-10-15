@@ -64,10 +64,9 @@ source ~/.zshrc
 | 단계 | 대상 | 동작 |
 |---|---|---|
 | 0 | Homebrew | 미설치 시 설치 + PATH 등록 |
-| 1 | CLI 도구 | lsd, bat, fzf, fd, ripgrep, git-delta, btop, lazygit, neovim, tmux, zoxide, starship, yazi, gh, jq, glow, shellcheck, bats-core 등 |
+| 1 | Brewfile 패키지 | `brew bundle --file Brewfile` — CLI 도구·AI CLI(Claude Code·Gemini CLI)·GUI 터미널(Ghostty·cmux)·개발 설계 도구. 패키지 정본은 `Brewfile` |
 | 2~3 | Zsh 생태계 | Oh My Zsh + Zinit |
-| 4 | AI CLI (선택) | Claude Code, Gemini CLI (`brew install`) |
-| 4b | GUI 터미널 | Ghostty, cmux (cask) + 설정 심볼릭 링크 |
+| 4 | GUI 터미널 설정 | ghostty·cmux 설정 심볼릭 링크 |
 | 5~6 | Tmux | TPM clone + `~/.tmux.conf` 링크 |
 | 7 | vibe-tools | `~/.config/vibe-tools` 링크 + 스크립트 실행권한 |
 | 8 | Neovim | `~/.config/nvim/lua` 링크 |
