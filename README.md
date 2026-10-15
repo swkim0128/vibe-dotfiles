@@ -19,11 +19,7 @@ vibe-dotfiles/
 │   ├── my-tools.sh           # fzf 명령어 팝업 메뉴
 │   ├── tmux-sessionizer.sh   # 프로젝트 세션 매니저 (Prefix+F)
 │   ├── claude-delegate.sh    # 패널 간 클로드 작업 위임 (IPC)
-│   ├── claude-callback.sh    # 작업 완료 보고 (IPC)
-│   └── claude-plugin/        # 개인 Claude Code 플러그인 (vibe-config@personal)
-│       ├── package.json
-│       ├── hooks/hooks.json  # Stop/Notification 훅
-│       └── skills/claude-ipc/SKILL.md
+│   └── claude-callback.sh    # 작업 완료 보고 (IPC)
 ├── nvim/
 │   └── lua/                  # ~/.config/nvim/lua/ 로 심볼릭 링크
 │       ├── chadrc.lua        # NvChad 테마/UI 설정
@@ -60,8 +56,6 @@ install.sh가 수행하는 작업:
 - `~/.tmux.conf` → `tmux/.tmux.conf` 심볼릭 링크
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
-- `~/.claude/settings.json`, `~/.claude/hooks` 심볼릭 링크
-- `~/.claude/plugins/cache/personal/vibe-config` 심볼릭 링크 (개인 플러그인)
 - `~/.zshrc` 에 `aliases.zsh`, `~/.zshenv` 에 `env.zsh` source 라인 자동 추가
 
 `openspec`(스펙 주도 개발 CLI)은 익명 텔레메트리가 기본으로 켜져 있습니다. [zsh/env.zsh](zsh/env.zsh)의 `OPENSPEC_TELEMETRY=0`·`DO_NOT_TRACK=1`로 끕니다(둘 다 켜면 업데이트 확인도 꺼짐).
@@ -118,10 +112,6 @@ git push
 
 ---
 
-## 📦 Claude Code 개인 플러그인 (`vibe-config@personal`)
+## 📦 Claude Code 플러그인·MCP·스킬
 
-설치 후 Claude Code를 재시작하면 자동으로 로드됩니다.
-
-- **Stop 훅**: 작업 완료 시 Glass.aiff 사운드
-- **Notification 훅**: Ping.aiff + macOS 알림
-- **claude-ipc 스킬**: 패널 간 작업 위임 워크플로우
+이 레포는 설치하지 않습니다. vibe-ai-config 레포의 `install.sh work|personal`이 마켓플레이스 등록·플러그인·MCP·스킬·훅·settings를 설치합니다.

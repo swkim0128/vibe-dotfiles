@@ -175,9 +175,10 @@ info "Claude Code AI 하네스 자산은 외부 레포에서 별도 관리됩니
 echo ""
 if [[ -x "${VIBE_AI_CONFIG_DIR}/install.sh" ]]; then
   echo "  감지됨: ${VIBE_AI_CONFIG_DIR}/install.sh"
-  echo "  AI 룰·훅·settings.json 설치/갱신:"
-  echo "    \"${VIBE_AI_CONFIG_DIR}/install.sh\""
+  echo "  AI 룰·훅·settings.json·Claude 플러그인·MCP·스킬 설치/갱신 (work|personal 중 택1):"
+  echo "    \"${VIBE_AI_CONFIG_DIR}/install.sh\" work|personal"
 else
+  echo "  Claude 플러그인·MCP·스킬은 vibe-ai-config install.sh work|personal 로 설치합니다."
   echo "  AI 하네스가 필요하면 별도 레포를 설치 후:"
   echo "    VIBE_AI_CONFIG_PATH=<레포경로> ./install.sh  (재실행)"
   echo "  (본 레포는 AI 하네스 없이도 정상 동작합니다.)"
@@ -188,8 +189,7 @@ echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, 
 echo "    - 외부 AI 하네스 레포 : CLAUDE-*.md, hooks/, settings.work.json, plugins/"
 
 # ── 10. Claude 사용자 스킬 (마켓플레이스로 이관됨) ──────────────────────────
-# 스킬은 vibe-ai-config 마켓플레이스 레포지토리에서 플러그인 단위로 관리합니다.
-# 13단계에서 claude plugin install 로 자동 설치됩니다.
+# 스킬은 vibe-ai-config 레포에서 관리하며 그쪽 install.sh 가 설치합니다.
 
 # ── 11. Zsh aliases 자동 등록 ────────────────────────────────────────────────
 info "Zsh aliases 등록 확인 중..."
@@ -230,85 +230,8 @@ else
   warn "기존 git core.pager='$current_pager' 감지 — 덮어쓰지 않고 Delta 설정 건너뜀 (원하면 수동 적용)"
 fi
 
-# ── 13. Claude Code 플러그인 ────────────────────────────────────────────────
-info "Claude Code 플러그인 설치 중..."
-if ! command -v claude &>/dev/null; then
-  warn "Claude Code 미설치 — 플러그인 설치 건너뜀"
-else
-  # 마켓플레이스 등록 (이름|URL) — 공용 + 환경별
-  MARKETPLACES=(
-    "omc|https://github.com/Yeachan-Heo/oh-my-claudecode.git"
-    "swkim0128|https://github.com/swkim0128/vibe-ai-config.git"
-  )
-  ENV_TYPE="${ENV_TYPE:-p}"
-  # 업무 환경: 사내 cc-claude 마켓플레이스 추가 (외부망에선 접근 불가)
-  if [[ "$ENV_TYPE" == "w" ]]; then
-    MARKETPLACES+=("cc-claude|https://labs.cowave.kr/consumer-commerce-dev/cc-claude/marketplace.git")
-  fi
-  for entry in "${MARKETPLACES[@]}"; do
-    mp_name="${entry%%|*}"
-    mp_url="${entry##*|}"
-    if ! claude plugin marketplace list 2>/dev/null | grep -q "$mp_name"; then
-      claude plugin marketplace add "$mp_url" 2>/dev/null && \
-        success "$mp_name 마켓플레이스 등록 완료" || warn "$mp_name 마켓플레이스 등록 실패"
-    else
-      success "$mp_name 마켓플레이스 이미 등록됨"
-    fi
-  done
-
-  # 공용 플러그인 (개인·업무 공통, 2026-05-20 실 설치 상태 반영)
-  BASE_PLUGINS=(
-    # claude-plugins-official
-    "superpowers@claude-plugins-official"
-    "github@claude-plugins-official"
-    "context7@claude-plugins-official"
-    "php-lsp@claude-plugins-official"
-    # omc (오케스트레이션 프레임워크)
-    "oh-my-claudecode@omc"
-    # swkim0128 마켓플레이스 (도메인 스킬 + 워크플로우 도구)
-    "analyze@swkim0128"
-    "git-suite@swkim0128"
-    "google-workspace@swkim0128"
-    "harness@swkim0128"
-    "notify@swkim0128"
-    "notion-suite@swkim0128"
-    "nworks@swkim0128"
-    "task-mgmt@swkim0128"
-    "test@swkim0128"
-    "tmux-suite@swkim0128"
-    "vibe-admin@swkim0128"
-  )
-  # 개인 환경 전용 (현재 없음 — BASE가 개인 환경 커버)
-  PERSONAL_PLUGINS=()
-  # 업무 환경 전용 플러그인 (사내 cc-claude 마켓플레이스)
-  # NOTE: analyze/harness/test/nworks는 swkim0128 BASE로 이전됐으므로 여기서 제거 (충돌 방지)
-  WORK_PLUGINS=(
-    "backend@cc-claude"
-    "beginner@cc-claude"
-    "cc-utils@cc-claude"
-    "context-architect@cc-claude"
-    "enterprise-base@cc-claude"
-    "plane-mcp@cc-claude"
-    "workflow@cc-claude"
-    "legacy@cc-claude"
-    "prompt-search@cc-claude"
-  )
-
-  # 환경에 맞는 플러그인 조합
-  CLAUDE_PLUGINS=("${BASE_PLUGINS[@]}")
-  if [[ "$ENV_TYPE" == "w" ]]; then
-    CLAUDE_PLUGINS+=("${WORK_PLUGINS[@]}")
-  else
-    if [[ ${#PERSONAL_PLUGINS[@]} -gt 0 ]]; then
-      CLAUDE_PLUGINS+=("${PERSONAL_PLUGINS[@]}")
-    fi
-  fi
-
-  for plugin in "${CLAUDE_PLUGINS[@]}"; do
-    claude plugin install "$plugin" --scope user 2>/dev/null && \
-      success "$plugin 설치 완료" || info "$plugin 이미 설치됨"
-  done
-fi
+# ── 13. Claude Code 플러그인 (vibe-ai-config 로 이관됨) ─────────────────────
+# 플러그인 설치는 vibe-ai-config install.sh 담당 (마켓플레이스 등록·개인/업무 플러그인 목록 포함).
 
 # ── 14. Glow 설정 심볼릭 링크 ────────────────────────────────────────────────
 info "Glow 설정 적용 중..."

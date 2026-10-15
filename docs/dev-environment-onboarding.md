@@ -70,7 +70,7 @@ source ~/.zshrc
 | 5~6 | Tmux | TPM clone + `~/.tmux.conf` 링크 |
 | 7 | vibe-tools | `~/.config/vibe-tools` 링크 + 스크립트 실행권한 |
 | 8 | Neovim | `~/.config/nvim/lua` 링크 |
-| 11~14 | Zsh alias / Git Delta / (선택)플러그인 / Glow | 각 설정 배포 |
+| 11~12, 14 | Zsh alias / Git Delta / Glow | 각 설정 배포 (13 Claude 플러그인은 vibe-ai-config `install.sh work\|personal` 담당) |
 
 ### 심볼릭 링크 매핑
 
@@ -161,6 +161,7 @@ VIBE_AI_CONFIG_PATH=<하네스_레포_경로> ./install.sh
 ```
 
 - 부재 시 `install.sh`는 안내만 출력하고 정상 완료합니다 (본 레포 기능에 영향 없음).
+- Claude 플러그인·MCP·스킬은 본 레포가 설치하지 않습니다 — 하네스 레포에서 `./install.sh work|personal` 을 실행하세요.
 - 상세는 사내 AI 하네스 레포 문서 참조.
 
 ---
