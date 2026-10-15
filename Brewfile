@@ -1,6 +1,14 @@
 # Vibe Dotfiles 패키지 정본 — install.sh 가 `brew bundle --file Brewfile` 로 설치한다.
 # 패키지 추가·삭제는 이 파일에서만 한다. 상태 검사만: brew bundle check --file Brewfile
 
+# .app 을 만드는 cask 는 brew 밖에서 수동 설치한 앱이 /Applications 에 있으면 건너뛴다.
+# 관리자 권한 없는 Mac 에서 brew 가 수동 설치 앱을 adopt 하다 sudo chgrp 로 실패해 bundle 전체가 멈추기 때문.
+# brew 가 이미 관리 중인 cask(Caskroom 에 있음)는 그대로 포함되어 upgrade 대상이 된다.
+def manual_app?(token, app)
+  caskroom = File.join(ENV.fetch("HOMEBREW_PREFIX", "/opt/homebrew"), "Caskroom", token)
+  File.exist?("/Applications/#{app}") && !File.directory?(caskroom)
+end
+
 # ── CLI 기본 도구 ─────────────────────────────────────────────────────────────
 brew "lsd"
 brew "bat"
@@ -44,11 +52,11 @@ brew "plantuml"
 # 스펙 주도 개발(변경 제안·스펙 문서) CLI. 텔레메트리는 zsh/env.zsh 에서 끈다.
 brew "openspec"
 # 기존 .drawio XML 설계 원본 편집·로컬 내보내기. 공식 cask가 drawio CLI도 제공한다.
-cask "drawio"
+cask "drawio" unless manual_app?("drawio", "draw.io.app")
 
 # ── AI CLI ───────────────────────────────────────────────────────────────────
 cask "claude-code"
 
 # ── GUI 터미널 앱 (cmux 는 ghostty config 의 테마·폰트를 상속) ────────────────
-cask "ghostty"
-cask "cmux"
+cask "ghostty" unless manual_app?("ghostty", "Ghostty.app")
+cask "cmux" unless manual_app?("cmux", "cmux.app")

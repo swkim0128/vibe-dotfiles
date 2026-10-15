@@ -52,6 +52,7 @@ git clone <repo-url> ~/Project/vibe-dotfiles
 ```
 
 **[Brewfile](Brewfile)이 패키지 정본입니다.** `install.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `install.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
+Ghostty·draw.io·cmux는 brew 밖에서 수동 설치한 앱이 `/Applications`에 이미 있으면 Brewfile이 건너뜁니다(관리자 권한 없는 Mac에서 brew가 기존 앱을 넘겨받다 실패하는 것을 막음). brew로 설치한 앱은 계속 업그레이드 대상입니다.
 
 install.sh가 수행하는 작업:
 - Homebrew 설치 확인 → `Brewfile` 패키지 설치
