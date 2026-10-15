@@ -27,7 +27,7 @@
 #     DRY_RUN=1 ./skill_audit_worker.sh
 #   DRY_RUN=1 이면 트랜스크립트 스캔은 하되 ledger append·최종 파일은 [DRY] 표기.
 #
-# 수동 부트스트랩 (setup.sh 는 plist 를 배포하지 않음 — SoC):
+# 수동 부트스트랩 (install.sh 는 plist 를 배포하지 않음 — SoC):
 #   cp vibe-tools/com.swkim0128.skill-audit.plist ~/Library/LaunchAgents/
 #   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.swkim0128.skill-audit.plist
 #   (해제: launchctl bootout gui/$(id -u)/com.swkim0128.skill-audit)

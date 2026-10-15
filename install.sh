@@ -1,9 +1,9 @@
 #!/bin/bash
-# setup.sh — Vibe Dotfiles 원클릭 설치 스크립트
+# install.sh — Vibe Dotfiles 원클릭 설치 스크립트
 #
 # 사용법:
 #   git clone <repo-url> ~/Project/vibe-dotfiles
-#   cd ~/Project/vibe-dotfiles && ./setup.sh
+#   cd ~/Project/vibe-dotfiles && ./install.sh
 
 set -euo pipefail
 
@@ -179,7 +179,7 @@ if [[ -x "${VIBE_AI_CONFIG_DIR}/install.sh" ]]; then
   echo "    \"${VIBE_AI_CONFIG_DIR}/install.sh\""
 else
   echo "  AI 하네스가 필요하면 별도 레포를 설치 후:"
-  echo "    VIBE_AI_CONFIG_PATH=<레포경로> ./setup.sh  (재실행)"
+  echo "    VIBE_AI_CONFIG_PATH=<레포경로> ./install.sh  (재실행)"
   echo "  (본 레포는 AI 하네스 없이도 정상 동작합니다.)"
 fi
 echo ""

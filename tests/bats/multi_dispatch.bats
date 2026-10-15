@@ -19,7 +19,7 @@
 # 사용:
 #   bats tests/bats/multi_dispatch.bats
 # bats 미설치 시:
-#   brew install bats-core  # 본 레포 setup.sh 가 자동 설치
+#   brew install bats-core  # 본 레포 install.sh 가 자동 설치
 
 # ── 1. 인자 파싱 ─────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-# Vibe Dotfiles 패키지 정본 — setup.sh 가 `brew bundle --file Brewfile` 로 설치한다.
+# Vibe Dotfiles 패키지 정본 — install.sh 가 `brew bundle --file Brewfile` 로 설치한다.
 # 패키지 추가·삭제는 이 파일에서만 한다. 상태 검사만: brew bundle check --file Brewfile
 
 # ── CLI 기본 도구 ─────────────────────────────────────────────────────────────

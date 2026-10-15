@@ -11,7 +11,7 @@
 
 ## 1. 이 환경이 무엇인가
 
-`vibe-dotfiles`는 아래를 **하나의 원클릭 설치(`setup.sh`)로 통합**한 개인 개발 환경 셋업입니다.
+`vibe-dotfiles`는 아래를 **하나의 원클릭 설치(`install.sh`)로 통합**한 개인 개발 환경 셋업입니다.
 
 | 레이어 | 구성 | 테마/특징 |
 |---|---|---|
@@ -25,16 +25,16 @@
 
 ### 설계 원칙 — 관심사 분리 (SoC)
 
-- **본 레포 (`vibe-dotfiles`)**: 시스템·터미널 인프라 전용 (Zsh/Tmux/Nvim/`vibe-tools`/`setup.sh`)
+- **본 레포 (`vibe-dotfiles`)**: 시스템·터미널 인프라 전용 (Zsh/Tmux/Nvim/`vibe-tools`/`install.sh`)
 - **AI 하네스 (별도 레포, 선택)**: `CLAUDE-*.md` 룰셋, hooks, 플러그인 마켓플레이스
-- 본 레포는 **자기완결적**: AI 설정·PARA 볼트가 없어도 100% 정상 동작. 통째로 다른 Mac에 복사 → `./setup.sh` → 인프라 완성.
+- 본 레포는 **자기완결적**: AI 설정·PARA 볼트가 없어도 100% 정상 동작. 통째로 다른 Mac에 복사 → `./install.sh` → 인프라 완성.
 
 ---
 
 ## 2. 사전 준비
 
 ```bash
-# Homebrew (없으면 setup.sh가 자동 설치하지만, 미리 두면 안전)
+# Homebrew (없으면 install.sh가 자동 설치하지만, 미리 두면 안전)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Git 확인
@@ -51,15 +51,15 @@ git clone <레포_URL> ~/Project/vibe-dotfiles
 
 # 2. 원클릭 설치
 cd ~/Project/vibe-dotfiles
-./setup.sh
+./install.sh
 
 # 3. 셸 리로드
 source ~/.zshrc
 ```
 
-### `setup.sh`가 하는 일 (요약)
+### `install.sh`가 하는 일 (요약)
 
-`setup.sh`는 멱등(idempotent)하게 아래를 순서대로 수행합니다. 이미 설치·링크된 항목은 자동 skip.
+`install.sh`는 멱등(idempotent)하게 아래를 순서대로 수행합니다. 이미 설치·링크된 항목은 자동 skip.
 
 | 단계 | 대상 | 동작 |
 |---|---|---|
@@ -157,10 +157,10 @@ Claude Code 기반 룰셋·스킬·에이전트 위임 워크플로우를 쓰려
 
 ```bash
 # 외부 하네스 레포 위치를 환경변수로 명시 후 재실행
-VIBE_AI_CONFIG_PATH=<하네스_레포_경로> ./setup.sh
+VIBE_AI_CONFIG_PATH=<하네스_레포_경로> ./install.sh
 ```
 
-- 부재 시 `setup.sh`는 안내만 출력하고 정상 완료합니다 (본 레포 기능에 영향 없음).
+- 부재 시 `install.sh`는 안내만 출력하고 정상 완료합니다 (본 레포 기능에 영향 없음).
 - 상세는 사내 AI 하네스 레포 문서 참조.
 
 ---
@@ -170,9 +170,9 @@ VIBE_AI_CONFIG_PATH=<하네스_레포_경로> ./setup.sh
 변경 후 아래 단일 명령으로 검증합니다 (체이닝 없이 각각 실행).
 
 ```bash
-shellcheck setup.sh
+shellcheck install.sh
 shellcheck vibe-tools/*.sh
-bash -n setup.sh              # shellcheck 미설치 폴백
+bash -n install.sh            # shellcheck 미설치 폴백
 luac -p nvim/lua/options.lua  # Lua 문법
 jq empty cmux/cmux.json       # JSON 문법
 bats tests/bats/              # (선택) 테스트
@@ -183,7 +183,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh   # 야간 워커 dry-run
 
 ## 8. 팀 도입 체크리스트
 
-- [ ] Homebrew·Git 준비 → `git clone` → `./setup.sh`
+- [ ] Homebrew·Git 준비 → `git clone` → `./install.sh`
 - [ ] `source ~/.zshrc` → `cmux-proj vibe-dotfiles` 로 동작 확인
 - [ ] NvChad 부트스트랩 + `:MasonInstallAll`
 - [ ] 개인 프로젝트를 `cmux-projects.local.txt` (비커밋)에 등록
@@ -196,7 +196,7 @@ DRY_RUN=1 bash vibe-tools/overnight_worker.sh   # 야간 워커 dry-run
 
 ```
 vibe-dotfiles/
-├── setup.sh / backup.sh          # 설치 / 역방향 백업
+├── install.sh / backup.sh          # 설치 / 역방향 백업
 ├── CLAUDE.md / README.md          # 아키텍처 지침 / 사용 가이드
 ├── tmux/.tmux.conf                # Tmux (Catppuccin, TPM)
 ├── nvim/lua/                      # Neovim (NvChad + LSP)

@@ -37,7 +37,7 @@
 #     DRY_RUN=1 ./scrum_worker.sh
 #     PARA_VAULT=/custom/para ./scrum_worker.sh
 #
-# 수동 부트스트랩 (setup.sh 는 plist 를 배포하지 않음 — SoC):
+# 수동 부트스트랩 (install.sh 는 plist 를 배포하지 않음 — SoC):
 #   cp vibe-tools/com.swkim0128.daily-scrum.plist ~/Library/LaunchAgents/
 #   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.swkim0128.daily-scrum.plist
 #   (해제: launchctl bootout gui/$(id -u)/com.swkim0128.daily-scrum)

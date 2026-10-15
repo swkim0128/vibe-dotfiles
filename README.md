@@ -8,8 +8,8 @@ Tmux + Neovim (NvChad) + Claude Code IPC + 커스텀 CLI 도구로 구성된 **V
 
 ```
 vibe-dotfiles/
-├── setup.sh                  # 원클릭 설치 스크립트
-├── Brewfile                  # Homebrew 패키지 정본 (setup.sh 가 brew bundle 로 설치)
+├── install.sh                # 원클릭 설치 스크립트
+├── Brewfile                  # Homebrew 패키지 정본 (install.sh 가 brew bundle 로 설치)
 ├── tmux/
 │   └── .tmux.conf            # Tmux 전체 설정
 ├── vibe-tools/               # ~/.config/vibe-tools/ 로 심볼릭 링크
@@ -48,12 +48,12 @@ vibe-dotfiles/
 
 ```bash
 git clone <repo-url> ~/Project/vibe-dotfiles
-~/Project/vibe-dotfiles/setup.sh
+~/Project/vibe-dotfiles/install.sh
 ```
 
-**[Brewfile](Brewfile)이 패키지 정본입니다.** `setup.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `setup.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
+**[Brewfile](Brewfile)이 패키지 정본입니다.** `install.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `install.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
 
-setup.sh가 수행하는 작업:
+install.sh가 수행하는 작업:
 - Homebrew 설치 확인 → `Brewfile` 패키지 설치
 - Oh My Zsh·Zinit·Tmux TPM 설치 확인
 - `~/.tmux.conf` → `tmux/.tmux.conf` 심볼릭 링크
@@ -69,7 +69,7 @@ setup.sh가 수행하는 작업:
 ### 2단계 — NvChad 설치 (Neovim 처음 설정 시)
 
 ```bash
-# NvChad starter 설치 (lua/ 는 setup.sh가 이미 심볼릭 링크로 연결함)
+# NvChad starter 설치 (lua/ 는 install.sh가 이미 심볼릭 링크로 연결함)
 git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
 # nvim 안에서 플러그인 설치 완료 후:
 # :MasonInstallAll  ← LSP 서버 일괄 설치

@@ -1,7 +1,7 @@
 ## 완료
 
 - [x] CLAUDE-user.md 하네스 파이프라인 추가 (GROUND/APPLY/VERIFY/ADAPT)
-- [x] setup.sh: ~/.claude/CLAUDE-user.md 심볼릭 링크 + 임포트 자동 주입
+- [x] install.sh: ~/.claude/CLAUDE-user.md 심볼릭 링크 + 임포트 자동 주입
 - [x] vibe-tools/claude-config/hooks/auto-git-push.sh 생성 (Stop 훅 자동 커밋/푸시)
 - [x] .claude/settings.local.json Stop 훅 등록
 - [x] git-commit 스킬 commit-convention.md ~/.gitmessage.txt 우선순위 수정
@@ -41,7 +41,7 @@
 - [ ] **P2-H** `CLAUDE-user.md` 슬림화 — 본문 → `docs/harness-pipeline.md`로 분리, 진입점만 유지
 - [ ] code-pipeline 스킬 실전 검증 (ashop/bshop) — 여전히 미진행
 - [ ] `/php-review` 커맨드 검증 — 미진행
-- [ ] setup.sh: 새 머신에서 설치 후 전체 플로우 통합 테스트
+- [ ] install.sh: 새 머신에서 설치 후 전체 플로우 통합 테스트
 - [ ] tmux 무인 자동화 권한 설정 적용 — `docs/claude-headless-automation.md` 검토 후 추가 반영 + `scripts/claude-headless.sh` 생성
 
 ## 에러 / 블로커

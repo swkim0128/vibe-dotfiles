@@ -13,11 +13,11 @@ note: 살아있는 초안(living draft) — 계속 수정/보강한다.
 > 정본 아키텍처 설명은 `CLAUDE.md`, 세부 KB는 `docs/knowledge-base/` 참조. 본 노트는 빠른 현황 파악용.
 
 ## 0. 한 줄 요약
-Mac **시스템·터미널 인프라** 원클릭 dotfiles. `./setup.sh` 단독 실행으로 zsh / tmux / nvim(NvChad) / vibe-tools / glow 구성. AI 하네스(CLAUDE-*.md·훅·settings.work.json)는 외부 `vibe-claude-plugin` 레포로 SoC 분리. Ghostty 설정은 레포 밖(`~/.config/ghostty/`).
+Mac **시스템·터미널 인프라** 원클릭 dotfiles. `./install.sh` 단독 실행으로 zsh / tmux / nvim(NvChad) / vibe-tools / glow 구성. AI 하네스(CLAUDE-*.md·훅·settings.work.json)는 외부 `vibe-claude-plugin` 레포로 SoC 분리. Ghostty 설정은 레포 밖(`~/.config/ghostty/`).
 
 ---
 
-## 1. 진입점 — `setup.sh`
+## 1. 진입점 — `install.sh`
 - Homebrew → CLI 도구(50+: lsd, bat, fzf, fd, ripgrep, git-delta, btop, neovim, tmux, starship, yazi, gh, jq, glow …) 설치
 - Oh My Zsh + Zinit, Claude Code + 마켓플레이스 등록(omc / swkim0128 / cc-claude)
 - Tmux TPM 설치, nvim lua → `~/.config/nvim/lua` 심볼릭 링크, vibe-tools → `~/.config/vibe-tools` 링크 + 실행권한

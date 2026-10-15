@@ -46,7 +46,7 @@
 #     DRY_RUN=1 WEEKLY_LIST=1 ./notion_diary_worker.sh   # (D) 프롬프트까지 로그 확인
 #     REPO_SCAN_ROOT=/custom/root ./notion_diary_worker.sh
 #
-# 수동 부트스트랩 (setup.sh 는 plist 를 배포하지 않음 — SoC):
+# 수동 부트스트랩 (install.sh 는 plist 를 배포하지 않음 — SoC):
 #   cp vibe-tools/com.swkim0128.notion-diary.plist ~/Library/LaunchAgents/
 #   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.swkim0128.notion-diary.plist
 #   (해제: launchctl bootout gui/$(id -u)/com.swkim0128.notion-diary)
