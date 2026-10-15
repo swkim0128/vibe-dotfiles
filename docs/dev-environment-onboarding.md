@@ -64,7 +64,7 @@ source ~/.zshrc
 | 단계 | 대상 | 동작 |
 |---|---|---|
 | 0 | Homebrew | 미설치 시 설치 + PATH 등록 |
-| 1 | Brewfile 패키지 | `brew bundle --file Brewfile` — CLI 도구·AI CLI(Claude Code·Gemini CLI)·GUI 터미널(Ghostty·cmux)·개발 설계 도구. 패키지 정본은 `Brewfile` |
+| 1 | Brewfile 패키지 | `brew bundle --file Brewfile` — CLI 도구·AI CLI(Claude Code·Antigravity CLI)·GUI 터미널(Ghostty·cmux)·개발 설계 도구. 패키지 정본은 `Brewfile` |
 | 2~3 | Zsh 생태계 | Oh My Zsh + Zinit |
 | 4 | GUI 터미널 설정 | ghostty·cmux 설정 심볼릭 링크 |
 | 5~6 | Tmux | TPM clone + `~/.tmux.conf` 링크 |

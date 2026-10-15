@@ -48,7 +48,8 @@ cask "drawio"
 
 # ── AI CLI ───────────────────────────────────────────────────────────────────
 cask "claude-code"
-brew "gemini-cli"
+# Google Antigravity CLI (명령: agy). deprecated 된 gemini-cli 의 공식 대체.
+cask "antigravity-cli"
 
 # ── GUI 터미널 앱 (cmux 는 ghostty config 의 테마·폰트를 상속) ────────────────
 cask "ghostty"
