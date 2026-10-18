@@ -85,6 +85,7 @@ tmux -L verifytest kill-server
 
 **코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`, `cmux-projects.txt`, `cmux-ops.txt`, `cmux-no-workspace.txt`) + 자동화 워커 3종(`overnight_worker.sh`, `notion_diary_worker.sh`, `skill_audit_worker.sh`)과 launchd plist 3종(`com.swkim0128.{overnight,notion-diary,skill-audit}.plist`) + `issue-start.sh` + cmux 정규화 런처(`cmux-lib.sh` + `cmux-proj*.sh` 6종 + 멀티 레포 이슈 런처 `cmux-issue.sh`)를 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
 
+- 개인 주간 정리 워커 `personal_weekly_worker.sh` + `com.swkim0128.personal-weekly.plist`(일요일 22:00, 초안 + KPT 회고 — 다음 주 계획은 `/personal 주간루틴` 수동)도 보관.
 - cmux 목록의 머신 로컬 오버레이 `*.local.txt` (`cmux-projects.local.txt`, `cmux-ops.local.txt`) 는 **비커밋**(gitignore) — 회사 경로 등 머신별 항목은 여기에만 등록.
 - cmux 사용 규칙·키맵은 `docs/cmux-cheatsheet.md` 참조 — raw cmux 명령 즉흥 조합 대신 정규화 런처(`cmux-proj`/`dual`/`ops`/`review`) 우선.
 
