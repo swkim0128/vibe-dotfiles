@@ -10,7 +10,21 @@ Thaw 앱에서 내보낸 개인 Mac 메뉴 막대 프로필을 보관한다. `in
 
 2026-10-18 추가: `profiles/Thaw-Compact-2026-10-18.json`에 간결 배치용 `personal-compact-2026-10-18` 프로필을 보관했다. 의도한 배치는 visible 8개 / hidden 17개다. 가져오기·적용·재시작 후에도 실제 layout 화면의 visible 아이콘이 줄지 않아 실제 배치 적용은 미완료 상태다. 기존 `personal-before-2026-10-18` 복구용 백업은 그대로 유지한다.
 
-## 최종 설정과 다른 Mac 적용
+## 현재 복원 대상 — 2026-10-19
+
+`profiles/Thaw-Final-2026-10-19.json`의 `personal-final-2026-10-19`를 최신 복원 대상으로 사용한다. 10/18 공식 내보내기 파일은 변경하지 않고 보존한다.
+
+이번 파일은 **앱 UI에서 내보낸 원본이 아니다**. 10/18 공식 프로필의 스키마·타입을 유지하면서 `~/Library/Preferences/com.stonerl.Thaw.plist`의 현재 저장값으로 재구성했다. `MenuBarItemManager.savedSectionOrder`를 배치·순서·항목별 영역에 반영했고, plist에 명시된 일반·고급 설정과 화면별 설정·모양·고정 항목을 반영했다. plist에 없는 기본값은 10/18 프로필 값을 유지했다. 실제 화면 배치나 다른 Mac의 가져오기 성공을 검증한 것으로 해석하지 않는다.
+
+- 보임 8개: Thaw → CodexBar → Notion Calendar → RunCat → 입력 소스 → 배터리 → 제어 센터 → 시계.
+- 숨김 12개: ChatGPT → NordVPN → EndpointConnect → Amphetamine → Docker Desktop → OneDrive → Google Drive → JetBrains Toolbox → cmux → 카카오톡 → 암호 → 지금 재생 중.
+- 항상 숨김 7개: Catchtype → Raycast → Homerow → Rectangle → PopClip → Karabiner → Logitech G HUB.
+- 항상 숨김 열기 제스처 3개 off, 자동 다시 숨기기 on, 마우스 오버 표시 on, 전역 Thaw 바 on.
+- 진단 로깅은 현재 on이지만 공식 프로필 스키마에 포함되지 않아 이 JSON으로 이전되지 않는다. 필요 시 각 Mac에서 별도로 조정한다.
+
+아래 적용 절차에서는 파일을 `Thaw-Final-2026-10-19.json`, 프로필을 `personal-final-2026-10-19`로 선택한다. 적용 전 대상 Mac 프로필을 백업하고, 적용 후 앱에서 저장·공식 내보내기로 다시 보관한다.
+
+## 10/18 공식 내보내기 이력과 다른 Mac 적용
 
 `profiles/Thaw-Final-2026-10-18.json`은 사용자가 직접 정렬하고 항상 숨김 동작을 확인한 뒤 공식 Thaw UI에서 내보낸 원본이다. 이 파일에는 이전 before·compact 프로필과 최종 `personal-final-2026-10-18` 프로필, 총 3개가 포함된다. 적용할 때 최종 프로필을 선택한다.
 

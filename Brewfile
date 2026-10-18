@@ -56,6 +56,8 @@ cask "drawio" unless manual_app?("drawio", "draw.io.app")
 
 # ── AI CLI ───────────────────────────────────────────────────────────────────
 cask "claude-code"
+# Codex·Claude 사용량 표시. 인증정보는 앱/Keychain에서 관리하고 저장소에 보관하지 않는다.
+cask "codexbar" unless manual_app?("codexbar", "CodexBar.app")
 
 # ── GUI 터미널 앱 (cmux 는 ghostty config 의 테마·폰트를 상속) ────────────────
 cask "ghostty" unless manual_app?("ghostty", "Ghostty.app")

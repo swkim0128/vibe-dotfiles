@@ -65,6 +65,12 @@ install.sh가 수행하는 작업:
 `openspec`(스펙 주도 개발 CLI)은 익명 텔레메트리가 기본으로 켜져 있습니다. [zsh/env.zsh](zsh/env.zsh)의 `OPENSPEC_TELEMETRY=0`·`DO_NOT_TRACK=1`로 끕니다(둘 다 켜면 업데이트 확인도 꺼짐).
 `openspec init`이 만드는 `openspec/`·`.claude/skills/openspec-*`·`.claude/commands/opsx/`·`.agents/skills/openspec-*`는 [git/gitignore_global](git/gitignore_global)이 전역으로 무시합니다. 새 도구가 레포에 파일을 만들면 이 파일에 도구명 주석과 함께 추가하세요.
 
+### 추가 앱·문서 변환·개인 주간 예약 복원
+
+CodexBar는 Brewfile로 설치한다. 현재 `~/.config/codexbar/config.json`에서 활성화된 제공자는 Codex·Claude·Gemini다. 복원 시 앱에서 이 세 제공자를 켜고 각 CLI 로그인 상태를 확인한다. Claude Usage source는 현재 파일에 명시적 설정이 없으므로 기본값을 유지한다. Claude 인증 조회가 실패하면 메뉴 Refresh를 시도하고, 반복되면 Preferences → Providers → Claude → Usage source를 CLI로 선택한다. 토큰·쿠키·Keychain 값은 이 저장소에 복사하지 않는다.
+
+Thaw 현재 저장 설정의 복원 대상은 [thaw/README.md](thaw/README.md), 수동 앱 Catchtype은 [catchtype/README.md](catchtype/README.md)를 따른다. 문서 변환 도구와 Codex 주간 정리 예약은 [개인컴 복원 절차](docs/personal-mac-restore.md)를 따른다. `install.sh`는 uv 도구 설치나 LaunchAgent 등록을 자동 수행하지 않는다.
+
 ### 2단계 — NvChad 설치 (Neovim 처음 설정 시)
 
 ```bash
@@ -87,7 +93,8 @@ source ~/.zshrc
 | 단축키 | 기능 |
 |--------|------|
 | `Prefix + ?` | 전체 단축키 매뉴얼 팝업 |
-| `Prefix + f` | 프로젝트 세션 매니저 |
+| `Prefix + f` | 현재 세션에 프로젝트 새 윈도우 열기 |
+| `Prefix + F` | 프로젝트 세션 이동 |
 | `Prefix + C` | Claude 스킬 팝업 |
 | `Prefix + M` | 커스텀 명령어 팝업 |
 | `Prefix + Tab` | yazi 파일 탐색기 |

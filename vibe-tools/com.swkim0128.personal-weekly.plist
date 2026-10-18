@@ -59,9 +59,9 @@
     <key>PARA_VAULT</key>
     <string>/Users/eunsol/Project/para</string>
     -->
-    <!-- claude CLI 가 위 PATH 에 없다면 명시적으로 지정:
-    <key>CLAUDE_BIN</key>
-    <string>/opt/homebrew/bin/claude</string>
+    <!-- Codex CLI 가 위 PATH 에 없다면 명시적으로 지정:
+    <key>CODEX_BIN</key>
+    <string>/opt/homebrew/bin/codex</string>
     -->
   </dict>
 </dict>
