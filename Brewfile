@@ -64,8 +64,22 @@ brew "googleworkspace-cli"
 # GitLab MR 생성·배포 준비 판정 스크립트(deploy-ready.sh).
 brew "glab"
 
+# ── 업무 인프라 (두 기기 공통) ───────────────────────────────────────────────
+# kubectl OIDC 로그인 플러그인(kubectl oidc-login).
+brew "kubelogin"
+# Java 백엔드 빌드.
+brew "maven"
+# Python CLI 도구를 격리 venv 로 전역 설치.
+brew "pipx"
+# gcloud — GCP 인증·kubectl 자격 증명.
+cask "gcloud-cli"
+# 로컬 컨테이너·k8s. docker·kubectl·helm CLI 를 ~/.rd/bin 으로 제공하므로 brew "docker" 는 선언하지 않는다.
+cask "rancher" unless manual_app?("rancher", "Rancher Desktop.app")
+
 # ── AI CLI ───────────────────────────────────────────────────────────────────
 cask "claude-code"
+# OpenAI Codex CLI. cmux 안에서는 shim 이 PATH 앞에 오므로 설치 확인은 /opt/homebrew/bin/codex --version.
+cask "codex"
 # Codex·Claude 사용량 표시. 인증정보는 앱/Keychain에서 관리하고 저장소에 보관하지 않는다.
 cask "codexbar" unless manual_app?("codexbar", "CodexBar.app")
 
@@ -74,3 +88,6 @@ cask "ghostty" unless manual_app?("ghostty", "Ghostty.app")
 cask "cmux" unless manual_app?("cmux", "cmux.app")
 # ghostty/config 의 font-family. 글꼴은 ~/Library/Fonts 에 놓여 .app adopt(sudo) 문제가 없어 가드 불필요.
 cask "font-d2coding"
+
+# ── 메뉴 막대 관리 (macOS 26 이상, 프로필 적용은 수동 — thaw/README.md) ──────
+cask "thaw" unless manual_app?("thaw", "Thaw.app")

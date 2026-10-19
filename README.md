@@ -11,6 +11,9 @@ vibe-dotfiles/
 ├── install.sh                # 원클릭 설치 스크립트
 ├── Brewfile                  # Homebrew 패키지 정본 (install.sh 가 brew bundle 로 설치)
 ├── npm-globals.txt           # npm 전역 패키지 정본 (install.sh 가 미설치 항목만 설치)
+├── uv-tools.txt              # uv 전역 도구 정본 (install.sh 가 미설치 항목만 설치)
+├── mise/config.toml          # ~/.config/mise/config.toml 로 심볼릭 링크 (전역 런타임 버전)
+├── catchtype/install.sh      # Catchtype dmg 서명 검증 설치 (install.sh 가 호출)
 ├── tmux/
 │   └── .tmux.conf            # Tmux 전체 설정
 ├── vibe-tools/               # ~/.config/vibe-tools/ 로 심볼릭 링크
@@ -51,9 +54,10 @@ git clone <repo-url> ~/Project/vibe-dotfiles
 ```
 
 **[Brewfile](Brewfile)이 패키지 정본입니다.** `install.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `install.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
-Ghostty·draw.io·cmux는 brew 밖에서 수동 설치한 앱이 `/Applications`에 이미 있으면 Brewfile이 건너뜁니다(관리자 권한 없는 Mac에서 brew가 기존 앱을 넘겨받다 실패하는 것을 막음). brew로 설치한 앱은 계속 업그레이드 대상입니다.
-npm 전역 패키지(nworks MCP·intelephense)는 [npm-globals.txt](npm-globals.txt)가 정본입니다. `install.sh`가 Brewfile 다음에 미설치 항목만 설치하고, 실패하면 경고만 남기고 계속합니다.
-Homebrew cask가 없는 수동 앱 Catchtype(한/영 자동 전환)은 [catchtype/README.md](catchtype/README.md) 절차로 설치합니다.
+Ghostty·draw.io·cmux·Rancher Desktop·Thaw는 brew 밖에서 수동 설치한 앱이 `/Applications`에 이미 있으면 Brewfile이 건너뜁니다(관리자 권한 없는 Mac에서 brew가 기존 앱을 넘겨받다 실패하는 것을 막음). brew로 설치한 앱은 계속 업그레이드 대상입니다.
+npm 전역 패키지(nworks MCP·intelephense)는 [npm-globals.txt](npm-globals.txt), uv 전역 도구(MarkItDown·Marker)는 [uv-tools.txt](uv-tools.txt)가 정본입니다. `install.sh`가 Brewfile 다음에 미설치 항목만 설치하고, 실패하면 경고만 남기고 계속합니다.
+Homebrew cask가 없는 Catchtype(한/영 자동 전환)은 `install.sh`가 [catchtype/install.sh](catchtype/install.sh)로 dmg를 받아 서명 검증 후 설치합니다(검증·권한 절차: [catchtype/README.md](catchtype/README.md)). 이미 있으면 건너뛰고, 손쉬운 사용 권한은 직접 허용합니다.
+`/Applications`에 쓰기 권한이 없는(관리자 아닌) Mac에서는 앱을 새로 설치하는 cask·Catchtype이 sudo 비밀번호를 요구해 실패하므로, 관리자 계정 터미널에서 직접 설치합니다.
 
 install.sh가 수행하는 작업:
 - Homebrew 설치 확인 → `Brewfile` 패키지 설치
@@ -61,6 +65,7 @@ install.sh가 수행하는 작업:
 - `~/.tmux.conf` → `tmux/.tmux.conf` 심볼릭 링크
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
+- `~/.config/mise/config.toml` → `mise/config.toml` 심볼릭 링크 (mise 전역 런타임 버전)
 - `~/.zshrc` 에 `aliases.zsh`, `~/.zshenv` 에 `env.zsh` source 라인 자동 추가
 - `~/.gitignore_global` → `git/gitignore_global` 심볼릭 링크 + `git config --global core.excludesfile` 지정 (Serena·OpenSpec·ast-grep 자동 생성물을 모든 레포에서 비추적)
 
@@ -71,7 +76,7 @@ install.sh가 수행하는 작업:
 
 CodexBar는 Brewfile로 설치한다. 현재 `~/.config/codexbar/config.json`에서 활성화된 제공자는 Codex·Claude·Gemini다. 복원 시 앱에서 이 세 제공자를 켜고 각 CLI 로그인 상태를 확인한다. Claude Usage source는 현재 파일에 명시적 설정이 없으므로 기본값을 유지한다. Claude 인증 조회가 실패하면 메뉴 Refresh를 시도하고, 반복되면 Preferences → Providers → Claude → Usage source를 CLI로 선택한다. 토큰·쿠키·Keychain 값은 이 저장소에 복사하지 않는다.
 
-Thaw 현재 저장 설정의 복원 대상은 [thaw/README.md](thaw/README.md), 수동 앱 Catchtype은 [catchtype/README.md](catchtype/README.md)를 따른다. 문서 변환 도구와 Codex 주간 정리 예약은 [개인컴 복원 절차](docs/personal-mac-restore.md)를 따른다. `install.sh`는 uv 도구 설치나 LaunchAgent 등록을 자동 수행하지 않는다.
+Thaw는 Brewfile로 설치하고, 저장 설정(프로필) 복원은 [thaw/README.md](thaw/README.md)대로 수동 적용한다. Catchtype은 `install.sh`가 설치하고 권한·동작 확인은 [catchtype/README.md](catchtype/README.md)를 따른다. Codex 주간 정리 예약은 [개인컴 복원 절차](docs/personal-mac-restore.md)를 따른다. `install.sh`는 LaunchAgent 등록을 자동 수행하지 않는다.
 
 ### 2단계 — NvChad 설치 (Neovim 처음 설정 시)
 

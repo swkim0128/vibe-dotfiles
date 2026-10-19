@@ -91,7 +91,8 @@ tmux -L verifytest kill-server
 
 ## 🚀 설치 진입점
 - **시스템**: `./install.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
-- **패키지 정본**: brew 는 `Brewfile`, npm 전역은 `npm-globals.txt` — 하네스가 쓰는 도구(node·uv·gws·glab·D2Coding·nworks·intelephense)도 여기 선언해야 새 Mac 에서 빠지지 않는다
+- **패키지 정본**: brew 는 `Brewfile`(업무 인프라·Codex·Thaw 포함, 두 기기 공통), npm 전역은 `npm-globals.txt`, uv 도구는 `uv-tools.txt`, Catchtype 은 `catchtype/install.sh`(dmg 서명 게이트), mise 전역 설정은 `mise/config.toml` 심링크 — 하네스가 쓰는 도구도 여기 선언해야 새 Mac 에서 빠지지 않는다
+- **설치 확인 함정**: cmux 안에서는 cmux-cli-shims 가 PATH 앞이라 `command -v codex` 가 오판 → `/opt/homebrew/bin/codex --version` 으로 확인. 관리자 아닌 Mac 은 신규 앱 cask·Catchtype 의 `/Applications` 복사가 sudo 로 실패 → 사용자가 직접 설치
 - **백업**: `./backup.sh` (역방향 — 현재 시스템 dotfiles 를 본 레포로 복사. 이미 심볼릭 링크된 항목은 자동 skip)
 - **AI 하네스** (선택): `VIBE_AI_CONFIG_PATH=<레포경로> ./install.sh` 재실행 또는 vibe-ai-config 레포의 `install.sh` 별도 실행
 - 두 진입점 독립(이름만 같은 `install.sh`). 본 레포 `install.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.

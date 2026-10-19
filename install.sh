@@ -104,6 +104,34 @@ else
   warn "npm 없음 — npm 전역 패키지 건너뜀 (brew install node 후 install.sh 재실행)"
 fi
 
+# ── 1-2. uv 전역 도구 (정본: uv-tools.txt — uv 는 1단계 Brewfile) ────────────
+# 이미 설치된 도구는 건너뛰고, 설치 실패는 경고만 남기고 다음 단계로 간다.
+info "uv 전역 도구 확인 중..."
+if command -v uv &>/dev/null; then
+  uv_installed="$(uv tool list 2>/dev/null || true)"
+  while read -r spec _; do
+    [[ -z "$spec" || "$spec" == \#* ]] && continue
+    tool="${spec%%\[*}"
+    if [[ $'\n'"$uv_installed" == *$'\n'"$tool "* ]]; then
+      success "uv $tool — 이미 설치됨"
+    elif uv tool install "$spec" < /dev/null; then
+      success "uv $tool 설치 완료"
+    else
+      warn "uv $tool 설치 실패 — 나중에 수동 설치: uv tool install \"$spec\""
+    fi
+  done < "$DOTFILES/uv-tools.txt"
+else
+  warn "uv 없음 — uv 전역 도구 건너뜀 (brew install uv 후 install.sh 재실행)"
+fi
+
+# ── 1-3. Catchtype (Homebrew 없음 — dmg 서명 검증 후 설치, 절차: catchtype/README.md) ─
+info "Catchtype 확인 중..."
+if bash "$DOTFILES/catchtype/install.sh"; then
+  success "Catchtype 준비됨"
+else
+  warn "Catchtype 설치 실패 — catchtype/README.md 수동 절차로 설치"
+fi
+
 # ── 2. Oh My Zsh ──────────────────────────────────────────────────────────────
 info "Oh My Zsh 확인 중..."
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
@@ -182,6 +210,11 @@ chmod +x "$DOTFILES/vibe-tools/"*.sh
 info "Neovim lua 설정 적용 중..."
 mkdir -p "$HOME/.config/nvim"
 safe_link "$HOME/.config/nvim/lua" "$DOTFILES/nvim/lua"
+
+# ── 8-1. mise 전역 설정 (전역 런타임 버전 — mise 설치는 1단계 Brewfile) ──────
+info "mise 전역 설정 적용 중..."
+mkdir -p "$HOME/.config/mise"
+safe_link "$HOME/.config/mise/config.toml" "$DOTFILES/mise/config.toml"
 
 # ── 9. Claude Code AI 자산 안내 (선택적 통합 — 별도 레포 관리) ──────────────
 # SoC: 본 레포는 시스템·터미널 인프라만 책임. AI 하네스(CLAUDE-*.md, hooks/,

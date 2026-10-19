@@ -2,14 +2,7 @@
 
 ## 문서 → Markdown
 
-uv가 설치된 환경에서 다음을 각각 실행한다. 10/18 확인 버전은 MarkItDown 0.1.8·Marker 2.0.0이며, 아래 명령은 최신 버전을 설치한다. 설치 정책과 용도 정본은 vibe-ai-config의 `shared/sops/sop_development_tools.md`다.
-
-```bash
-uv tool install "markitdown[pdf,docx,pptx,xlsx]"
-uv tool install marker-pdf
-```
-
-`~/.local/bin`을 PATH에 포함한다. MarkItDown은 Office·HTML·빠른 텍스트 추출, Marker는 PDF 표·제목 구조 보존에 사용한다. Marker 첫 실행에는 모델 다운로드와 추가 저장공간이 필요하다. Graphify는 사용자 결정으로 제거했으므로 복원하지 않는다.
+MarkItDown·Marker는 `install.sh`가 [uv-tools.txt](../uv-tools.txt) 정본대로 설치한다(미설치만). `~/.local/bin`을 PATH에 포함하고, Marker 첫 실행에는 모델 다운로드와 추가 저장공간이 필요하다. Graphify는 사용자 결정으로 제거했으므로 복원하지 않는다.
 
 ## 개인 주간 정리 — Codex, 일요일 22:00
 
