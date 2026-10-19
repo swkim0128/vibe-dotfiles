@@ -1,12 +1,18 @@
 # Vibe Dotfiles 패키지 정본 — install.sh 가 `brew bundle --file Brewfile` 로 설치한다.
 # 패키지 추가·삭제는 이 파일에서만 한다. 상태 검사만: brew bundle check --file Brewfile
 
-# .app 을 만드는 cask 는 brew 밖에서 수동 설치한 앱이 /Applications 에 있으면 건너뛴다.
+# .app 을 만드는 cask 는 brew 밖에서 수동 설치한 앱이 /Applications 또는 ~/Applications 에 있으면 건너뛴다.
 # 관리자 권한 없는 Mac 에서 brew 가 수동 설치 앱을 adopt 하다 sudo chgrp 로 실패해 bundle 전체가 멈추기 때문.
 # brew 가 이미 관리 중인 cask(Caskroom 에 있음)는 그대로 포함되어 upgrade 대상이 된다.
 def manual_app?(token, app)
   caskroom = File.join(ENV.fetch("HOMEBREW_PREFIX", "/opt/homebrew"), "Caskroom", token)
-  File.exist?("/Applications/#{app}") && !File.directory?(caskroom)
+  installed = ["/Applications", File.expand_path("~/Applications")].any? { |dir| File.exist?(File.join(dir, app)) }
+  installed && !File.directory?(caskroom)
+end
+
+# 관리자 아닌 계정은 /Applications 에 쓸 수 없어(sudo 불가) 신규 .app cask 를 ~/Applications 에 설치한다.
+def user_appdir?
+  !File.writable?("/Applications")
 end
 
 # ── CLI 기본 도구 ─────────────────────────────────────────────────────────────
@@ -98,4 +104,10 @@ cask "cmux" unless manual_app?("cmux", "cmux.app")
 cask "font-d2coding"
 
 # ── 메뉴 막대 관리 (macOS 26 이상, 프로필 적용은 수동 — thaw/README.md) ──────
-cask "thaw" unless manual_app?("thaw", "Thaw.app")
+unless manual_app?("thaw", "Thaw.app")
+  if user_appdir?
+    cask "thaw", args: { appdir: "~/Applications" }
+  else
+    cask "thaw"
+  end
+end

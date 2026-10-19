@@ -1,24 +1,30 @@
 #!/bin/bash
 # catchtype/install.sh — Catchtype(Homebrew 없음) dmg 다운로드 설치.
 # README.md 의 서명 검증 절차를 게이트로 쓴다. 검증 불일치면 설치하지 않거나 설치한 앱을 지운다.
-# 이미 /Applications/Catchtype.app 이 있으면 건너뛴다. 실패는 종료코드 1 (install.sh 는 경고 후 계속).
+# 설치 위치: /Applications 가 쓰기 가능하면 거기, 아니면(관리자 아닌 계정) ~/Applications.
+# 두 위치 중 하나에 이미 Catchtype.app 이 있으면 건너뛴다. 실패는 종료코드 1 (install.sh 는 경고 후 계속).
 #
 # 사용법: bash catchtype/install.sh
 
 set -euo pipefail
 
 SITE="https://catchtype.com"
-APP="/Applications/Catchtype.app"
+APP_NAME="Catchtype.app"
+APP=""
 TEAM_ID="8L5WFHS4F9"
 BUNDLE_ID="com.hebbianai.catchtype"
 TMP=""
 MNT=""
 
 main() {
-  if [[ -d "$APP" ]]; then
-    echo "Catchtype 이미 설치됨 — 건너뜀"
-    return 0
-  fi
+  local existing
+  for existing in "/Applications/$APP_NAME" "$HOME/Applications/$APP_NAME"; do
+    if [[ -d "$existing" ]]; then
+      echo "Catchtype 이미 설치됨($existing) — 건너뜀"
+      return 0
+    fi
+  done
+  APP="$(app_dir)/$APP_NAME"
 
   TMP="$(mktemp -d)"
   MNT="$TMP/mnt"
@@ -42,9 +48,9 @@ main() {
   mkdir -p "$MNT"
   hdiutil attach -nobrowse -readonly -quiet -mountpoint "$MNT" "$dmg"
   # 복사 도중 실패한 반쪽 앱이 남으면 다음 실행이 '이미 설치됨' 으로 건너뛰므로 지운다.
-  if ! cp -R "$MNT/Catchtype.app" "$APP"; then
+  if ! cp -R "$MNT/$APP_NAME" "$APP"; then
     rm -rf "$APP"
-    fail "/Applications 복사 실패(관리자 권한 필요) — 관리자 계정 터미널에서: sudo bash $0"
+    fail "$APP 복사 실패"
   fi
 
   if ! verify_signature "앱" "$(spctl -a -vv "$APP" 2>&1 || true)"; then
@@ -62,6 +68,16 @@ main() {
 }
 
 # ── 함수 선언 (본문 호출 순서) ──────────────────────────────────────────────
+# app_dir — /Applications 가 쓰기 가능하면 그대로, 아니면 ~/Applications(없으면 생성).
+app_dir() {
+  if [[ -w /Applications ]]; then
+    echo "/Applications"
+    return 0
+  fi
+  mkdir -p "$HOME/Applications"
+  echo "$HOME/Applications"
+}
+
 cleanup() {
   if [[ -n "$MNT" && -d "$MNT" ]]; then
     hdiutil detach -quiet "$MNT" 2>/dev/null || true

@@ -2,7 +2,7 @@
 
 한/영 키를 누르지 않아도 단어 단위로 한글·영문 입력을 자동 전환하는 macOS 입력 보조 앱. 입력 내용은 기기 밖으로 전송되지 않는다.
 
-Homebrew cask가 없으므로 `Brewfile`에 넣지 않는다. 대신 레포 `install.sh`가 [install.sh](install.sh)를 호출해 아래 수동 절차와 같은 검증을 게이트로 설치한다(홈페이지의 dmg 링크 사용 → dmg 서명 → 복사 → 앱 서명·번들 ID, 불일치면 중단·삭제). 이미 `/Applications/Catchtype.app`이 있으면 건너뛴다. 단독 실행: `bash catchtype/install.sh`. `/Applications` 쓰기 권한이 없는 Mac에서는 복사 단계가 실패하므로 관리자 계정에서 실행한다. 손쉬운 사용 권한은 자동화할 수 없으므로 아래 「권한」을 직접 한다.
+Homebrew cask가 없으므로 `Brewfile`에 넣지 않는다. 대신 레포 `install.sh`가 [install.sh](install.sh)를 호출해 아래 수동 절차와 같은 검증을 게이트로 설치한다(홈페이지의 dmg 링크 사용 → dmg 서명 → 복사 → 앱 서명·번들 ID, 불일치면 중단·삭제). 설치 위치는 `/Applications`에 쓰기 권한이 있으면 `/Applications`, 없으면(관리자 아닌 계정) `~/Applications`이며 완료 메시지에 표시된다. 두 위치 중 하나에 이미 `Catchtype.app`이 있으면 건너뛴다. 단독 실행: `bash catchtype/install.sh`. 관리자 권한·sudo는 필요 없다. 손쉬운 사용 권한은 자동화할 수 없으므로 아래 「권한」을 직접 한다.
 
 ## 수동 설치
 
@@ -15,7 +15,7 @@ Homebrew cask가 없으므로 `Brewfile`에 넣지 않는다. 대신 레포 `ins
    spctl -a -vvv -t open --context context:primary-signature ~/Downloads/<Catchtype dmg 파일>
    ```
 
-3. dmg를 열고 `Catchtype.app`을 `/Applications`로 옮긴다.
+3. dmg를 열고 `Catchtype.app`을 `/Applications`(쓰기 권한이 없으면 `~/Applications`)로 옮긴다.
 4. 설치 후 앱 서명을 확인한다.
 
    ```bash

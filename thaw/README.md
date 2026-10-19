@@ -1,6 +1,6 @@
 # Thaw 프로필
 
-Thaw 앱에서 내보낸 개인 Mac 메뉴 막대 프로필을 보관한다. Thaw 앱은 `Brewfile`의 `cask "thaw"`로 설치된다(macOS 26 이상). 프로필은 `install.sh`가 적용하지 않으므로 아래 절차대로 앱에서 직접 가져온다.
+Thaw 앱에서 내보낸 개인 Mac 메뉴 막대 프로필을 보관한다. Thaw 앱은 `Brewfile`의 `cask "thaw"`로 설치된다(macOS 26 이상). `/Applications`에 쓰기 권한이 없는(관리자 아닌) Mac에서는 `~/Applications`에 설치되므로 관리자 권한이 필요 없다. 프로필은 `install.sh`가 적용하지 않으므로 아래 절차대로 앱에서 직접 가져온다.
 
 - `profiles/Thaw-Profiles-2026-10-18.json`: 배치 변경 전 복구용 `personal-before-2026-10-18` 프로필 1개.
 - 복구할 때는 Thaw의 프로필 가져오기에서 JSON을 선택한 뒤 해당 프로필을 적용한다.

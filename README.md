@@ -54,10 +54,10 @@ git clone <repo-url> ~/Project/vibe-dotfiles
 ```
 
 **[Brewfile](Brewfile)이 패키지 정본입니다.** `install.sh`는 Homebrew가 없으면 설치한 뒤 `brew bundle --file Brewfile`로 CLI 도구·AI CLI·GUI 터미널·개발 설계 도구를 설치합니다. 이미 설치된 항목은 건너뛰므로 다시 실행해도 됩니다. 패키지를 추가·삭제할 때는 Brewfile만 고치고 `install.sh`를 다시 실행하세요. 설치 없이 상태만 보려면 `brew bundle check --verbose --file Brewfile`을 씁니다. 업무컴에서는 회사 소프트웨어 설치 정책을 먼저 확인하세요.
-Ghostty·draw.io·cmux·Rancher Desktop·Thaw는 brew 밖에서 수동 설치한 앱이 `/Applications`에 이미 있으면 Brewfile이 건너뜁니다(관리자 권한 없는 Mac에서 brew가 기존 앱을 넘겨받다 실패하는 것을 막음). brew로 설치한 앱은 계속 업그레이드 대상입니다.
+Ghostty·draw.io·cmux·Rancher Desktop·Thaw는 brew 밖에서 수동 설치한 앱이 `/Applications` 또는 `~/Applications`에 이미 있으면 Brewfile이 건너뜁니다(관리자 권한 없는 Mac에서 brew가 기존 앱을 넘겨받다 실패하는 것을 막음). brew로 설치한 앱은 계속 업그레이드 대상입니다.
 npm 전역 패키지(nworks MCP·intelephense)는 [npm-globals.txt](npm-globals.txt), uv 전역 도구(MarkItDown·Marker)는 [uv-tools.txt](uv-tools.txt)가 정본입니다. `install.sh`가 Brewfile 다음에 미설치 항목만 설치하고, 실패하면 경고만 남기고 계속합니다.
 Homebrew cask가 없는 Catchtype(한/영 자동 전환)은 `install.sh`가 [catchtype/install.sh](catchtype/install.sh)로 dmg를 받아 서명 검증 후 설치합니다(검증·권한 절차: [catchtype/README.md](catchtype/README.md)). 이미 있으면 건너뛰고, 손쉬운 사용 권한은 직접 허용합니다.
-`/Applications`에 쓰기 권한이 없는(관리자 아닌) Mac에서는 앱을 새로 설치하는 cask·Catchtype이 sudo 비밀번호를 요구해 실패하므로, 관리자 계정 터미널에서 직접 설치합니다.
+`/Applications`에 쓰기 권한이 없는(관리자 아닌) Mac에서는 Thaw·Catchtype을 `~/Applications`에 설치하므로 관리자 권한 없이 `install.sh`만으로 설치됩니다. 그 밖의 앱을 새로 설치하는 cask는 여전히 sudo 비밀번호를 요구해 실패하므로 관리자 계정 터미널에서 직접 설치합니다.
 
 install.sh가 수행하는 작업:
 - Homebrew 설치 확인 → `Brewfile` 패키지 설치
