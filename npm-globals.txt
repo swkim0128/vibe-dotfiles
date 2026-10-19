@@ -1,0 +1,5 @@
+# npm 전역 패키지 정본 — install.sh 가 미설치 항목만 `npm install -g` 로 설치한다.
+# 한 줄에 패키지 하나. # 뒤는 주석. 상태 확인: npm ls -g --depth=0
+
+nworks        # nworks MCP (네이버웍스 메일·캘린더·메시지)
+intelephense  # php-lsp 플러그인의 PHP 언어 서버

@@ -91,6 +91,7 @@ tmux -L verifytest kill-server
 
 ## 🚀 설치 진입점
 - **시스템**: `./install.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
+- **패키지 정본**: brew 는 `Brewfile`, npm 전역은 `npm-globals.txt` — 하네스가 쓰는 도구(node·uv·gws·glab·D2Coding·nworks·intelephense)도 여기 선언해야 새 Mac 에서 빠지지 않는다
 - **백업**: `./backup.sh` (역방향 — 현재 시스템 dotfiles 를 본 레포로 복사. 이미 심볼릭 링크된 항목은 자동 skip)
 - **AI 하네스** (선택): `VIBE_AI_CONFIG_PATH=<레포경로> ./install.sh` 재실행 또는 vibe-ai-config 레포의 `install.sh` 별도 실행
 - 두 진입점 독립(이름만 같은 `install.sh`). 본 레포 `install.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.

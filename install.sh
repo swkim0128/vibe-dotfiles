@@ -86,6 +86,24 @@ info "Brewfile 패키지 설치 중..."
 brew bundle --file "$DOTFILES/Brewfile"
 success "Brewfile 패키지 설치 완료"
 
+# ── 1-1. npm 전역 패키지 (정본: npm-globals.txt — node 는 1단계 Brewfile) ────
+# 이미 설치된 패키지는 건너뛰고, 설치 실패는 경고만 남기고 다음 단계로 간다.
+info "npm 전역 패키지 확인 중..."
+if command -v npm &>/dev/null; then
+  while read -r pkg _; do
+    [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+    if npm ls -g --depth=0 "$pkg" &>/dev/null; then
+      success "npm $pkg — 이미 설치됨"
+    elif npm install -g "$pkg"; then
+      success "npm $pkg 설치 완료"
+    else
+      warn "npm $pkg 설치 실패 — 나중에 수동 설치: npm install -g $pkg"
+    fi
+  done < "$DOTFILES/npm-globals.txt"
+else
+  warn "npm 없음 — npm 전역 패키지 건너뜀 (brew install node 후 install.sh 재실행)"
+fi
+
 # ── 2. Oh My Zsh ──────────────────────────────────────────────────────────────
 info "Oh My Zsh 확인 중..."
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
