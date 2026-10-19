@@ -10,6 +10,8 @@ def manual_app?(token, app)
 end
 
 # ── CLI 기본 도구 ─────────────────────────────────────────────────────────────
+# 셸·하네스 전반의 git. PATH 에서 macOS 시스템 git 보다 앞에 온다.
+brew "git"
 brew "lsd"
 brew "bat"
 brew "fzf"
@@ -35,6 +37,12 @@ brew "glow"
 brew "neovim"
 brew "tmux"
 brew "tmuxinator"
+# nvim 포매터(css·html·markdown). mason 에 없어 brew 로 둔다.
+brew "prettier"
+# mlr — nvim CSV 정렬·필터 키맵이 호출한다.
+brew "miller"
+# nvim-treesitter main 브랜치의 파서 빌드에 필수.
+brew "tree-sitter-cli"
 
 # ── 린트·테스트 ───────────────────────────────────────────────────────────────
 brew "ktlint"
