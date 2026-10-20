@@ -13,11 +13,14 @@
 #   - 자기완결: PARA·외부 볼트 의존 없음. 데이터·설정 부재 시 graceful(빈 집계).
 #
 # 데이터 소스:
-#   ~/.claude/projects/<프로젝트디렉토리>/<uuid>.jsonl
-#     - 한 줄 = 한 JSON 이벤트.
-#     - 스킬 호출 줄:   "skill":"<plugin>:<name>" + "timestamp":"YYYY-MM-DDT..."
-#     - 에이전트 호출:  "subagent_type":"<name>" + "timestamp":"YYYY-MM-DDT..."
+#   ~/.claude/projects/<프로젝트디렉토리>/**/*.jsonl  (서브에이전트 <uuid>/subagents/*.jsonl 포함)
+#     - 한 줄 = 한 JSON 이벤트. timestamp 는 UTC(…Z).
+#     - 스킬 호출:      Skill tool_use 의 input.skill
+#     - 에이전트 호출:  Agent tool_use 의 input.subagent_type (생략 시 general-purpose)
+#     - 슬래시 명령:    user 메시지 본문 <command-name>/<name></command-name> (내장 명령 제외)
 #     - 디렉토리명(-Users-eunsol-Project-...)이 곧 프로젝트 식별자.
+#   집계 구간: 직전 실행 워터마크(${LOG_DIR}/watermark) 초과 ~ 이번 실행 시각 이하.
+#     날짜(UTC) 단위로 자르면 22:00 실행 기준 KST 22~09시 사용이 영구 누락된다.
 #   ~/.claude/settings.json · settings.local.json  → enabledPlugins (값 true)
 #   ~/.claude/plugins/marketplaces/*/*/plugins/*/skills/*/SKILL.md → 설치 스킬
 #   ~/.claude/plugins/marketplaces/*/*/plugins/*/agents/*.md       → 설치 에이전트
@@ -57,10 +60,25 @@ read -r -a PROTECTED_MP_ARR <<< "${PROTECTED_MARKETPLACES}"
 # 계절성(저빈도 주기) 스킬 탐지 키워드 — SKILL.md frontmatter description 에서 찾는다.
 # 호출 주기가 원장 축적일수보다 길거나 비슷하면 "누적 0"이 미사용의 증거가 되지 못한다.
 SEASONAL_PATTERN="${SEASONAL_PATTERN:-주간|weekly|매주|월간|monthly|매월|분기|quarterly|반기|연간|금요일|일요일|월요일|월말|주말}"
-# 관측 부족 판정 임계 — SKILL.md 수정 시각이 이 일수 이내면 "최근 추가"로 본다.
+# 관측 부족 판정 임계 — 정본 레포에 SKILL.md 가 처음 추가된 시각이 이 일수 이내면 "최근 추가"로 본다
+# (git 이력이 없을 때만 파일 mtime 폴백 — 재설치·재배포가 mtime 을 갱신하므로 오탐 가능).
 RECENT_DAYS="${RECENT_DAYS:-14}"
+# 슬래시 명령 중 사용량 감사 대상이 아닌 Claude Code 내장 명령 (공백 구분, 접두 없는 이름만 비교).
+SLASH_BUILTINS="${SLASH_BUILTINS:-add-dir agents artifacts bashes btw bug clear compact config context copy cost doctor effort exit export fast feedback help hooks ide init install-github-app keybindings login logout mcp memory model output-style permissions plan plugin plugins pr-comments privacy-settings release-notes reload-plugins remote-control rename resume review rewind sandbox security-review skills status statusline stats tasks terminal-setup theme todos upgrade usage vim}"
 
 mkdir -p "${LOG_DIR}"
+
+# 집계 구간 — (WIN_START, WIN_END]. 트랜스크립트 timestamp(UTC ISO8601, 밀리초) 와 문자열 비교한다.
+WATERMARK="${LOG_DIR}/watermark"
+WIN_END="$(date -u '+%Y-%m-%dT%H:%M:%S.000Z')"
+WIN_START=""
+if [[ -f "${WATERMARK}" ]]; then
+  WIN_START="$(tr -d '[:space:]' < "${WATERMARK}")"
+fi
+if ! [[ "${WIN_START}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$ ]]; then
+  # 워터마크 부재(첫 실행·이전 버전) → 직전 24시간. 이전 버전은 UTC 당일 0시~실행 시각만 셌으므로 겹치지 않는다.
+  WIN_START="$(date -u -v-24H '+%Y-%m-%dT%H:%M:%S.000Z' 2>/dev/null || date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%S.000Z')"
+fi
 
 # 작업용 임시 디렉토리 (당일 집계 중간 산출물)
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/skill-audit.XXXXXX")"
@@ -97,6 +115,7 @@ log_info "리포트 출력: ${REPORT}"
 log_info "누적 원장: ${LEDGER}"
 log_info "jq 사용: $([[ ${HAS_JQ} -eq 1 ]] && echo 'yes' || echo 'no (grep/awk 폴백)')"
 log_info "DRY_RUN: ${DRY_RUN}"
+log_info "집계 구간(UTC): ${WIN_START} 초과 ~ ${WIN_END} 이하"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (A) 당일 사용 집계
@@ -105,28 +124,39 @@ log_info "DRY_RUN: ${DRY_RUN}"
 #     ${WORK_DIR}/usage_by_project.tsv: project\ttype\tname\tcount
 # ─────────────────────────────────────────────────────────────────────────────
 
-# 한 트랜스크립트 파일에서 오늘 날짜의 skill/subagent_type 이름을 추출해 표준출력.
+# 한 트랜스크립트 파일에서 집계 구간 내 skill/agent/command 이름을 추출해 표준출력.
 #   출력 형식: "<type>\t<name>" (한 줄 = 이벤트 1건)
+#   - skill   : Skill tool_use (모델 호출)
+#   - agent   : Agent(구 Task) tool_use. subagent_type 생략 시 기본값 general-purpose
+#   - command : 사용자가 입력한 슬래시 명령(/<name>). 스킬을 슬래시로 부르면 Skill tool_use 가
+#               남지 않으므로 이 경로로만 셀 수 있다. 서브에이전트(isSidechain) 줄은 제외.
 # jq 폴백 포함. jq 실패/미존재 시 grep/grep -o 로 라인 파싱.
 extract_events() {
   local file="$1"
   if [[ ${HAS_JQ} -eq 1 ]]; then
-    # timestamp 가 오늘로 시작하고 skill 또는 subagent_type 를 가진 이벤트만.
-    # jq 파싱 실패(깨진 줄)는 -R -c 로 라인단위 시도하되 오류는 무시.
-    jq -R -r '. as $line | (try (fromjson) catch empty)
-      | select((.timestamp // "") | startswith("'"${TODAY}"'"))
-      | (.message.content // empty)
-      | select(type == "array") | .[]
-      | select((.type? // "") == "tool_use")
-      | if (.name == "Skill" and (.input.skill // null) != null) then {t:"skill", n:.input.skill}
-        elif ((.name == "Agent" or .name == "Task") and (.input.subagent_type // null) != null) then {t:"agent", n:.input.subagent_type}
-        else empty end
-      | "\(.t)\t\(.n)"' "${file}" 2>/dev/null || true
+    # jq 파싱 실패(깨진 줄)는 -R 로 라인단위 시도하되 오류는 무시.
+    jq -R -r --arg s "${WIN_START}" --arg e "${WIN_END}" '(try (fromjson) catch empty)
+      | select(type == "object")
+      | select((.timestamp // "") as $ts | $ts > $s and $ts <= $e)
+      | . as $ev
+      | (.message.content // empty) as $c
+      | if ($c | type) == "array" then
+          $c[] | select(type == "object" and (.type? // "") == "tool_use")
+          | if (.name == "Skill" and (.input.skill // null) != null) then "skill\t\(.input.skill)"
+            elif (.name == "Agent") then "agent\t\(.input.subagent_type // "general-purpose")"
+            elif (.name == "Task" and (.input.subagent_type // null) != null) then "agent\t\(.input.subagent_type)"
+            else empty end
+        elif ($c | type) == "string" and ($ev.type // "") == "user" and ($ev.isSidechain // false) != true then
+          ($c | capture("^\\s*(<command-message>[^<]*</command-message>\\s*)?<command-name>/(?<n>[^<\\s]+)</command-name>")
+            | "command\t\(.n)")
+        else empty end' "${file}" 2>/dev/null || true
   else
-    # 폴백: 오늘 timestamp 를 포함한 줄만 뽑아 skill / subagent_type 를 추출.
-    # 한 줄에 두 필드가 동시에 있을 가능성은 낮으나, 각각 독립 추출한다.
-    grep -F "\"timestamp\":\"${TODAY}" "${file}" 2>/dev/null | while IFS= read -r line; do
-      local sk ag
+    # 폴백: timestamp 를 문자열 비교해 구간 내 줄만 남기고 skill / subagent_type / 슬래시 명령을 추출.
+    local LC_ALL=C
+    grep -F '"timestamp":"' "${file}" 2>/dev/null | while IFS= read -r line; do
+      local ts sk ag cm
+      ts="$(printf '%s' "${line}" | grep -o '"timestamp":"[^"]*"' | head -n1 | sed 's/^"timestamp":"//; s/"$//')"
+      [[ "${ts}" > "${WIN_START}" && ! "${ts}" > "${WIN_END}" ]] || continue
       sk="$(printf '%s' "${line}" | grep -o '"skill":"[^"]*"' | head -n1 | sed 's/^"skill":"//; s/"$//')"
       if [[ -n "${sk}" ]]; then
         printf 'skill\t%s\n' "${sk}"
@@ -135,8 +165,19 @@ extract_events() {
       if [[ -n "${ag}" ]]; then
         printf 'agent\t%s\n' "${ag}"
       fi
+      if [[ "${line}" == *'"type":"user"'* && "${line}" != *'"isSidechain":true'* ]]; then
+        cm="$(printf '%s' "${line}" | grep -o '"content":"[^"]\{0,120\}<command-name>/[^<]*</command-name>' | head -n1 | sed 's/.*<command-name>\///; s/<\/command-name>$//')"
+        if [[ -n "${cm}" ]]; then
+          printf 'command\t%s\n' "${cm}"
+        fi
+      fi
     done
   fi
+}
+
+# 내장 슬래시 명령(/clear·/mcp 등)은 자산 사용량이 아니므로 원장에 넣지 않는다.
+drop_builtin_commands() {
+  awk -F"\t" -v b=" ${SLASH_BUILTINS} " '!($1 == "command" && index(b, " "$2" ") > 0)'
 }
 
 : > "${WORK_DIR}/usage_global.tsv"
@@ -150,11 +191,13 @@ if [[ -d "${PROJECTS_DIR}" ]]; then
     [[ -d "${proj_path}" ]] || continue
     local_proj="$(basename "${proj_path}")"
     : > "${WORK_DIR}/events_proj.tmp"
-    for jf in "${proj_path}"*.jsonl; do
+    # 재귀 — 서브에이전트 트랜스크립트(<uuid>/subagents/agent-*.jsonl)도 포함해야
+    # 서브에이전트 안에서 호출된 스킬·에이전트가 집계된다.
+    while IFS= read -r jf; do
       [[ -f "${jf}" ]] || continue
       TRANSCRIPT_COUNT=$((TRANSCRIPT_COUNT + 1))
-      extract_events "${jf}" >> "${WORK_DIR}/events_proj.tmp"
-    done
+      extract_events "${jf}" | drop_builtin_commands >> "${WORK_DIR}/events_proj.tmp"
+    done < <(find "${proj_path}" -type f -name '*.jsonl' 2>/dev/null)
     # 프로젝트별 집계: type\tname 단위 count
     if [[ -s "${WORK_DIR}/events_proj.tmp" ]]; then
       sort "${WORK_DIR}/events_proj.tmp" | uniq -c \
@@ -181,22 +224,30 @@ log_info "당일 사용된 distinct 스킬/에이전트 수: ${TODAY_DISTINCT}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) 누적 원장(ledger) — TSV: date\ttype\tname\tcount
-#   당일 전역 집계를 append. DRY_RUN 이면 생략.
+#   집계 구간 전역 집계를 실행일(date) 행으로 append. DRY_RUN 이면 생략.
+#   워터마크는 append 가 실제로 반영됐을 때만(또는 구간 사용 0일 때) 전진한다 —
+#   중복 방지로 append 를 건너뛴 구간은 다음 실행이 다시 센다.
 # ─────────────────────────────────────────────────────────────────────────────
 if [[ "${DRY_RUN}" == "1" ]]; then
-  log_info "[DRY_RUN] ledger append 생략."
+  log_info "[DRY_RUN] ledger append·워터마크 갱신 생략."
 else
+  ADVANCE_WATERMARK=1
   if [[ -s "${WORK_DIR}/usage_global.tsv" ]]; then
     # 같은 날짜 중복 append 방지: 오늘 날짜 행이 이미 있으면 재기록하지 않음.
     if [[ -f "${LEDGER}" ]] && grep -q "^${TODAY}"$'\t' "${LEDGER}"; then
-      log_warn "ledger 에 오늘(${TODAY}) 행이 이미 존재 — append 생략(중복 방지)."
+      log_warn "ledger 에 오늘(${TODAY}) 행이 이미 존재 — append 생략(중복 방지), 워터마크 유지."
+      ADVANCE_WATERMARK=0
     else
       awk -v d="${TODAY}" -F"\t" '{ print d"\t"$1"\t"$2"\t"$3 }' \
         "${WORK_DIR}/usage_global.tsv" >> "${LEDGER}"
       log_info "ledger append 완료: ${TODAY} (${TODAY_DISTINCT} 행)."
     fi
   else
-    log_info "당일 사용 0 — ledger append 대상 없음."
+    log_info "집계 구간 사용 0 — ledger append 대상 없음."
+  fi
+  if [[ "${ADVANCE_WATERMARK}" -eq 1 ]]; then
+    printf '%s\n' "${WIN_END}" > "${WATERMARK}"
+    log_info "워터마크 갱신: ${WIN_END}"
   fi
 fi
 
@@ -466,13 +517,20 @@ for sf in "${CLAUDE_HOME}/settings.json" "${CLAUDE_HOME}/settings.local.json"; d
   collect_hook_events "${sf}" >> "${WORK_DIR}/hooks_config.txt"
 done
 # 플러그인 hooks/ 디렉토리 존재 여부
+#   ⚠️ -path '*/plugins/*/hooks' 는 MARKETPLACES_DIR 자체의 'plugins' 세그먼트에 걸려
+#      .git/hooks·src/hooks·dist/hooks 같은 비-플러그인 폴더까지 플러그인으로 잡는다.
+#      → 숨김 세그먼트 경로를 배제하고, hooks/ 의 부모가 플러그인 매니페스트
+#        (.claude-plugin/plugin.json)를 가진 경우만 플러그인으로 인정한다.
 : > "${WORK_DIR}/plugin_hooks.txt"
 if [[ -d "${MARKETPLACES_DIR}" ]]; then
   while IFS= read -r hd; do
     [[ -n "${hd}" ]] || continue
+    rel="${hd#"${MARKETPLACES_DIR}"/}"
+    [[ "${rel}" != .* && "${rel}" != */.* ]] || continue
+    [[ -f "$(dirname "${hd}")/.claude-plugin/plugin.json" ]] || continue
     plugin_dir="$(basename "$(dirname "${hd}")")"
     printf '%s\n' "${plugin_dir}"
-  done < <(find "${MARKETPLACES_DIR}" -type d -path '*/plugins/*/hooks' 2>/dev/null) \
+  done < <(find "${MARKETPLACES_DIR}" -type d -name 'hooks' -not -path '*/node_modules/*' 2>/dev/null) \
     | sort -u > "${WORK_DIR}/plugin_hooks.txt"
 fi
 HOOK_EVENT_COUNT="$(wc -l < "${WORK_DIR}/hooks_config.txt" | tr -d ' ')"
@@ -604,14 +662,69 @@ dup_group_for() {
 
 : > "${WORK_DIR}/candidates_graded.tsv"
 
-# 파일 수정 시각이 RECENT_DAYS 이내인지 — 관측 부족(B등급) 판정용.
+# 정본 레포에서 SKILL.md 가 처음 git 에 추가된 시각(epoch). 산출 불가면 빈 출력.
+#   ① 실경로(심링크 해소)가 git 작업트리 안이면 그 레포의 최초 추가 커밋 시각.
+#   ② git 밖 배포 사본이면 상위 디렉토리의 .skill-lock.json 이 기록한 source 레포에서
+#      같은 스킬명의 SKILL.md 를 찾아 최초 추가 커밋 시각.
+#   shallow 클론은 경계 커밋이 '최초 추가'로 보이므로 신뢰하지 않는다.
+git_added_epoch() {
+  local top="$1" rel="$2"
+  [[ "$(git -C "${top}" rev-parse --is-shallow-repository 2>/dev/null)" == "false" ]] || return 0
+  git -C "${top}" log --follow --diff-filter=A --format=%ct -- "${rel}" 2>/dev/null | tail -n1
+}
+canonical_added_epoch() {
+  local p="$1" real dir top ep d lock src name rel
+  real="$(realpath "${p}" 2>/dev/null || printf '%s' "${p}")"
+  dir="$(dirname "${real}")"
+  if top="$(git -C "${dir}" rev-parse --show-toplevel 2>/dev/null)"; then
+    ep="$(git_added_epoch "${top}" "${real#"${top}"/}")"
+    if [[ -n "${ep}" ]]; then
+      printf '%s\n' "${ep}"
+      return 0
+    fi
+  fi
+  [[ ${HAS_JQ} -eq 1 ]] || return 0
+  name="$(basename "${dir}")"
+  d="${dir}"
+  lock=""
+  for _ in 1 2 3; do
+    d="$(dirname "${d}")"
+    if [[ -f "${d}/.skill-lock.json" ]]; then
+      lock="${d}/.skill-lock.json"
+      break
+    fi
+  done
+  [[ -n "${lock}" ]] || return 0
+  src="$(jq -r --arg n "${name}" '.skills[$n].source // empty' "${lock}" 2>/dev/null || true)"
+  [[ -n "${src}" && -d "${src}" ]] || return 0
+  top="$(git -C "${src}" rev-parse --show-toplevel 2>/dev/null)" || return 0
+  # 같은 이름이 여러 곳이면 skills/ 하위를 우선한다.
+  rel="$(git -C "${top}" ls-files -- ":(glob)**/${name}/SKILL.md" 2>/dev/null \
+    | awk '/^skills\// && s == "" { s = $0 } NR == 1 { f = $0 } END { print (s != "" ? s : f) }')"
+  [[ -n "${rel}" ]] || return 0
+  git_added_epoch "${top}" "${rel}"
+}
+
+# 관측 부족(B등급) 판정용 — 정본 git 최초 추가 시각이 RECENT_DAYS 이내인지.
+#   git 이력이 없을 때만 파일 mtime 폴백(재설치·재배포로 갱신되므로 오탐 가능 — 사유에 명시).
+#   판정 근거는 RECENT_BASIS 에 남겨 사유 문구에 쓴다.
+RECENT_BASIS=""
 is_recently_added() {
   local p="$1"
+  RECENT_BASIS=""
   [[ -n "${p}" && -f "${p}" ]] || return 1
-  local cutoff mt
+  local cutoff ep day
   cutoff=$(( $(date +%s) - RECENT_DAYS * 86400 ))
-  mt="$(stat -f %m "${p}" 2>/dev/null || stat -c %Y "${p}" 2>/dev/null || echo 0)"
-  [[ "${mt}" -ge "${cutoff}" ]]
+  ep="$(canonical_added_epoch "${p}")"
+  if [[ -n "${ep}" ]]; then
+    day="$(date -r "${ep}" +%F 2>/dev/null || date -d "@${ep}" +%F)"
+    RECENT_BASIS="정본 git 최초 추가 ${day}"
+  else
+    ep="$(stat -f %m "${p}" 2>/dev/null || stat -c %Y "${p}" 2>/dev/null || echo 0)"
+    day="$(date -r "${ep}" +%F 2>/dev/null || date -d "@${ep}" +%F)"
+    RECENT_BASIS="git 이력 없음 — 파일 mtime ${day} 폴백, 재설치 오탐 가능"
+  fi
+  [[ "${ep}" -ge "${cutoff}" ]]
 }
 
 build_verdict() {
@@ -648,7 +761,7 @@ build_verdict() {
         fi
       elif is_recently_added "${spath}"; then
         grade="B"
-        reason="최근 ${RECENT_DAYS}일 이내 추가/수정 — 관측 표본 부족"
+        reason="최근 ${RECENT_DAYS}일 이내 추가 — 관측 표본 부족 (${RECENT_BASIS})"
       else
         grade="A"
         reason="누적 0 · 계절성 신호 없음 · 중복군 아님 (원장 ${LEDGER_DAYS}일 관측)"
@@ -692,11 +805,22 @@ emit_verdict_table() {
 {
   echo "# 스킬/플러그인/에이전트 사용현황 감사 리포트 — ${TODAY}${DRY_TAG}"
   echo ""
-  echo "> 생성: ${RUN_DATE} · 분석기간: 당일(${TODAY}) · 누적 원장 기준일수: ${LEDGER_DAYS}일"
+  echo "> 생성: ${RUN_DATE} · 집계 구간(UTC): ${WIN_START} 초과 ~ ${WIN_END} 이하 (직전 실행 워터마크 기준) · 누적 원장 기준일수: ${LEDGER_DAYS}일"
   echo "> 집계 방식: 결정론적(grep/awk$([[ ${HAS_JQ} -eq 1 ]] && echo '+jq')) · LLM 미사용"
   echo ""
+  echo "## 측정 한계"
+  echo ""
+  echo "- **세는 것**: 모델의 Skill 호출 · Agent 호출(subagent_type 생략 시 \`general-purpose\`) · 사용자가 입력한 슬래시 명령(\`command\` 타입, 내장 명령 제외) — 서브에이전트 트랜스크립트 포함, 실행 사이 전 구간(야간 포함)."
+  echo "- **못 세는 것 (구조적)**:"
+  echo "  - 이 기기의 Claude Code 트랜스크립트(\`${PROJECTS_DIR}\`) 밖 사용 — Codex·Gemini 등 다른 CLI, 다른 기기 사용은 원장에 없다."
+  echo "  - 스킬 도구를 거치지 않은 사용 — 모델이 SKILL.md 를 직접 읽거나 지침만 참고한 경우."
+  echo "  - 훅·MCP 도구는 사용 측정 대상 아님(설정 여부만)."
+  echo "  - 워커가 오래 못 돈 사이 Claude Code 가 지운 트랜스크립트(보존 기간 초과분)."
+  echo "  - 원장 날짜는 이벤트 발생일이 아니라 **집계한 실행일**이다(야간 사용은 다음 실행일 행에 들어감)."
+  echo "- **B등급 '최근 추가'**: 정본 레포 git 최초 추가일 기준. git 이력을 못 찾은 항목만 파일 mtime 폴백이며 사유에 표시된다."
+  echo ""
 
-  echo "## 당일 사용"
+  echo "## 집계 구간 사용 (직전 실행 이후)"
   echo ""
   echo "### 전역 (전체 프로젝트 합산)"
   echo ""
