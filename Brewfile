@@ -65,6 +65,8 @@ brew "graphviz"
 brew "plantuml"
 # 스펙 주도 개발(변경 제안·스펙 문서) CLI. 텔레메트리는 zsh/env.zsh 에서 끈다.
 brew "openspec"
+# Claude Code kotlin-lsp 플러그인(code intelligence)의 언어 서버. 플러그인 활성은 vibe-ai-config settings 정본.
+brew "JetBrains/utils/kotlin-lsp"
 # 기존 .drawio XML 설계 원본 편집·로컬 내보내기. 공식 cask가 drawio CLI도 제공한다.
 cask "drawio" unless manual_app?("drawio", "draw.io.app")
 
