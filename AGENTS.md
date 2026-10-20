@@ -1,0 +1,122 @@
+# Vibe Dotfiles Architecture Guide
+
+Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
+
+본 파일은 **자기 완결적(self-contained)** 이다. 전역 룰(`~/.claude/CLAUDE-*.md`)이 없는 환경에서도 본 레포만으로 빌드·VERIFY 가능. 글로벌 룰은 상위 컨텍스트로 우선 적용되되, **부재 시 본 파일이 진실 공급원**.
+
+> **전역 규칙 항상 우선**: `~/.claude/CLAUDE.md` (라우팅 허브) + `CLAUDE-user.md` / `CLAUDE-delegation.md` 와 온디맨드 `~/.claude/sops/` (`sop_gava.md`·`sop_double_cache.md`·`sop_task_mgmt.md`·`sop_work_log.md`) 를 따른다. Subagent-First 는 글로벌에서 강제. 본 레포는 self-contained — 전역 룰 부재 환경에서도 빌드·VERIFY 가능.
+> 전역 KB (선택적): `${KB_PATH:-<repo>/docs/knowledge-base}` — 본 레포 내부 `docs/knowledge-base/` 자체가 SSoT 이므로 항상 존재. `<repo>` 는 본 레포 루트(`install.sh` 가 있는 디렉토리).
+
+---
+
+## 블록 1 — 외부 통합 (선택적 의존성 / Optional Integrations)
+
+본 레포는 다음 외부 자산의 **물리적 존재에 의존하지 않는다**. 환경변수로 위치를 명시 가능, 부재 시 자동 skip / 폴백.
+
+| 환경 변수 | 폴백 | 용도 | 부재 시 동작 |
+|---|---|---|---|
+| `PARA_PATH` | `$HOME/Project/para` | 외부 PARA 볼트 (단기 작업·회고) | `overnight_worker.sh` 가 PARA 통합 skip + 블루프린트는 `$TMPDIR/overnight-blueprints/` 폴백 |
+| `REPO_SCAN_ROOT` | `$HOME/Project` | git 활동 스캔 루트 | 디렉토리 부재 시 빈 분석으로 진행 |
+| `VIBE_AI_CONFIG_PATH` | `$HOME/Project/vibe-ai-config` | 외부 AI CLI 설정·하네스 레포 (구 vibe-claude-plugin) | `install.sh` 가 안내만 출력. 본 레포는 정상 동작 |
+| `CLAUDE_BIN` | PATH 자동 탐색 | claude CLI | 미존재 시 `overnight_worker.sh` 만 fail (다른 모든 기능 정상) |
+
+**완벽한 독립성 약속**: 이 폴더 통째로 다른 Mac 에 복사 → `./install.sh` → 시스템·터미널 인프라 100% 동작. 외부 레포 없이도 모든 VERIFY 통과.
+
+---
+
+## 블록 2 — 기술 스택 컨텍스트
+
+- **주요 언어**: Bash, Zsh, Lua, Markdown
+- **빌드 도구**: 없음 — 셸 스크립트 직접 실행 (`./install.sh`)
+- **외부 의존 (필수)**: Homebrew (CLI 도구 설치), Git
+- **외부 의존 (선택)**: bats-core (테스트), shellcheck (lint), luac (Lua 문법 검증)
+- **DB / 인프라 의존**: 없음
+- **인코딩**: UTF-8 (LF). EUC-KR / CRLF 없음.
+- **디렉토리 구조 (1줄 요약)**:
+  ```
+  install.sh / CLAUDE.md / tmux/ / nvim/lua/ (NvChad) / vibe-tools/ (사용자 설정 데이터·자동화 워커 3종·issue-start·cmux 런처) /
+  zsh/aliases.zsh / glow/ / ghostty/ (ghostty·cmux 테마/폰트 설정) / cmux/ (cmux 자체 설정 cmux.json) / docs/ / tests/bats/ / docs/knowledge-base/ (KB SSoT)
+  ```
+
+---
+
+## 블록 3 — VERIFY 툴셋 (단일 명령어 분해)
+
+하네스 7조항 #6 준수 — 세미콜론·`&&`·`||`·파이프·`2>&1` redirect 회피. 각 명령 독립 실행.
+
+```bash
+# 셸 스크립트 문법 검증 (필수 — 모든 .sh 변경 시)
+shellcheck install.sh
+shellcheck vibe-tools/*.sh
+
+# shellcheck 미설치 환경 폴백
+bash -n install.sh
+bash -n vibe-tools/overnight_worker.sh
+
+# bats 테스트 (선택)
+bats tests/bats/
+
+# Lua 문법 검증 (nvim 설정 변경 시)
+luac -p nvim/lua/options.lua
+
+# JSON 문법 검증 (settings.json 류 변경 시 — Edit 도구로만 수정)
+jq empty path/to/settings.json
+
+# 야간 워커 dry-run (외부 의존 fallback 검증 포함)
+DRY_RUN=1 bash vibe-tools/overnight_worker.sh
+
+# tmux 설정 검증 — 현재 세션에 영향 없는 별도 서버로 로드 후 종료 (2단계, 각각 단일 명령)
+tmux -L verifytest -f tmux/.tmux.conf new-session -d -s verify
+tmux -L verifytest kill-server
+```
+
+복합 체이닝(`./gradlew clean build test`)·redirect/파이프 포함 명령은 **금지** — Bash 권한 패턴 매칭 실패로 매번 프롬프트 발생.
+
+---
+
+## 🏗️ 관심사 분리 (SoC)
+
+| 레포 | 책임 |
+|---|---|
+| **`vibe-dotfiles`** (본 레포) | 시스템·터미널 인프라 — Zsh, Tmux, Neovim, `vibe-tools/`, `install.sh` |
+| **외부 AI 하네스 레포** (선택적) | `CLAUDE-*.md`, `hooks/`, `settings.work.json`, 마켓플레이스 |
+
+본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
+
+**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`, `cmux-projects.txt`, `cmux-ops.txt`, `cmux-no-workspace.txt`) + 자동화 워커 3종(`overnight_worker.sh`, `notion_diary_worker.sh`, `skill_audit_worker.sh`)과 launchd plist 3종(`com.swkim0128.{overnight,notion-diary,skill-audit}.plist`) + `issue-start.sh` + cmux 정규화 런처(`cmux-lib.sh` + `cmux-proj*.sh` 6종 + 멀티 레포 이슈 런처 `cmux-issue.sh`)를 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+
+- 개인 주간 정리 워커 `personal_weekly_worker.sh` + `com.swkim0128.personal-weekly.plist`(일요일 22:00, Codex `codex exec` 실행, 초안 + KPT 회고 — 다음 주 계획은 `/personal 주간루틴` 수동)도 보관.
+- cmux 목록의 머신 로컬 오버레이 `*.local.txt` (`cmux-projects.local.txt`, `cmux-ops.local.txt`) 는 **비커밋**(gitignore) — 회사 경로 등 머신별 항목은 여기에만 등록.
+- cmux 사용 규칙·키맵은 `docs/cmux-cheatsheet.md` 참조 — raw cmux 명령 즉흥 조합 대신 정규화 런처(`cmux-proj`/`dual`/`ops`/`review`) 우선.
+
+## 🚀 설치 진입점
+- **시스템**: `./install.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능
+- **패키지 정본**: brew 는 `Brewfile`(업무 인프라·Codex·Thaw 포함, 두 기기 공통), npm 전역은 `npm-globals.txt`, uv 도구는 `uv-tools.txt`, Catchtype 은 `catchtype/install.sh`(dmg 서명 게이트), mise 전역 설정은 `mise/config.toml` 심링크 — 하네스가 쓰는 도구도 여기 선언해야 새 Mac 에서 빠지지 않는다
+- **설치 확인 함정**: cmux 안에서는 cmux-cli-shims 가 PATH 앞이라 `command -v codex` 가 오판 → `/opt/homebrew/bin/codex --version` 으로 확인. 관리자 아닌 Mac 은 Thaw·Catchtype 을 `~/Applications` 에 설치(sudo 불필요), 그 외 신규 앱 cask 의 `/Applications` 복사는 sudo 로 실패 → 사용자가 직접 설치
+- **백업**: `./backup.sh` (역방향 — 현재 시스템 dotfiles 를 본 레포로 복사. 이미 심볼릭 링크된 항목은 자동 skip)
+- **AI 하네스** (선택): `VIBE_AI_CONFIG_PATH=<레포경로> ./install.sh` 재실행 또는 vibe-ai-config 레포의 `install.sh` 별도 실행
+- 두 진입점 독립(이름만 같은 `install.sh`). 본 레포 `install.sh` 는 외부 AI 하네스 자산을 절대 수정하지 않음.
+
+## 🛠️ 구조
+- `tmux/`, `nvim/lua/` (NvChad), `vibe-tools/` (사용자 설정 데이터·overnight·issue-start·cmux 런처), `bin/` (독립 실행 유틸 — `dock-badges*.sh`), `zsh/aliases.zsh`, `git/gitignore_global` (전역 git 무시 정본 — install.sh 가 `~/.gitignore_global` 심링크 + `core.excludesfile` 지정. 개발 도구 자동 생성물은 도구명 주석과 함께 여기 추가), `ghostty/` (ghostty·cmux 테마/폰트 설정), `cmux/` (cmux 자체 설정 cmux.json·dock.json), `docs/knowledge-base/` (KB SSoT)
+
+### macOS Dock 뱃지 (알림 개수) 함정
+- 뱃지 조회는 `osascript` + `System Events > process Dock > list 1` 의 `AXStatusLabel`. 접근성 권한만 필요(FDA 불필요) — LaunchAgent 로 옮기지 말 것(권한이 터미널 responsible process 로 상속되는 현재 경로가 검증됨).
+- AppleScript 함정 ①: `tell process "Dock"` 블록 안에서 누산기 변수명 `outLines` 사용 시 terminology 충돌로 `-10000` 사망 → `acc` 등으로 명명.
+- AppleScript 함정 ②: UI element 를 변수에 담아 재사용하면 `-10000` → `of UI element idx of list 1` 인라인 접근 사용. 뱃지 없는 항목은 `missing value` 이므로 coercion 전 판별.
+- 셸 함정: `trap cleanup INT TERM` 핸들러는 `exit` 까지 해야 한다 — 안 그러면 pidfile 만 지워지고 루프는 계속 도는 좀비 폴러가 남는다.
+- cmux Dock 설정 스펙 확인은 `cmux docs dock` (`~/.config/cmux/dock.json` 은 `cmux/dock.json` 심링크, 전역 config 의 상대 `cwd` 기준은 홈 디렉토리).
+
+## 세션 인수인계
+중단 전 `todo.md` 또는 (외부 하네스 설치 시) `harness:handoff` 스킬로 `HANDOFF.md` 기록. 재개 시 먼저 읽음.
+
+## 🔌 본 레포 우선 호출 컴포넌트 (외부 AI 하네스가 설치된 경우)
+
+- 셸 변경 검증: 직접 `shellcheck` / (있으면) `harness:verification-loop`
+- 커밋: (있으면) `git-suite:commit` / MR: `git-suite:mr` / 미설치 시 일반 `git commit`
+- 영향도 검토: (있으면) `Agent(subagent_type=Explore)` / 미설치 시 `grep` 직접
+- tmux 세션: (있으면) `tmux-suite:*` / 미설치 시 `tmux` 직접
+- `settings.work.json`: **Edit 전용** + `jq empty` (Write 금지) — 외부 레포 자산이므로 본 레포 작업과 무관
+
+### 비대상 (본 레포에서 호출 안 함)
+백엔드 분석(`analyze:*`), PHP(`harness:php-review`), 노션/그룹웨어/이슈트래커(`notion-suite:*`/`nworks:*`/`plane-mcp:*`) — 본 레포는 인프라 전용.
