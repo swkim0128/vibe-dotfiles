@@ -18,6 +18,8 @@ window-theme = system
 
 # --- 테마 및 배경 ---
 background-opacity = 0.9
+# 명시 배경색 셀(Claude dock pane 바탕 등)도 같은 반투명 — 미지정 셀과 같은 색이 다르게 보이는 것 방지
+background-opacity-cells = true
 background-blur-radius = 15
 
 # Autosuggestion color (가독성을 위해 밝게)
