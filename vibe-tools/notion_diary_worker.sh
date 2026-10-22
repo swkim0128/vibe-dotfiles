@@ -26,6 +26,8 @@
 # 환경 변수:
 #   REPO_SCAN_ROOT  git 레포 스캔 루트. 미설정 시 폴백 = "$HOME/Project"
 #   CLAUDE_BIN      claude CLI 경로. 미설정 시 PATH 에서 자동 탐색.
+#   VIBE_WORKER_TOOL claude(기본) | codex — codex 면 codex exec -C PARA_VAULT -s workspace-write 로 실행
+#                   (worker-tool-lib.sh, CODEX_BIN·CODEX_MODEL 참조. 노션 MCP 는 ~/.codex/config.toml).
 #   DRY_RUN         1 이면 claude/Notion 호출 skip, 수집한 WORK_LOG 를 파일로 저장하고
 #                   (D) 실행일이면 (D) 프롬프트를 로그에 남긴다.
 #   WEEKLY_LIST     1 이면 요일 무관하게 (D) Week List 정리를 실행(강제 실행용).
@@ -98,6 +100,10 @@ fi
 # claude CLI 경로 (PATH에 없을 경우 대비)
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo '')}"
 
+# AI CLI 선택 (VIBE_WORKER_TOOL=claude|codex, 기본 claude)
+# shellcheck source=worker-tool-lib.sh disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/worker-tool-lib.sh"
+
 # ── 디렉토리 초기화 ──────────────────────────────────────────────────────────
 mkdir -p "${LOG_DIR}"
 
@@ -115,17 +121,22 @@ log_warn()  { log "WARN " "$@"; }
 log_error() { log "ERROR" "$@"; }
 
 # claude 헤드리스 1회 호출. 프롬프트를 stdin 으로 넘기고 응답은 LOG_FILE 에 누적. 종료코드 반환.
+# VIBE_WORKER_TOOL=codex 면 codex exec 로 실행 — 노션 MCP 는 ~/.codex/config.toml 의 mcp_servers.notion 을 쓴다.
 run_notion_claude() {
   local prompt="$1"
   local rc
   set +e
-  printf '%s' "${prompt}" | "${CLAUDE_BIN}" \
-    --print \
-    --dangerously-skip-permissions \
-    --model "${NOTION_MODEL}" \
-    --output-format text \
-    --allowedTools "${NOTION_TOOLS}" \
-    >> "${LOG_FILE}" 2>&1
+  if [[ "${VIBE_WORKER_TOOL}" == "codex" ]]; then
+    printf '%s' "${prompt}" | worker_codex_exec "${PARA_VAULT}" "${LOG_DIR}/${TODAY}.codex-last.md" "${LOG_FILE}"
+  else
+    printf '%s' "${prompt}" | "${CLAUDE_BIN}" \
+      --print \
+      --dangerously-skip-permissions \
+      --model "${NOTION_MODEL}" \
+      --output-format text \
+      --allowedTools "${NOTION_TOOLS}" \
+      >> "${LOG_FILE}" 2>&1
+  fi
   rc=${PIPESTATUS[1]}
   set -e
   return "${rc}"
@@ -296,11 +307,15 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 fi
 
 # ── claude CLI 확인 (실제 실행 경로에서만 필수) ──────────────────────────────
-if [[ -z "${CLAUDE_BIN}" ]]; then
-  log_error "claude CLI를 찾을 수 없습니다. PATH 또는 CLAUDE_BIN 환경변수를 확인하세요."
+if ! TOOL_BIN="$(worker_tool_bin)"; then
+  log_error "지원하지 않는 VIBE_WORKER_TOOL: ${VIBE_WORKER_TOOL} (claude|codex)"
   exit 1
 fi
-log_info "claude CLI: ${CLAUDE_BIN}"
+if [[ -z "${TOOL_BIN}" ]]; then
+  log_error "${VIBE_WORKER_TOOL} CLI를 찾을 수 없습니다. PATH 또는 CLAUDE_BIN/CODEX_BIN 환경변수를 확인하세요."
+  exit 1
+fi
+log_info "${VIBE_WORKER_TOOL} CLI: ${TOOL_BIN}"
 
 # ── (B) 실행: 일일 WORK 슬롯 기록 ────────────────────────────────────────────
 DAILY_EXIT=0

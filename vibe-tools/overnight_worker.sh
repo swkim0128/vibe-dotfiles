@@ -25,6 +25,8 @@
 #                   생성 실패 시 "$TMPDIR/overnight-blueprints" 로 폴백.
 #   REPO_SCAN_ROOT  git 레포 스캔 루트. 미설정 시 폴백 = "$HOME/Project"
 #   CLAUDE_BIN      claude CLI 경로. 미설정 시 PATH 에서 자동 탐색.
+#   VIBE_WORKER_TOOL claude(기본) | codex — codex 면 codex exec -s workspace-write 로 실행
+#                   (worker-tool-lib.sh, CODEX_BIN·CODEX_MODEL 참조).
 #
 # 안전 가드:
 #   - 소스코드(.php/.kt/.py/.ts/.js/.kts/.go/.rs 등): Read만 허용. Edit 절대 금지.
@@ -57,6 +59,10 @@ DRY_RUN="${DRY_RUN:-0}"
 
 # claude CLI 경로 (PATH에 없을 경우 대비)
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo '')}"
+
+# AI CLI 선택 (VIBE_WORKER_TOOL=claude|codex, 기본 claude)
+# shellcheck source=worker-tool-lib.sh disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/worker-tool-lib.sh"
 
 # ── 디렉토리 초기화 ──────────────────────────────────────────────────────────
 mkdir -p "${LOG_DIR}"
@@ -92,12 +98,16 @@ log_info "git 스캔 루트: ${REPO_SCAN_DIR}"
 log_info "블루프린트 출력: ${BLUEPRINT_FILE}"
 log_info "DRY_RUN: ${DRY_RUN}"
 
-# ── claude CLI 확인 ──────────────────────────────────────────────────────────
-if [[ -z "${CLAUDE_BIN}" ]]; then
-  log_error "claude CLI를 찾을 수 없습니다. PATH 또는 CLAUDE_BIN 환경변수를 확인하세요."
+# ── AI CLI 확인 ──────────────────────────────────────────────────────────────
+if ! TOOL_BIN="$(worker_tool_bin)"; then
+  log_error "지원하지 않는 VIBE_WORKER_TOOL: ${VIBE_WORKER_TOOL} (claude|codex)"
   exit 1
 fi
-log_info "claude CLI: ${CLAUDE_BIN}"
+if [[ -z "${TOOL_BIN}" ]]; then
+  log_error "${VIBE_WORKER_TOOL} CLI를 찾을 수 없습니다. PATH 또는 CLAUDE_BIN/CODEX_BIN 환경변수를 확인하세요."
+  exit 1
+fi
+log_info "${VIBE_WORKER_TOOL} CLI: ${TOOL_BIN}"
 
 # ── PARA 프로젝트 디렉토리 확인 ──────────────────────────────────────────────
 if [[ ! -d "${PARA_PROJECTS_DIR}" ]]; then
@@ -127,7 +137,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 ## 시스템 점검 완료
 - 스크립트 실행: OK
 - 디렉토리 생성: OK
-- claude CLI 경로: ${CLAUDE_BIN}
+- ${VIBE_WORKER_TOOL} CLI 경로: ${TOOL_BIN}
 - REPO_SCAN_DIR: ${REPO_SCAN_DIR}
 - PARA_PROJECTS_DIR: ${PARA_PROJECTS_DIR}
 
@@ -135,19 +145,30 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 DRY_EOF
   log_info "[DRY_RUN] 샘플 블루프린트 생성 완료: ${BLUEPRINT_FILE}"
 else
-  "${CLAUDE_BIN}" \
-    --print \
-    --dangerously-skip-permissions \
-    --allowedTools "Read,Glob,Grep,Write,Edit" \
-    --model "claude-fable-5-1" \
-    --output-format text \
-    "~/.claude/CLAUDE-delegation.md에 정의된 야간 자율 운전 모드 SOP에 따라, 오늘 자정 이후 발생한 REPO_SCAN_DIR('${REPO_SCAN_DIR}') 내의 git 활동 분석 및 PARA_PROJECTS_DIR('${PARA_PROJECTS_DIR}') 내 IN_PROGRESS 파일의 본문 append 작업을 완전히 자율적으로 완수해라. (분석 결과는 '${BLUEPRINT_FILE}'에 저장)" \
-    >> "${LOG_FILE}" 2>&1
-
-  CLAUDE_EXIT=$?
+  # shellcheck disable=SC2088  # ~ 는 프롬프트 문자열 그대로(에이전트가 해석)
+  PROMPT="~/.claude/CLAUDE-delegation.md에 정의된 야간 자율 운전 모드 SOP에 따라, 오늘 자정 이후 발생한 REPO_SCAN_DIR('${REPO_SCAN_DIR}') 내의 git 활동 분석 및 PARA_PROJECTS_DIR('${PARA_PROJECTS_DIR}') 내 IN_PROGRESS 파일의 본문 append 작업을 완전히 자율적으로 완수해라. (분석 결과는 '${BLUEPRINT_FILE}'에 저장)"
+  set +e
+  if [[ "${VIBE_WORKER_TOOL}" == "codex" ]]; then
+    # 작업 루트 = PARA 볼트(01.Projects 편집). 부재 시 블루프린트 디렉토리. 블루프린트 경로는 쓰기 허용 추가.
+    CODEX_ROOT="${PARA_ROOT}"
+    [[ -d "${CODEX_ROOT}" ]] || CODEX_ROOT="${RETRO_DIR}"
+    printf '%s' "${PROMPT}" | worker_codex_exec "${CODEX_ROOT}" "${LOG_DIR}/${TODAY}.codex-last.md" "${LOG_FILE}" "${RETRO_DIR}"
+    CLAUDE_EXIT=${PIPESTATUS[1]}
+  else
+    "${CLAUDE_BIN}" \
+      --print \
+      --dangerously-skip-permissions \
+      --allowedTools "Read,Glob,Grep,Write,Edit" \
+      --model "claude-fable-5-1" \
+      --output-format text \
+      "${PROMPT}" \
+      >> "${LOG_FILE}" 2>&1
+    CLAUDE_EXIT=$?
+  fi
+  set -e
   if [[ ${CLAUDE_EXIT} -ne 0 ]]; then
     log_error "claude 분석 실패 (exit code: ${CLAUDE_EXIT}). 로그 확인: ${LOG_FILE}"
-    exit ${CLAUDE_EXIT}
+    exit "${CLAUDE_EXIT}"
   fi
 
   log_info "claude 분석 완료."

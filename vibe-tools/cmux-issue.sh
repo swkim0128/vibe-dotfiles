@@ -36,6 +36,7 @@
 #
 # --add vs --join:
 #   --add  = 프로젝트 cwd 에서 claude 를 새로 스폰(신규 pane).
+#   (실행 CLI 는 VIBE_TOOL 환경변수 — 기본 claude, 예: VIBE_TOOL=codex)
 #   --join = 이미 다른 곳(예: para 허브의 vibe delegate pane)에서 돌던 claude pane 을
 #            tmux join-pane 으로 프로세스째 이동(실행 중 세션 보존).
 
@@ -48,6 +49,8 @@ CONFIG="$SCRIPT_DIR/cmux-projects.txt"
 
 # 이슈 워크스페이스 시각 마커 (앰버) — 등록 프로젝트 색과 구분
 ISSUE_COLOR='#B9770E'
+# pane 에서 실행할 AI CLI (vibe.sh 와 같은 이름). claude 일 때만 para 메인에 --model 고정.
+VIBE_TOOL="${VIBE_TOOL:-claude}"
 # detached 세션 기본 크기(80x24)에서 main-vertical 이 우측 스택을 1칸으로 붕괴시키는 것을 막기 위한 넓은 베이스.
 # 클라이언트(cmux) attach 시 실제 크기로 리플로우됨.
 WORK_COLS=250
@@ -90,7 +93,7 @@ spawn_proj_pane() {
   local sess="$1" path="$2" label="$3" last p
   last="$(tmux list-panes -t "$sess:work" -F '#{pane_id}' | tail -n1)"
   p="$(tmux split-window -v -P -F '#{pane_id}' -t "$last" -c "$path")"
-  tmux send-keys -t "$p" 'claude' Enter
+  tmux send-keys -t "$p" "$VIBE_TOOL" Enter
   tmux select-pane -t "$p" -T "$label · claude"
 }
 
@@ -252,7 +255,11 @@ else
   # win1 work — 좌측 main pane = para claude (단일 pane, 추적·오케스트레이션)
   # -x/-y 로 넓은 베이스를 줘서 main-vertical 우측 스택이 붕괴하지 않게 함.
   tmux new-session -d -s "$ISSUE" -n work -c "$para_path" -x "$WORK_COLS" -y "$WORK_ROWS"
-  tmux send-keys -t "$ISSUE:work" 'claude --model claude-fable-5-1' Enter
+  if [[ "$VIBE_TOOL" == claude ]]; then
+    tmux send-keys -t "$ISSUE:work" 'claude --model claude-fable-5-1' Enter
+  else
+    tmux send-keys -t "$ISSUE:work" "$VIBE_TOOL" Enter
+  fi
   tmux select-pane -t "$ISSUE:work" -T "$ISSUE · para(추적)"
 
   # 프로젝트 pane 선생성 (0개면 para 단독 — ③ 단계에서 --add 로 추가)

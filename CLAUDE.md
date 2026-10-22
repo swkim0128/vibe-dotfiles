@@ -107,6 +107,12 @@ tmux -L verifytest kill-server
 - 셸 함정: `trap cleanup INT TERM` 핸들러는 `exit` 까지 해야 한다 — 안 그러면 pidfile 만 지워지고 루프는 계속 도는 좀비 폴러가 남는다.
 - cmux Dock 설정 스펙 확인은 `cmux docs dock` (`~/.config/cmux/dock.json` 은 `cmux/dock.json` 심링크, 전역 config 의 상대 `cwd` 기준은 홈 디렉토리).
 
+### AI CLI 전환 (claude ↔ codex) 함정
+- 런처(`cmux-proj`·`cmux-issue`)는 `VIBE_TOOL`(기본 claude), 정기 워커 4종(overnight·scrum·weekly-report·notion-diary)은 `VIBE_WORKER_TOOL`(기본 claude) 로 실행 CLI 를 고른다 — 워커 공용 분기는 `vibe-tools/worker-tool-lib.sh`. tmux 창 이름 `claude` 는 다른 스크립트가 의존하므로 도구가 바뀌어도 유지.
+- codex 는 project-local 슬래시 스킬(`/daily-scrum` 등)을 모른다 → 워커는 스킬 문서 경로를 읽고 수행하라는 프롬프트로 넘긴다. git 레포 밖 작업 루트는 `--skip-git-repo-check` 없으면 실패.
+- `DRY_RUN=1 overnight_worker.sh` 는 오늘자 실제 블루프린트(`$PARA/.claude/overnight/<오늘>_overnight_blueprint.md`)를 덮어쓴다 → 검증 시 `RETRO_DIR=<임시 경로>` 로 돌릴 것.
+- `notion_diary_worker.sh` 의 DRY_RUN 은 CLI 선택 전에 끝나 codex 분기를 타지 않는다 — 분기 검증은 `CODEX_BIN=/bin/echo` 로 `worker_codex_exec` 를 직접 호출해 인자만 확인.
+
 ## 세션 인수인계
 중단 전 `todo.md` 또는 (외부 하네스 설치 시) `harness:handoff` 스킬로 `HANDOFF.md` 기록. 재개 시 먼저 읽음.
 
