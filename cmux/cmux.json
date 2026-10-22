@@ -311,6 +311,14 @@
     }
   },
 
+  // 사이드바 주기 조회 끔(2026-10-22): showPorts 가 프로세스 목록 전체를 sysctl 로 반복 조회해
+  // 프로세스가 많을 때 cmux CPU 0~55% 를 오감(sample 실측). git 상태·PR 표시도 주기 조회라 함께 끔.
+  "sidebar" : {
+    "showPorts" : false,
+    "watchGitStatus" : false,
+    "showPullRequests" : false
+  },
+
   "automation" : {
     "socketControlMode" : "full"
   },
