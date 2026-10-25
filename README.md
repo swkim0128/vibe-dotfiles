@@ -133,3 +133,9 @@ git push
 ## 📦 Claude Code 플러그인·MCP·스킬
 
 이 레포는 설치하지 않습니다. vibe-ai-config 레포의 `install.sh work|personal`이 마켓플레이스 등록·플러그인·MCP·스킬·훅·settings를 설치합니다.
+
+### 선언 기반 머신 설치
+
+`./install.sh work` 또는 `./install.sh personal`로 설치한다. 공통 설치 선언은 `manifests/`, 기기별 차이는 `profiles/<mode>.conf`에서 관리한다. 기능 추가·제외는 설치 목록/설정 선언을 수정하며 설치 실행기에 머신별 기능 분기를 추가하지 않는다.
+
+`./install.sh work --dry-run`은 설치 없이 선택된 단계·패키지 목록·설정 링크를 출력한다. `manifests/common.conf`가 공통 기본값이며 `profiles/work.conf`·`personal.conf`는 필요한 배열만 덮어쓴다. 두 프로필은 현재 기존 공통 설치 범위를 유지한다. `lib/install-steps.sh`는 각 설치 방식의 공통 실행만 담당한다.

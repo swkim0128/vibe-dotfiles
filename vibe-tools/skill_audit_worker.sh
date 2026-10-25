@@ -2,17 +2,19 @@
 # skill_audit_worker.sh — 스킬/플러그인/에이전트 사용현황 vs 설정현황 야간 비교 워커
 #
 # 매일 밤 22:00 launchd 에 의해 실행됨 (caffeinate -i -s 래핑).
-# ~/.claude 트랜스크립트(*.jsonl)에서 당일 스킬·에이전트 호출을 결정론적으로
+# 공통 dashboard 스킬 이벤트와 기존 Claude 전사에서 명시 사용을 결정론적으로
 # 집계하고, 누적 원장(ledger)과 대조한 뒤, 설정 인벤토리(활성 플러그인·설치
 # 스킬/에이전트·훅)와 비교하여 "거의 안 씀(제거 후보)" 판정을 마크다운 리포트로
 # $HOME/Library/Logs/skill-audit/YYYY-MM-DD.md 에 저장.
 #
 # 특징:
-#   - LLM/claude CLI 의존 없음. 순수 셸(grep/awk/sort/uniq) + (있으면)jq.
+#   - LLM/claude CLI 의존 없음. 셸 + Python3(공통 이벤트·멱등 원장) + 선택 jq.
 #   - 규칙 기반 판정 (누적 사용 0 = 제거 후보 / 사용 있음 = 필요).
 #   - 자기완결: PARA·외부 볼트 의존 없음. 데이터·설정 부재 시 graceful(빈 집계).
 #
 # 데이터 소스:
+#   ${VIBE_DASHBOARD_EVENTS_DIR:-~/.local/state/vibe-dashboard/events}/*.jsonl
+#     - event=skill, action=use|instruction_read; native/event ID로 중복 제거.
 #   ~/.claude/projects/<프로젝트디렉토리>/**/*.jsonl  (서브에이전트 <uuid>/subagents/*.jsonl 포함)
 #     - 한 줄 = 한 JSON 이벤트. timestamp 는 UTC(…Z).
 #     - 스킬 호출:      Skill tool_use 의 input.skill
@@ -43,7 +45,9 @@ PROJECTS_DIR="${CLAUDE_HOME}/projects"
 MARKETPLACES_DIR="${CLAUDE_HOME}/plugins/marketplaces"
 PLUGINS_CACHE_DIR="${CLAUDE_HOME}/plugins/cache"
 USER_SKILLS_DIR="${CLAUDE_HOME}/skills"
-LOG_DIR="${HOME}/Library/Logs/skill-audit"
+LOG_DIR="${SKILL_AUDIT_LOG_DIR:-${HOME}/Library/Logs/skill-audit}"
+EVENTS_DIR="${VIBE_DASHBOARD_EVENTS_DIR:-${HOME}/.local/state/vibe-dashboard/events}"
+EVENT_HELPER="$(dirname "${BASH_SOURCE[0]}")/skill-audit-events.py"
 TODAY="$(date +%F)"
 RUN_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
 REPORT="${LOG_DIR}/${TODAY}.md"
@@ -66,7 +70,13 @@ RECENT_DAYS="${RECENT_DAYS:-14}"
 # 슬래시 명령 중 사용량 감사 대상이 아닌 Claude Code 내장 명령 (공백 구분, 접두 없는 이름만 비교).
 SLASH_BUILTINS="${SLASH_BUILTINS:-add-dir agents artifacts bashes btw bug clear compact config context copy cost doctor effort exit export fast feedback help hooks ide init install-github-app keybindings login logout mcp memory model output-style permissions plan plugin plugins pr-comments privacy-settings release-notes reload-plugins remote-control rename resume review rewind sandbox security-review skills status statusline stats tasks terminal-setup theme todos upgrade usage vim}"
 
+umask 077
 mkdir -p "${LOG_DIR}"
+chmod 700 "${LOG_DIR}"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "skill-audit: python3 is required for common event normalization" >&2
+  exit 1
+fi
 
 # 집계 구간 — (WIN_START, WIN_END]. 트랜스크립트 timestamp(UTC ISO8601, 밀리초) 와 문자열 비교한다.
 WATERMARK="${LOG_DIR}/watermark"
@@ -83,7 +93,11 @@ fi
 # 작업용 임시 디렉토리 (당일 집계 중간 산출물)
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/skill-audit.XXXXXX")"
 # shellcheck disable=SC2329  # trap 으로 간접 호출됨
-cleanup() { rm -rf "${WORK_DIR}"; }
+cleanup() {
+  local code=$?
+  python3 "${EVENT_HELPER}" status "${LOG_DIR}" "${code}" "${PROJECTS_DIR}" "${EVENTS_DIR}" "${WIN_START}" "${WIN_END}" "${DRY_RUN}" "${SLASH_BUILTINS}" || true
+  rm -rf "${WORK_DIR}"
+}
 trap cleanup EXIT
 
 # jq 존재 여부 (있으면 우선 사용, 없으면 grep/awk 폴백)
@@ -102,7 +116,6 @@ log() {
   echo "[${ts}] [${level}] ${msg}" | tee -a "${LOG_FILE}"
 }
 log_info()  { log "INFO " "$@"; }
-log_warn()  { log "WARN " "$@"; }
 # shellcheck disable=SC2329  # 오류 경로 방어용 헬퍼 (조건부 호출)
 log_error() { log "ERROR" "$@"; }
 
@@ -124,150 +137,18 @@ log_info "집계 구간(UTC): ${WIN_START} 초과 ~ ${WIN_END} 이하"
 #     ${WORK_DIR}/usage_by_project.tsv: project\ttype\tname\tcount
 # ─────────────────────────────────────────────────────────────────────────────
 
-# 한 트랜스크립트 파일에서 집계 구간 내 skill/agent/command 이름을 추출해 표준출력.
-#   출력 형식: "<type>\t<name>" (한 줄 = 이벤트 1건)
-#   - skill   : Skill tool_use (모델 호출)
-#   - agent   : Agent(구 Task) tool_use. subagent_type 생략 시 기본값 general-purpose
-#   - command : 사용자가 입력한 슬래시 명령(/<name>). 스킬을 슬래시로 부르면 Skill tool_use 가
-#               남지 않으므로 이 경로로만 셀 수 있다. 서브에이전트(isSidechain) 줄은 제외.
-# jq 폴백 포함. jq 실패/미존재 시 grep/grep -o 로 라인 파싱.
-extract_events() {
-  local file="$1"
-  if [[ ${HAS_JQ} -eq 1 ]]; then
-    # jq 파싱 실패(깨진 줄)는 -R 로 라인단위 시도하되 오류는 무시.
-    jq -R -r --arg s "${WIN_START}" --arg e "${WIN_END}" '(try (fromjson) catch empty)
-      | select(type == "object")
-      | select((.timestamp // "") as $ts | $ts > $s and $ts <= $e)
-      | . as $ev
-      | (.message.content // empty) as $c
-      | if ($c | type) == "array" then
-          $c[] | select(type == "object" and (.type? // "") == "tool_use")
-          | if (.name == "Skill" and (.input.skill // null) != null) then "skill\t\(.input.skill)"
-            elif (.name == "Agent") then "agent\t\(.input.subagent_type // "general-purpose")"
-            elif (.name == "Task" and (.input.subagent_type // null) != null) then "agent\t\(.input.subagent_type)"
-            else empty end
-        elif ($c | type) == "string" and ($ev.type // "") == "user" and ($ev.isSidechain // false) != true then
-          ($c | capture("^\\s*(<command-message>[^<]*</command-message>\\s*)?<command-name>/(?<n>[^<\\s]+)</command-name>")
-            | "command\t\(.n)")
-        else empty end' "${file}" 2>/dev/null || true
-  else
-    # 폴백: timestamp 를 문자열 비교해 구간 내 줄만 남기고 skill / subagent_type / 슬래시 명령을 추출.
-    local LC_ALL=C
-    grep -F '"timestamp":"' "${file}" 2>/dev/null | while IFS= read -r line; do
-      local ts sk ag cm
-      ts="$(printf '%s' "${line}" | grep -o '"timestamp":"[^"]*"' | head -n1 | sed 's/^"timestamp":"//; s/"$//')"
-      [[ "${ts}" > "${WIN_START}" && ! "${ts}" > "${WIN_END}" ]] || continue
-      sk="$(printf '%s' "${line}" | grep -o '"skill":"[^"]*"' | head -n1 | sed 's/^"skill":"//; s/"$//')"
-      if [[ -n "${sk}" ]]; then
-        printf 'skill\t%s\n' "${sk}"
-      fi
-      ag="$(printf '%s' "${line}" | grep -o '"subagent_type":"[^"]*"' | head -n1 | sed 's/^"subagent_type":"//; s/"$//')"
-      if [[ -n "${ag}" ]]; then
-        printf 'agent\t%s\n' "${ag}"
-      fi
-      if [[ "${line}" == *'"type":"user"'* && "${line}" != *'"isSidechain":true'* ]]; then
-        cm="$(printf '%s' "${line}" | grep -o '"content":"[^"]\{0,120\}<command-name>/[^<]*</command-name>' | head -n1 | sed 's/.*<command-name>\///; s/<\/command-name>$//')"
-        if [[ -n "${cm}" ]]; then
-          printf 'command\t%s\n' "${cm}"
-        fi
-      fi
-    done
-  fi
-}
-
-# 내장 슬래시 명령(/clear·/mcp 등)은 자산 사용량이 아니므로 원장에 넣지 않는다.
-drop_builtin_commands() {
-  awk -F"\t" -v b=" ${SLASH_BUILTINS} " '!($1 == "command" && index(b, " "$2" ") > 0)'
-}
-
-: > "${WORK_DIR}/usage_global.tsv"
-: > "${WORK_DIR}/usage_by_project.tsv"
-: > "${WORK_DIR}/events_global.tmp"
-
-TRANSCRIPT_COUNT=0
-if [[ -d "${PROJECTS_DIR}" ]]; then
-  # 프로젝트 디렉토리 단위로 순회
-  for proj_path in "${PROJECTS_DIR}"/*/; do
-    [[ -d "${proj_path}" ]] || continue
-    local_proj="$(basename "${proj_path}")"
-    : > "${WORK_DIR}/events_proj.tmp"
-    # 재귀 — 서브에이전트 트랜스크립트(<uuid>/subagents/agent-*.jsonl)도 포함해야
-    # 서브에이전트 안에서 호출된 스킬·에이전트가 집계된다.
-    while IFS= read -r jf; do
-      [[ -f "${jf}" ]] || continue
-      TRANSCRIPT_COUNT=$((TRANSCRIPT_COUNT + 1))
-      extract_events "${jf}" | drop_builtin_commands >> "${WORK_DIR}/events_proj.tmp"
-    done < <(find "${proj_path}" -type f -name '*.jsonl' 2>/dev/null)
-    # 프로젝트별 집계: type\tname 단위 count
-    if [[ -s "${WORK_DIR}/events_proj.tmp" ]]; then
-      sort "${WORK_DIR}/events_proj.tmp" | uniq -c \
-        | awk -v proj="${local_proj}" '{ c=$1; sub(/^[[:space:]]*[0-9]+[[:space:]]+/,""); print proj"\t"$0"\t"c }' \
-        >> "${WORK_DIR}/usage_by_project.tsv"
-      cat "${WORK_DIR}/events_proj.tmp" >> "${WORK_DIR}/events_global.tmp"
-    fi
-  done
-else
-  log_warn "트랜스크립트 디렉토리 부재 — 당일 사용 집계 빈값."
-fi
-
-# 전역 집계: type\tname\tcount (count 내림차순)
-if [[ -s "${WORK_DIR}/events_global.tmp" ]]; then
-  sort "${WORK_DIR}/events_global.tmp" | uniq -c \
-    | awk '{ c=$1; sub(/^[[:space:]]*[0-9]+[[:space:]]+/,""); print $0"\t"c }' \
-    | sort -t"$(printf '\t')" -k3,3nr \
-    > "${WORK_DIR}/usage_global.tsv"
-fi
-
-log_info "스캔한 트랜스크립트 파일 수: ${TRANSCRIPT_COUNT}"
+# 공통 원장과 기존 Claude 전사를 하나의 이벤트 ID 공간으로 정규화한다.
+# use만 기존 4열 ledger에 투영하고 instruction_read는 별도 이벤트 지표로 보존한다.
+python3 "${EVENT_HELPER}" collect "${LOG_DIR}" "${WORK_DIR}" "${PROJECTS_DIR}" "${EVENTS_DIR}" "${WIN_START}" "${WIN_END}" "${DRY_RUN}" "${SLASH_BUILTINS}"
 TODAY_DISTINCT="$(wc -l < "${WORK_DIR}/usage_global.tsv" | tr -d ' ')"
-log_info "당일 사용된 distinct 스킬/에이전트 수: ${TODAY_DISTINCT}"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# (B) 누적 원장(ledger) — TSV: date\ttype\tname\tcount
-#   집계 구간 전역 집계를 실행일(date) 행으로 append. DRY_RUN 이면 생략.
-#   워터마크는 append 가 실제로 반영됐을 때만(또는 구간 사용 0일 때) 전진한다 —
-#   중복 방지로 append 를 건너뛴 구간은 다음 실행이 다시 센다.
-# ─────────────────────────────────────────────────────────────────────────────
-if [[ "${DRY_RUN}" == "1" ]]; then
-  log_info "[DRY_RUN] ledger append·워터마크 갱신 생략."
-else
-  ADVANCE_WATERMARK=1
-  if [[ -s "${WORK_DIR}/usage_global.tsv" ]]; then
-    # 같은 날짜 중복 append 방지: 오늘 날짜 행이 이미 있으면 재기록하지 않음.
-    if [[ -f "${LEDGER}" ]] && grep -q "^${TODAY}"$'\t' "${LEDGER}"; then
-      log_warn "ledger 에 오늘(${TODAY}) 행이 이미 존재 — append 생략(중복 방지), 워터마크 유지."
-      ADVANCE_WATERMARK=0
-    else
-      awk -v d="${TODAY}" -F"\t" '{ print d"\t"$1"\t"$2"\t"$3 }' \
-        "${WORK_DIR}/usage_global.tsv" >> "${LEDGER}"
-      log_info "ledger append 완료: ${TODAY} (${TODAY_DISTINCT} 행)."
-    fi
-  else
-    log_info "집계 구간 사용 0 — ledger append 대상 없음."
-  fi
-  if [[ "${ADVANCE_WATERMARK}" -eq 1 ]]; then
-    printf '%s\n' "${WIN_END}" > "${WATERMARK}"
-    log_info "워터마크 갱신: ${WIN_END}"
-  fi
-fi
+log_info "신규 명시 사용 distinct 수: ${TODAY_DISTINCT} (열람 제외, 이벤트 ID 중복 제거)"
 
 # 누적 원장 요약 (name 기준 합산). ledger 부재 시 빈값.
 #   결과물: ${WORK_DIR}/ledger_summary.tsv : type\tname\ttotal_count
 #           ${WORK_DIR}/ledger_days        : 원장 커버 일수
 : > "${WORK_DIR}/ledger_summary.tsv"
 LEDGER_DAYS=0
-# DRY_RUN 에서 오늘 행 미기록분을 누적 관점에 포함하기 위해 원장+당일을 합쳐 요약.
-: > "${WORK_DIR}/ledger_effective.tsv"
-if [[ -f "${LEDGER}" ]]; then
-  cat "${LEDGER}" >> "${WORK_DIR}/ledger_effective.tsv"
-fi
-if [[ "${DRY_RUN}" == "1" && -s "${WORK_DIR}/usage_global.tsv" ]]; then
-  # DRY 모드에서는 원장에 안 쓰였을 수 있으므로 당일분을 가상으로 합산에 포함.
-  if ! { [[ -f "${LEDGER}" ]] && grep -q "^${TODAY}"$'\t' "${LEDGER}"; }; then
-    awk -v d="${TODAY}" -F"\t" '{ print d"\t"$1"\t"$2"\t"$3 }' \
-      "${WORK_DIR}/usage_global.tsv" >> "${WORK_DIR}/ledger_effective.tsv"
-  fi
-fi
+# 공통 helper가 dry/live 모두 일관된 원장 투영을 준비한다.
 if [[ -s "${WORK_DIR}/ledger_effective.tsv" ]]; then
   # type\tname 기준 count 합산
   awk -F"\t" 'NF>=4 { key=$2"\t"$3; sum[key]+=$4 }
@@ -806,17 +687,17 @@ emit_verdict_table() {
   echo "# 스킬/플러그인/에이전트 사용현황 감사 리포트 — ${TODAY}${DRY_TAG}"
   echo ""
   echo "> 생성: ${RUN_DATE} · 집계 구간(UTC): ${WIN_START} 초과 ~ ${WIN_END} 이하 (직전 실행 워터마크 기준) · 누적 원장 기준일수: ${LEDGER_DAYS}일"
-  echo "> 집계 방식: 결정론적(grep/awk$([[ ${HAS_JQ} -eq 1 ]] && echo '+jq')) · LLM 미사용"
+  echo "> 집계 방식: 결정론적(Python3 공통 이벤트 정규화 + 셸 인벤토리) · LLM 미사용"
   echo ""
   echo "## 측정 한계"
   echo ""
   echo "- **세는 것**: 모델의 Skill 호출 · Agent 호출(subagent_type 생략 시 \`general-purpose\`) · 사용자가 입력한 슬래시 명령(\`command\` 타입, 내장 명령 제외) — 서브에이전트 트랜스크립트 포함, 실행 사이 전 구간(야간 포함)."
   echo "- **못 세는 것 (구조적)**:"
-  echo "  - 이 기기의 Claude Code 트랜스크립트(\`${PROJECTS_DIR}\`) 밖 사용 — Codex·Gemini 등 다른 CLI, 다른 기기 사용은 원장에 없다."
-  echo "  - 스킬 도구를 거치지 않은 사용 — 모델이 SKILL.md 를 직접 읽거나 지침만 참고한 경우."
+  echo "  - 공통 dashboard 원장(\`${EVENTS_DIR}\`)의 Claude/Codex 명시 사용과 기존 Claude 전사를 통합한다. 다른 기기·기록 이전 사용은 미지원이다."
+  echo "  - SKILL.md 단순 열람은 instruction_read로 별도 기록하며 실제 사용 횟수에 합산하지 않는다. Codex 명시 사용은 native 근거가 있는 공통 use 이벤트만 지원한다."
   echo "  - 훅·MCP 도구는 사용 측정 대상 아님(설정 여부만)."
   echo "  - 워커가 오래 못 돈 사이 Claude Code 가 지운 트랜스크립트(보존 기간 초과분)."
-  echo "  - 원장 날짜는 이벤트 발생일이 아니라 **집계한 실행일**이다(야간 사용은 다음 실행일 행에 들어감)."
+  echo "  - 신규 원장 날짜는 이벤트의 로컬 발생일이다. legacy 행 날짜는 과거 집계 실행일 그대로 보존한다. 실제 실행시각·종료코드·지원출처는 run-status.json에서 별도 확인한다."
   echo "- **B등급 '최근 추가'**: 정본 레포 git 최초 추가일 기준. git 이력을 못 찾은 항목만 파일 mtime 폴백이며 사유에 표시된다."
   echo ""
 

@@ -126,3 +126,8 @@ tmux -L verifytest kill-server
 
 ### 비대상 (본 레포에서 호출 안 함)
 백엔드 분석(`analyze:*`), PHP(`harness:php-review`), 노션/그룹웨어/이슈트래커(`notion-suite:*`/`nworks:*`/`plane-mcp:*`) — 본 레포는 인프라 전용.
+
+## 머신별 설치 선언
+- 진입점: `./install.sh work|personal`. 선언은 `manifests/common.conf` → `profiles/<mode>.conf` 순으로 읽는다.
+- 설치 단계는 `INSTALL_STEPS`, 패키지 파일은 `BREW_FILES`·`NPM_FILES`·`UV_FILES`, 설정 링크는 `CONFIG_LINKS`에서 선언한다. 실행기에 머신별 기능 분기를 추가하지 않는다.
+- `./install.sh work --dry-run`은 쓰기·다운로드 없이 설치 대상을 확인한다.
