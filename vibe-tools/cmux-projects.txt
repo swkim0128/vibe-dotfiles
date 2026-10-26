@@ -1,9 +1,9 @@
 # cmux-proj 런처 per-project 설정
 # 형식: name|path|hexcolor|description|pin(선택: "pin" 이면 워크스페이스 고정)
 # path 는 $HOME 사용 가능, 런처가 전개함
-vibe-dotfiles|$HOME/Project/vibe-dotfiles|#196F3D|Mac dev 환경 dotfiles — 시스템·터미널 인프라|pin
-vibe-ai-config|$HOME/Project/vibe-ai-config|#6A1B9A|AI CLI 설정·하네스 SSoT (구 vibe-claude-plugin)
-para|$HOME/Project/para|#006B6B|PARA 작업 허브 — 단기 작업·회고·프로젝트 대시보드|pin
-legigraph|$HOME/Project/legigraph|#2E4053|입법 그래프 사이드 프로젝트 (설계 완료·구현 재개 대기)
-grafana-test|$HOME/Project/grafana-test|#E67E22|Grafana 모니터링 실습 환경
-personal|$HOME/Project/personal|#8E6C88|개인 노션 관리 — 다이어리·식단·예산·주간일지 (업무와 분리)
+vibe-dotfiles|$HOME/Project/vibe-dotfiles|#196F3D|Mac 개발 환경 설정|pin
+vibe-ai-config|$HOME/Project/vibe-ai-config|#6A1B9A|AI 도구 설정·공용 지침 관리
+para|$HOME/Project/para|#006B6B|업무 프로젝트 관리 허브|pin
+legigraph|$HOME/Project/legigraph|#2E4053|법안 변경 이력 시각화
+grafana-test|$HOME/Project/grafana-test|#E67E22|Grafana 모니터링 실습
+personal|$HOME/Project/personal|#8E6C88|개인 생활·사이드 프로젝트 관리
