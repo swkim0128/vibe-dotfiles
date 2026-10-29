@@ -114,7 +114,10 @@ install_uv_tools() {
 # ── 1-2. uv 전역 도구 (정본: uv-tools.txt — uv 는 1단계 Brewfile) ────────────
 # 이미 설치된 도구는 건너뛰고, 설치 실패는 경고만 남기고 다음 단계로 간다.
 info "uv 전역 도구 확인 중..."
+install_declared_links uv_tools
 if command -v uv &>/dev/null; then
+  local uv_python
+  uv_python="$(mise which python)" || return 1
   uv_installed="$(uv tool list 2>/dev/null || true)"
   for manifest in "${UV_FILES[@]}"; do
   while read -r spec _; do
@@ -122,10 +125,10 @@ if command -v uv &>/dev/null; then
     tool="${spec%%\[*}"
     if [[ $'\n'"$uv_installed" == *$'\n'"$tool "* ]]; then
       success "uv $tool — 이미 설치됨"
-    elif uv tool install "$spec" < /dev/null; then
+    elif uv tool install --python "$uv_python" --no-python-downloads "$spec" < /dev/null; then
       success "uv $tool 설치 완료"
     else
-      warn "uv $tool 설치 실패 — 나중에 수동 설치: uv tool install \"$spec\""
+      warn "uv $tool 설치 실패 — 나중에 수동 설치: uv tool install --python \"\$(mise which python)\" --no-python-downloads \"$spec\""
     fi
   done < "$DOTFILES/$manifest"
   done
@@ -241,6 +244,10 @@ install_mise_config() {
 info "mise 전역 설정 적용 중..."
 mkdir -p "$HOME/.config/mise"
 install_declared_links mise_config
+if ! mise which python >/dev/null 2>&1; then
+  mise install python
+fi
+mise reshim
 }
 
 install_ai_notice() {
@@ -291,6 +298,15 @@ if ! grep -qF "$ENV_SOURCE" "$HOME/.zshenv" 2>/dev/null; then
 else
   success "~/.zshenv 에 이미 env.zsh 가 등록되어 있습니다."
 fi
+
+# 로그인 셸의 path_helper와 로컬 PATH 설정 뒤에도 shim을 우선한다.
+local startup
+for startup in "$HOME/.zprofile" "$HOME/.zshrc"; do
+  if ! grep -qF "$ENV_SOURCE" "$startup" 2>/dev/null; then
+    printf '\n# Vibe Dotfiles runtime (PATH 설정 뒤 적용)\n%s\n' "$ENV_SOURCE" >> "$startup"
+    success "$startup 에 공용 런타임 환경 추가 완료"
+  fi
+done
 }
 
 install_git_delta() {

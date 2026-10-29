@@ -1,0 +1,3 @@
+# Python 설치와 버전 선택은 mise가 담당한다.
+python-downloads = "never"
+python-preference = "only-system"
