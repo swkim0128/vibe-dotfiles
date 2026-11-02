@@ -88,6 +88,7 @@ tmux -L verifytest kill-server
 - 개인 주간 정리 워커 `personal_weekly_worker.sh` + `com.swkim0128.personal-weekly.plist`(일요일 22:00, Codex `codex exec` 실행, 초안 + KPT 회고 — 다음 주 계획은 `/personal 주간루틴` 수동)도 보관.
 - cmux 목록의 머신 로컬 오버레이 `*.local.txt` (`cmux-projects.local.txt`, `cmux-ops.local.txt`) 는 **비커밋**(gitignore) — 회사 경로 등 머신별 항목은 여기에만 등록.
 - cmux 사용 규칙·키맵은 `docs/cmux-cheatsheet.md` 참조 — raw cmux 명령 즉흥 조합 대신 정규화 런처(`cmux-proj`/`dual`/`ops`/`review`) 우선.
+- 개인 허브인 `cmux-proj para`·`cmux-proj personal`은 등록된 config의 `personal-git-sync.sh --startup`을 사용한다. 새 AI 시작 전 해당 세션의 personal-sync 창에서 동기화·설치를 완료하며, 기존 세션의 AI 입력은 보존한다. 업무 para는 개인 origin이 아니면 이 단계를 생략한다.
 
 ## 🚀 설치 진입점
 - **시스템**: `./install.sh` (zsh/tmux/nvim/vibe-tools deploy) — 본 레포 단독 실행 가능

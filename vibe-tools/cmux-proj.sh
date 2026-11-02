@@ -50,6 +50,28 @@ IFS='|' read -r name raw_path color desc pin_flag <<< "$MATCH"
 # $HOME 전개 (eval 대신 안전 치환)
 path="$(cmux_expand_home "$raw_path")"
 
+# 개인 허브만 origin을 확인해 공용 최신화로 연결한다. 업무 para는 그대로 둔다.
+sync_script=''
+hub_path=''
+if [[ "$name" == para || "$name" == personal ]]; then
+  config_match=$(cmux_lookup "$CONFIG" vibe-ai-config)
+  IFS='|' read -r _config_name config_path _config_rest <<< "$config_match"
+  config_path="${VIBE_AI_CONFIG_PATH:-$(cmux_expand_home "$config_path")}"
+  sync_script="$config_path/shared/scripts/git-suite/personal-git-sync.sh"
+  if [[ -f "$sync_script" ]]; then
+    hub_path=$(bash "$sync_script" --hub-path "$path") || hub_path=''
+  fi
+  if [[ "$name" == personal && -z "$hub_path" ]]; then
+    printf '오류: 개인 PARA 경로·origin 확인 필요: %s\n등록 경로: %s\n' "$path" "$CONFIG" >&2
+    exit 3
+  fi
+fi
+
+run_personal_startup() {
+  [[ -n "$hub_path" ]] || return 0
+  bash "$sync_script" --startup "$target" "$hub_path" || echo '최신화 보류 항목은 personal-sync 실행 창에서 확인하세요.' >&2
+}
+
 if [[ ! -d "$path" ]]; then
   echo "오류: 경로가 존재하지 않습니다: $path" >&2
   exit 1
@@ -131,12 +153,22 @@ if [[ "$create_new" == true ]]; then
       ;;
     para)
       tmux new-session -d -s "$name" -n main -c "$path"
+      run_personal_startup
       tmux send-keys -t "$name:main" 'nvim .' Enter
       tmux split-window -h -l 30% -t "$name:main" -c "$path"
       tmux send-keys -t "$name:main" "$VIBE_TOOL" Enter
       tmux select-pane -L -t "$name:main"
       tmux select-window -t "$name:main"
       layout_desc='main(nvim+claude) 단일 창'
+      ;;
+    personal)
+      tmux new-session -d -s "$name" -n claude -c "$hub_path"
+      run_personal_startup
+      tmux send-keys -t "$name:claude" "$VIBE_TOOL" Enter
+      tmux new-window -t "$name" -n edit -c "$hub_path"
+      tmux send-keys -t "$name:edit" 'nvim .' Enter
+      tmux select-window -t "$name:claude"
+      layout_desc='claude(개인 PARA) / edit / personal-sync'
       ;;
     *)
       tmux new-session -d -s "$name" -n claude -c "$HOME/Project/para"
@@ -150,6 +182,10 @@ if [[ "$create_new" == true ]]; then
       ;;
   esac
   session_created=true
+fi
+
+if [[ "$session_created" == false ]]; then
+  run_personal_startup
 fi
 
 # 워크스페이스 제외 목록 — cmux 워크스페이스 생략, tmux 세션만 유지 (관찰은 기존 tmux 경로)
