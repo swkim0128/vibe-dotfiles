@@ -10,3 +10,5 @@ prompts.bak/
 /vibe-tools/cmux-projects.local.txt
 /vibe-tools/cmux-ops.local.txt
 /vibe-tools/cmux-no-workspace.local.txt
+# cmux 설정 저장 중 사용하는 로컬 잠금 파일
+/cmux/*.cmux-write.lock
