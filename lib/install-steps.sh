@@ -244,9 +244,7 @@ install_mise_config() {
 info "mise 전역 설정 적용 중..."
 mkdir -p "$HOME/.config/mise"
 install_declared_links mise_config
-if ! mise which python >/dev/null 2>&1; then
-  mise install python
-fi
+mise install
 mise reshim
 }
 

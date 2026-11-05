@@ -66,6 +66,7 @@ install.sh가 수행하는 작업:
 - `~/.config/vibe-tools/` → `vibe-tools/` 심볼릭 링크
 - `~/.config/nvim/lua/` → `nvim/lua/` 심볼릭 링크
 - `~/.config/mise/config.toml` → `mise/config.toml` 심볼릭 링크 (mise 전역 런타임 버전)
+- mise 설치 단계는 선언된 Python·Rust 도구체인을 설치한다. Rust에는 큐 실행파일 빌드에 필요한 `cargo`와 `rustc`가 포함된다.
 - `~/.zshrc` 에 `aliases.zsh`, `~/.zshenv` 에 `env.zsh` source 라인 자동 추가
 - `~/.gitignore_global` → `git/gitignore_global` 심볼릭 링크 + `git config --global core.excludesfile` 지정 (Serena·OpenSpec·ast-grep 자동 생성물을 모든 레포에서 비추적)
 
