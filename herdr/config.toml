@@ -4,7 +4,7 @@ onboarding = false
 new_cwd = "follow"
 
 [keys]
-prefix = "ctrl+b"
+prefix = ["ctrl+b", "ctrl+space"]
 
 [ui]
 confirm_close = true
