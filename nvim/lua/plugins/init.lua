@@ -134,6 +134,12 @@ return {
   {
     "nvim-tree/nvim-tree.lua",
     opts = {
+      git = {
+        enable = true,
+        timeout = 30000,
+        show_on_dirs = true,
+        show_on_open_dirs = true,
+      },
       view = {
         width = {
           min = 30,   -- 최소 폭
@@ -143,6 +149,10 @@ return {
       },
       renderer = {
         full_name = true, -- 그래도 잘리는 경우 전체 이름 팝업 표시
+        highlight_git = "all",
+        icons = {
+          show = { git = true },
+        },
       },
       -- 현재 편집 중인 파일을 트리에서 자동으로 펼쳐 하이라이트 —
       -- <leader>ff 로 위치 근처 파일을 열면 트리가 그 경로로 바로 이동(탭 드릴링 대체).
