@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "terminal": "ghostty",
+  "multiplexer": "herdr",
+  "herdr_session": "personal",
+  "notifications": "auto"
+}
