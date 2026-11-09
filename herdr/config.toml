@@ -1,0 +1,16 @@
+onboarding = false
+
+[terminal]
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+b"
+
+[ui]
+confirm_close = true
+
+[ui.toast]
+delivery = "herdr"
+
+[ui.sound]
+enabled = false

@@ -222,6 +222,11 @@ info "Tmux 설정 적용 중..."
 install_declared_links tmux_config
 }
 
+install_herdr_config() {
+info "Herdr 설정 적용 중..."
+install_declared_links herdr_config
+}
+
 install_vibe_tools() {
 # ── 7. Vibe Tools ────────────────────────────────────────────────────────────
 info "Vibe Tools 적용 중..."

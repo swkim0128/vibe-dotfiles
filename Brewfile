@@ -43,6 +43,7 @@ brew "glow"
 brew "neovim"
 brew "tmux"
 brew "tmuxinator"
+brew "herdr"
 # nvim 포매터(css·html·markdown). mason 에 없어 brew 로 둔다.
 brew "prettier"
 # mlr — nvim CSV 정렬·필터 키맵이 호출한다.
