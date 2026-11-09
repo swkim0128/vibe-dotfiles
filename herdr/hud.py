@@ -122,6 +122,23 @@ def label(pane, module, call=rpc):
     return module.truncate(text, 88)
 
 
+def project_title(pane, path, cwd):
+    if pane["agent"] != "codex":
+        return f"{pane['agent']} · {path}"
+    try:
+        result = subprocess.run(["git", "-C", cwd, "branch", "--show-current"],
+                                capture_output=True, text=True, check=True, timeout=0.3)
+        branch = result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        branch = ""
+    native = pane.get("terminal_title_stripped") or pane.get("terminal_title") or ""
+    details = native.partition(" | ")[2]
+    if branch and details.startswith(branch + " | "):
+        details = details[len(branch) + 3:]
+    model, _, task = details.partition(" | ")
+    return f"{path} | {branch or '-'} | {model or '모델 미확인'} | {task or '작업 제목 미확인'}"
+
+
 def refresh_paths():
     try:
         panes = rpc("pane.list")["panes"]
@@ -134,7 +151,7 @@ def refresh_paths():
                 continue
             path = "~" + cwd[len(home):] if cwd == home or cwd.startswith(home + "/") else cwd
             rpc("pane.report_metadata", pane_id=pane["pane_id"], source="vibe:project",
-                agent=pane["agent"], title=f"{pane['agent']} · {path}",
+                agent=pane["agent"], title=project_title(pane, path, cwd),
                 tokens={"project_path": path}, seq=time.time_ns(), ttl_ms=15000)
     except (OSError, ValueError, KeyError, TypeError):
         return
