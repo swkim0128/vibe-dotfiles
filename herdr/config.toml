@@ -5,6 +5,8 @@ new_cwd = "follow"
 
 [keys]
 prefix = ["ctrl+b", "ctrl+space"]
+previous_workspace = "prefix+["
+next_workspace = "prefix+]"
 
 [ui]
 confirm_close = true
