@@ -26,9 +26,7 @@ tab_bar_position = "bottom"
 tab_bar_right_separator = " · "
 tab_bar_right = [
   { type = "command", command = "python3 -B ~/.config/herdr/status.py", interval_seconds = 5, timeout_seconds = 4 },
-  { type = "command", command = "python3 -B ~/.config/herdr/status.py --usage", interval_seconds = 60, timeout_seconds = 10 },
-  { type = "hostname" },
-  { type = "datetime", format = "%H:%M" },
+  { type = "datetime", format = "%Y-%m-%d %H:%M" },
 ]
 
 [ui.sidebar.agents]
