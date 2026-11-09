@@ -152,7 +152,7 @@ def main():
     from hud import refresh, refresh_paths
     refresh_paths()
     refresh()
-    parts = [resources(), dock(cache, now)]
+    parts = [dock(cache, now), resources()]
     print(" · ".join(parts))
 
 
