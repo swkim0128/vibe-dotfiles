@@ -35,11 +35,12 @@ tab_bar_right = [
 rows = [
   ["state_icon", "agent", "state_text"],
   ["workspace", "tab", "pane"],
+  ["$project_path"],
   ["$hud"],
 ]
 
 [ui.sidebar.spaces]
-rows = [["workspace"], ["branch", "git_status"]]
+rows = [["workspace"], ["$project_path"], ["branch", "git_status"]]
 
 [ui.toast]
 delivery = "herdr"
