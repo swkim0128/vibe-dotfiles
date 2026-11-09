@@ -8,6 +8,9 @@ prefix = ["ctrl+b", "ctrl+space"]
 previous_workspace = "prefix+["
 next_workspace = "prefix+]"
 
+[experimental]
+switch_ascii_input_source_in_prefix = true
+
 [ui]
 confirm_close = true
 tab_bar_position = "bottom"
