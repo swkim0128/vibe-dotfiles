@@ -125,22 +125,17 @@ def label(pane, module, call=rpc):
 def refresh_paths():
     try:
         panes = rpc("pane.list")["panes"]
-        workspaces = {}
         home = str(Path.home())
         for pane in panes:
             if not pane.get("agent"):
                 continue
-            cwd = pane.get("cwd")
+            cwd = pane.get("foreground_cwd") or pane.get("cwd")
             if not cwd:
                 continue
             path = "~" + cwd[len(home):] if cwd == home or cwd.startswith(home + "/") else cwd
             rpc("pane.report_metadata", pane_id=pane["pane_id"], source="vibe:project",
+                agent=pane["agent"], title=f"{pane['agent']} · {path}",
                 tokens={"project_path": path}, seq=time.time_ns(), ttl_ms=15000)
-            workspaces.setdefault(pane["workspace_id"], set()).add(path)
-        for workspace, paths in workspaces.items():
-            rpc("workspace.report_metadata", workspace_id=workspace, source="vibe:project",
-                tokens={"project_path": " | ".join(sorted(paths))},
-                seq=time.time_ns(), ttl_ms=15000)
     except (OSError, ValueError, KeyError, TypeError):
         return
 

@@ -22,6 +22,8 @@ switch_ascii_input_source_in_prefix = true
 
 [ui]
 confirm_close = true
+pane_borders = "always"
+pane_outer_borders = true
 tab_bar_position = "bottom"
 tab_bar_right_separator = " · "
 tab_bar_right = [
@@ -38,7 +40,7 @@ rows = [
 ]
 
 [ui.sidebar.spaces]
-rows = [["workspace"], ["$project_path"], ["branch", "git_status"]]
+rows = [["workspace"], ["branch", "git_status"]]
 
 [ui.toast]
 delivery = "herdr"
