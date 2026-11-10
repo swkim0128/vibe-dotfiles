@@ -6,7 +6,7 @@
   "battery": "32",
   "hint": "2",
   "compact": {
-    "rows": ["notifications", "metrics", "datetime"],
-    "align": "bottom"
+    "rows": ["notifications", "metrics_datetime"],
+    "align": "edges"
   }
 }

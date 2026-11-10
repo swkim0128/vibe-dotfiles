@@ -547,27 +547,44 @@ fn render_view(
             .as_array()
             .ok_or("missing compact rows")?;
         let visible = rows.len().min(usize::from(height));
-        let start = if style["compact"]["align"] == "bottom" {
-            height - visible as u16
-        } else {
-            0
-        };
         for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
             let (text, color) = match row.as_str() {
                 Some("notifications") => (notifications.to_owned(), string(style, "notifications")),
-                Some("metrics") => (
-                    format!(
+                Some("metrics_datetime") => {
+                    let metrics = format!(
                         "{} {} {}",
                         string(values, "sys_cpu"),
                         string(values, "sys_ram"),
                         string(values, "sys_battery")
-                    ),
-                    string(style, "heading"),
-                ),
-                Some("datetime") => (date.to_owned(), string(style, "heading")),
+                    );
+                    let mut date = date.to_owned();
+                    while unicode_width::UnicodeWidthStr::width(date.as_str()) > width {
+                        date.remove(0);
+                    }
+                    let remaining = width
+                        .saturating_sub(unicode_width::UnicodeWidthStr::width(date.as_str()) + 3);
+                    let text = if remaining == 0 {
+                        date
+                    } else {
+                        let metrics = if unicode_width::UnicodeWidthStr::width(metrics.as_str())
+                            <= remaining
+                        {
+                            metrics
+                        } else {
+                            plain(&metrics, remaining - 1)
+                        };
+                        format!("{metrics} | {date}")
+                    };
+                    (text, string(style, "heading"))
+                }
                 _ => return Err("unknown compact row".into()),
             };
-            execute!(output, cursor::MoveTo(0, start + index as u16))?;
+            let y = if style["compact"]["align"] == "edges" && index + 1 == visible {
+                height - 1
+            } else {
+                index as u16
+            };
+            execute!(output, cursor::MoveTo(0, y))?;
             write!(output, "\x1b[{color}m{}\x1b[0m", plain(&text, width))?;
         }
     } else {
