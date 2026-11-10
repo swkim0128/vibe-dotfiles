@@ -1,6 +1,6 @@
 {
+  "position": {"topMargin": 16},
   "style": {
-    "atScreenEdge": 1,
     "textSize": 18,
     "radius": 12,
     "padding": 14,

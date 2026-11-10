@@ -36,7 +36,7 @@ def main():
     # Decimal byte escapes keep event text as data, including quotes and Lua syntax.
     encoded = '"' + "".join(f"\\{byte:03d}" for byte in
                             json.dumps(payload, ensure_ascii=False).encode()) + '"'
-    result = subprocess.run([cli, "-c", f"return vibeHerdrAlert(hs.json.decode({encoded}))"],
+    result = subprocess.run([cli, "-c", f"local id = vibeHerdrAlert(hs.json.decode({encoded})) return id"],
                             stdin=subprocess.DEVNULL, capture_output=True, text=True,
                             timeout=5, check=True)
     receipt = result.stdout.strip().splitlines()
