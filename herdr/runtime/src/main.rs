@@ -592,7 +592,23 @@ fn render_view(
                 index as u16
             };
             execute!(output, cursor::MoveTo(0, y))?;
-            write!(output, "\x1b[{color}m{}\x1b[0m", plain(&text, width))?;
+            let mut text = plain(&text, width);
+            if row == "metrics_datetime" {
+                for (key, style_key) in [
+                    ("sys_cpu", "cpu"),
+                    ("sys_ram", "ram"),
+                    ("sys_battery", "battery"),
+                ] {
+                    let value = string(values, key);
+                    if !value.is_empty() {
+                        text = text.replace(
+                            &value,
+                            &format!("\x1b[0;{}m{value}\x1b[0;{color}m", string(style, style_key)),
+                        );
+                    }
+                }
+            }
+            write!(output, "\x1b[{color}m{text}\x1b[0m")?;
         }
     } else {
         write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n\x1b[{notifications_style}m  {notifications}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",

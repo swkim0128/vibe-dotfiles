@@ -43,6 +43,8 @@ herdr plugin pane open --plugin vibe.top-alert --entrypoint tui --placement spli
 
 하단 배치는 마지막 명령으로 열고 Herdr의 크기 조절로 3~8행을 확보한다. 설치기가 pane을 자동으로 만들거나 기존 화면을 재배치하지 않는다.
 
+compact에서도 `view.json`의 개별 색을 적용해 CPU는 파랑, RAM은 보라, BAT는 초록으로 표시한다. 문구 길이를 먼저 제한한 뒤 색을 입혀 좁은 화면에서도 제어 코드가 잘리지 않게 한다. 현재 전체 83행 화면에서는 Herdr의 비율 상한 0.9 때문에 하단이 외곽 8행·내부 6행으로 제한된다. 공식 `pane.resize`로 더 줄이려 해도 unchanged를 반환해 현재 크기에서 4~5행으로 줄일 수는 없다.
+
 ## 하단 상태 위치 고정
 
 Herdr의 현재 탭에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상태 TUI 하나를 만들거나 재사용하고 전체 폭·비율 0.9로 맞춘다. 알림과 지표·시각의 현재 두 줄 표시는 유지한다. 단축키는 기존 플러그인의 `bar` action을 호출한다.
