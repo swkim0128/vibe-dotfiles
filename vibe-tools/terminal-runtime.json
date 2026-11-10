@@ -2,6 +2,6 @@
   "version": 1,
   "terminal": "ghostty",
   "multiplexer": "herdr",
-  "herdr_session": "personal",
+  "herdr_session": "default",
   "notifications": "auto"
 }
