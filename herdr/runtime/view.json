@@ -7,6 +7,6 @@
   "hint": "2",
   "compact": {
     "rows": ["notifications", "metrics_datetime"],
-    "align": "edges"
+    "align": "bottom"
   }
 }

@@ -579,7 +579,9 @@ fn render_view(
                 }
                 _ => return Err("unknown compact row".into()),
             };
-            let y = if style["compact"]["align"] == "edges" && index + 1 == visible {
+            let y = if style["compact"]["align"] == "bottom" {
+                height - visible as u16 + index as u16
+            } else if style["compact"]["align"] == "edges" && index + 1 == visible {
                 height - 1
             } else {
                 index as u16
