@@ -14,6 +14,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use unicode_width::UnicodeWidthChar;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+mod bar;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -168,9 +169,13 @@ fn metrics() -> Value {
 }
 
 fn rpc(method: &str, params: Value) -> Result<Value> {
+    rpc_timeout(method, params, Duration::from_millis(300))
+}
+
+fn rpc_timeout(method: &str, params: Value, timeout: Duration) -> Result<Value> {
     let mut client = UnixStream::connect(env::var("HERDR_SOCKET_PATH")?)?;
-    client.set_read_timeout(Some(Duration::from_millis(300)))?;
-    client.set_write_timeout(Some(Duration::from_millis(300)))?;
+    client.set_read_timeout(Some(timeout))?;
+    client.set_write_timeout(Some(timeout))?;
     writeln!(
         client,
         "{}",
@@ -180,7 +185,7 @@ fn rpc(method: &str, params: Value) -> Result<Value> {
     BufReader::new(client.take(1_048_576)).read_line(&mut response)?;
     let value: Value = serde_json::from_str(&response)?;
     if value.get("error").is_some() {
-        return Err("Herdr rejected display request".into());
+        return Err(format!("Herdr: {}", value["error"]).into());
     }
     value
         .get("result")
@@ -658,6 +663,7 @@ fn main() {
         Some("notify") if args.len() == 3 && args[1] == "--test" => notify(Some(&args[2])),
         Some("usage") => usage(),
         Some("view") => view(),
+        Some("bar") => bar::entry(&args[1..]),
         _ => Err(
             "usage: vibe-herdr status [--sidebar-only] | notify [--test done|blocked] | usage | view"
                 .into(),

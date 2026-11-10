@@ -1,0 +1,8 @@
+{
+  "plugin_id": "vibe.top-alert",
+  "entrypoint": "tui",
+  "placement": "split",
+  "direction": "down",
+  "ratio": 0.9,
+  "temporary_tab_label": "status-bar-move"
+}

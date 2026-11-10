@@ -10,6 +10,11 @@ on = "pane.agent_status_changed"
 command = ["../../runtime/target/release/vibe-herdr", "notify"]
 
 [[actions]]
+id = "bar"
+title = "하단 상태 TUI 고정"
+command = ["../../runtime/target/release/vibe-herdr", "bar", "ensure", "--current"]
+
+[[actions]]
 id = "test"
 title = "Test top-center alert"
 command = ["../../runtime/target/release/vibe-herdr", "notify", "--test", "blocked"]

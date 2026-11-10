@@ -42,3 +42,18 @@ herdr plugin pane open --plugin vibe.top-alert --entrypoint tui --placement spli
 ```
 
 하단 배치는 마지막 명령으로 열고 Herdr의 크기 조절로 3~8행을 확보한다. 설치기가 pane을 자동으로 만들거나 기존 화면을 재배치하지 않는다.
+
+## 하단 상태 위치 고정
+
+Herdr의 현재 탭에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상태 TUI 하나를 만들거나 재사용하고 전체 폭·비율 0.9로 맞춘다. 알림과 지표·시각의 현재 두 줄 표시는 유지한다. 단축키는 기존 플러그인의 `bar` action을 호출한다.
+
+```bash
+~/.config/herdr/vibe-herdr bar ensure --current
+~/.config/herdr/vibe-herdr bar ensure --tab <tab-id>
+```
+
+`--current`는 플러그인 또는 Herdr 셸의 실제 탭 문맥이 필요하다. 문맥이 없는 셸에서는 탭 ID를 명시한다. 위치를 다시 맞출 때 같은 명령을 사용하며, 자동 실행이나 상주 감시는 하지 않는다.
+
+상태 TUI는 실제 실행 파일 경로와 `view` argv로 확인한다. 올바른 전체 폭 하단 배치는 작업 pane 수와 무관하게 재사용한다. 새 배치·위치 복원은 작업 pane 1~2개인 탭에서 지원하며, 임시 탭으로 프로세스를 보존해 이동한 뒤 원래 작업 분할의 방향·비율을 복원한다. terminal ID와 셸·Codex/Claude PID를 확인하고 기존 작업 pane을 닫거나 다시 실행하지 않는다. 동시 실행은 세션별 파일 잠금으로 막는다. 상태 TUI가 여러 개거나 확대된 탭·지원하지 않는 분할이면 변경 전에 중단한다. 실패 시 현재 pane 확인과 재실행 명령을 출력하고, 임시 이동한 pane이 남으면 먼저 원래 탭으로 복귀하는 구체적인 명령을 안내한다.
+
+비율·플러그인 entrypoint·위치 정의는 빌드에 포함되는 `herdr/runtime/bar.json`에 둔다. 키 문법은 [공식 플러그인 문서](https://herdr.dev/tui/docs/plugins/#keybindings)를 따른다. 설치 후 플러그인 등록과 설정 reload를 적용하면 사용할 수 있다.

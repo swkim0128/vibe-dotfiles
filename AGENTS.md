@@ -131,3 +131,9 @@ tmux -L verifytest kill-server
 - 진입점: `./install.sh work|personal`. 선언은 `manifests/common.conf` → `profiles/<mode>.conf` 순으로 읽는다.
 - 설치 단계는 `INSTALL_STEPS`, 패키지 파일은 `BREW_FILES`·`NPM_FILES`·`UV_FILES`, 설정 링크는 `CONFIG_LINKS`에서 선언한다. 실행기에 머신별 기능 분기를 추가하지 않는다.
 - `./install.sh work --dry-run`은 쓰기·다운로드 없이 설치 대상을 확인한다.
+
+## Herdr 하단 상태 고정
+
+- **하단 상태 고정·위치 복원** → `~/.config/herdr/vibe-herdr bar ensure --current` 또는 `... bar ensure --tab <tab-id>`. Herdr 안의 현재 탭 문맥을 사용하며 단축키는 `prefix+i`·`prefix+ㅑ`다.
+- 기존 상태 TUI는 실제 실행 경로·argv로 확인해 재사용한다. 올바른 전체 폭 하단 배치는 작업 pane 수와 무관하게 재사용한다. 새 배치·위치 복원은 작업 pane 1~2개의 프로세스·terminal ID·기존 분할 방향과 비율을 보존하며 하단 전체 폭과 비율 0.9를 맞춘다. 상태 TUI 중복·확대된 탭·지원 범위 밖 분할은 기존 pane을 닫지 않고 중단한다.
+- 정적 정의는 `herdr/runtime/bar.json`, 실행은 기존 Rust 실행기, 명령 매핑은 플러그인 manifest와 `herdr/config.toml`이 정본이다. 자동 실행·상주 감시는 하지 않는다. 상세 사용법은 `docs/herdr-display.md`를 따른다.

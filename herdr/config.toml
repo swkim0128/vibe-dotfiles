@@ -17,6 +17,18 @@ navigate_pane_down = ["j", "ㅓ"]
 navigate_pane_up = ["k", "ㅏ"]
 navigate_pane_right = ["l", "ㅣ"]
 
+[[keys.command]]
+key = "prefix+i"
+type = "plugin_action"
+command = "vibe.top-alert.bar"
+description = "하단 상태 TUI 고정"
+
+[[keys.command]]
+key = "prefix+ㅑ"
+type = "plugin_action"
+command = "vibe.top-alert.bar"
+description = "하단 상태 TUI 고정"
+
 [experimental]
 switch_ascii_input_source_in_prefix = true
 
