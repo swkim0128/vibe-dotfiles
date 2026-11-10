@@ -224,6 +224,14 @@ install_declared_links tmux_config
 
 install_herdr_config() {
 info "Herdr 설정 적용 중..."
+if ! command -v mise >/dev/null; then
+  warn "Herdr 실행기 빌드에 mise와 Rust가 필요합니다. mise_config 단계 후 설치기를 다시 실행하세요."
+  return 1
+fi
+if ! mise exec -- cargo build --locked --release --manifest-path "$DOTFILES/herdr/runtime/Cargo.toml"; then
+  warn "Herdr 실행기 빌드 실패 — 기존 설정과 플러그인을 유지합니다."
+  return 1
+fi
 install_declared_links herdr_config
 if command -v herdr >/dev/null; then
   herdr plugin link "$DOTFILES/herdr/plugins/top-alert"

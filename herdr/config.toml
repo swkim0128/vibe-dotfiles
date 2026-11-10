@@ -27,7 +27,7 @@ pane_outer_borders = true
 tab_bar_position = "bottom"
 tab_bar_right_separator = " · "
 tab_bar_right = [
-  { type = "command", command = "python3 -B ~/.config/herdr/status.py --sidebar-only", interval_seconds = 5, timeout_seconds = 4 },
+  { type = "command", command = "~/.config/herdr/vibe-herdr status --sidebar-only", interval_seconds = 5, timeout_seconds = 4 },
 ]
 
 [ui.sidebar.agents]

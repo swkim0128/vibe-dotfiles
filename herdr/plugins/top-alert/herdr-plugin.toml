@@ -7,9 +7,23 @@ platforms = ["macos"]
 
 [[events]]
 on = "pane.agent_status_changed"
-command = ["python3", "-B", "notify.py"]
+command = ["../../runtime/target/release/vibe-herdr", "notify"]
 
 [[actions]]
 id = "test"
 title = "Test top-center alert"
-command = ["python3", "-B", "notify.py", "--test", "blocked"]
+command = ["../../runtime/target/release/vibe-herdr", "notify", "--test", "blocked"]
+
+[[panes]]
+id = "tui"
+title = "현재 상태 · TUI"
+placement = "tab"
+command = ["../../runtime/target/release/vibe-herdr", "view"]
+
+[[panes]]
+id = "popup"
+title = "현재 상태 · 팝업"
+placement = "popup"
+width = 68
+height = 16
+command = ["../../runtime/target/release/vibe-herdr", "view"]

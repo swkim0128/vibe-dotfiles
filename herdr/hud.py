@@ -194,3 +194,7 @@ def refresh():
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
         # Existing metadata expires; no false zero or semantic state update.
         return
+
+
+if __name__ == "__main__":
+    refresh()
