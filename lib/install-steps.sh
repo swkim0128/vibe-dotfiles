@@ -225,6 +225,14 @@ install_declared_links tmux_config
 install_herdr_config() {
 info "Herdr 설정 적용 중..."
 install_declared_links herdr_config
+if command -v herdr >/dev/null; then
+  herdr plugin link "$DOTFILES/herdr/plugins/top-alert"
+fi
+}
+
+install_hammerspoon_config() {
+info "Hammerspoon 알림 설정 적용 중..."
+install_declared_links hammerspoon_config
 }
 
 install_vibe_tools() {

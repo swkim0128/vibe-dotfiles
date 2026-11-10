@@ -1,0 +1,15 @@
+id = "vibe.top-alert"
+name = "Herdr Top Alert"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Show local Hammerspoon alerts when an agent finishes or needs input."
+platforms = ["macos"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "-B", "notify.py"]
+
+[[actions]]
+id = "test"
+title = "Test top-center alert"
+command = ["python3", "-B", "notify.py", "--test", "blocked"]

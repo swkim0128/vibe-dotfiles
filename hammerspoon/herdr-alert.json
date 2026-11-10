@@ -1,0 +1,14 @@
+{
+  "style": {
+    "atScreenEdge": 1,
+    "textSize": 18,
+    "radius": 12,
+    "padding": 14,
+    "strokeWidth": 2,
+    "fillColor": {"hex": "#1e1e2e", "alpha": 0.95}
+  },
+  "states": {
+    "done": {"label": "완료", "color": "#a6e3a1", "seconds": 4},
+    "blocked": {"label": "응답 필요", "color": "#f9e2af", "seconds": 8}
+  }
+}

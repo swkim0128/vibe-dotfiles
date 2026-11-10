@@ -49,7 +49,7 @@ rows = [
 ]
 
 [ui.toast]
-delivery = "herdr"
+delivery = "off"
 
 [ui.sound]
 enabled = false

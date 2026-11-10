@@ -103,6 +103,14 @@ cask "codexbar" unless manual_app?("codexbar", "CodexBar.app")
 # ── GUI 터미널 앱 (cmux 는 ghostty config 의 테마·폰트를 상속) ────────────────
 cask "ghostty" unless manual_app?("ghostty", "Ghostty.app")
 cask "cmux" unless manual_app?("cmux", "cmux.app")
+# Herdr 완료·응답 필요 알림을 화면 상단 중앙에 표시한다.
+unless manual_app?("hammerspoon", "Hammerspoon.app")
+  if user_appdir?
+    cask "hammerspoon", args: { appdir: "~/Applications" }
+  else
+    cask "hammerspoon"
+  end
+end
 # ghostty/config 의 font-family. 글꼴은 ~/Library/Fonts 에 놓여 .app adopt(sudo) 문제가 없어 가드 불필요.
 cask "font-d2coding"
 
