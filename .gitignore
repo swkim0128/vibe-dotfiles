@@ -12,3 +12,9 @@ prompts.bak/
 /vibe-tools/cmux-no-workspace.local.txt
 # cmux 설정 저장 중 사용하는 로컬 잠금 파일
 /cmux/*.cmux-write.lock
+# 설치기가 하네스 정본으로 연결하는 기기별 helper 심링크
+/vibe-tools/ghostty-open.applescript
+/vibe-tools/terminal-backends.json
+/vibe-tools/terminal_runtime.py
+/vibe-tools/test_terminal_runtime.py
+/vibe-tools/verify-terminal-runtime.sh
