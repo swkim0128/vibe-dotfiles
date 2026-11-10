@@ -37,7 +37,8 @@ def main():
     encoded = '"' + "".join(f"\\{byte:03d}" for byte in
                             json.dumps(payload, ensure_ascii=False).encode()) + '"'
     result = subprocess.run([cli, "-c", f"return vibeHerdrAlert(hs.json.decode({encoded}))"],
-                            capture_output=True, text=True, timeout=5, check=True)
+                            stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                            timeout=5, check=True)
     receipt = result.stdout.strip().splitlines()
     if not receipt:
         raise RuntimeError("Hammerspoon did not acknowledge the alert; check its config")
