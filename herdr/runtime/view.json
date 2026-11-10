@@ -4,5 +4,9 @@
   "cpu": "1;34",
   "ram": "35",
   "battery": "32",
-  "hint": "2"
+  "hint": "2",
+  "compact": {
+    "rows": ["notifications", "metrics", "datetime"],
+    "align": "bottom"
+  }
 }

@@ -543,33 +543,32 @@ fn render_view(
     )?;
     if height <= 8 {
         let width = usize::from(width).saturating_sub(2);
-        let summary = plain(
-            &format!(
-                "{date} · {} {} {}",
-                string(values, "sys_cpu"),
-                string(values, "sys_ram"),
-                string(values, "sys_battery")
-            ),
-            width,
-        );
-        if height > 0 {
-            write!(output, "\x1b[{}m{summary}\x1b[0m", string(style, "heading"))?;
-        }
-        if height > 1 {
-            write!(
-                output,
-                "\r\n\x1b[{}m{}\x1b[0m",
-                string(style, "notifications"),
-                plain(notifications, width)
-            )?;
-        }
-        if height > 2 {
-            write!(
-                output,
-                "\r\n\x1b[{}m{}\x1b[0m",
-                string(style, "hint"),
-                plain("5초 갱신 · q/Esc 닫기", width)
-            )?;
+        let rows = style["compact"]["rows"]
+            .as_array()
+            .ok_or("missing compact rows")?;
+        let visible = rows.len().min(usize::from(height));
+        let start = if style["compact"]["align"] == "bottom" {
+            height - visible as u16
+        } else {
+            0
+        };
+        for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
+            let (text, color) = match row.as_str() {
+                Some("notifications") => (notifications.to_owned(), string(style, "notifications")),
+                Some("metrics") => (
+                    format!(
+                        "{} {} {}",
+                        string(values, "sys_cpu"),
+                        string(values, "sys_ram"),
+                        string(values, "sys_battery")
+                    ),
+                    string(style, "heading"),
+                ),
+                Some("datetime") => (date.to_owned(), string(style, "heading")),
+                _ => return Err("unknown compact row".into()),
+            };
+            execute!(output, cursor::MoveTo(0, start + index as u16))?;
+            write!(output, "\x1b[{color}m{}\x1b[0m", plain(&text, width))?;
         }
     } else {
         write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n\x1b[{notifications_style}m  {notifications}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",
