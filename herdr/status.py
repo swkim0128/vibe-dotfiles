@@ -127,7 +127,8 @@ def resources():
             pass
     battery = run(["pmset", "-g", "batt"])
     match = re.search(r"(\d+)%", battery or "")
-    return f"{cpu_label} {ram} " + (f"BAT{match[1]}%" if match else "AC/BAT?")
+    return {"sys_cpu": cpu_label, "sys_ram": ram,
+            "sys_battery": f"BAT{match[1]}%" if match else "AC/BAT?"}
 
 
 def context(env):
@@ -149,11 +150,16 @@ def main():
     if "--usage" in sys.argv:
         print(usage(cache, now))
         return
-    from hud import refresh, refresh_paths
+    from hud import refresh, refresh_paths, refresh_status
+    notifications = dock(cache, now)
+    metrics = resources()
+    refresh_status({**metrics,
+                    "sys_notifications": notifications if notifications.startswith("알림") else "알림 " + notifications,
+                    "sys_datetime": time.strftime("%Y-%m-%d %H:%M", time.localtime(now))})
     refresh_paths()
     refresh()
-    parts = [dock(cache, now), resources()]
-    print(" · ".join(parts))
+    if "--sidebar-only" not in sys.argv:
+        print(" · ".join([notifications, " ".join(metrics.values())]))
 
 
 if __name__ == "__main__":

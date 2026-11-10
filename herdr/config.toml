@@ -27,8 +27,7 @@ pane_outer_borders = true
 tab_bar_position = "bottom"
 tab_bar_right_separator = " · "
 tab_bar_right = [
-  { type = "command", command = "python3 -B ~/.config/herdr/status.py", interval_seconds = 5, timeout_seconds = 4 },
-  { type = "datetime", format = "%Y-%m-%d %H:%M" },
+  { type = "command", command = "python3 -B ~/.config/herdr/status.py --sidebar-only", interval_seconds = 5, timeout_seconds = 4 },
 ]
 
 [ui.sidebar.agents]
@@ -40,7 +39,14 @@ rows = [
 ]
 
 [ui.sidebar.spaces]
-rows = [["workspace"], ["branch", "git_status"]]
+rows = [
+  ["workspace"],
+  ["branch", "git_status"],
+  [{ token = "$sys_notifications", fg = "#f9e2af", bold = true }],
+  [{ token = "$sys_cpu", fg = "#89b4fa", bold = true }, { token = "$sys_ram", fg = "#cba6f7" }],
+  [{ token = "$sys_battery", fg = "#a6e3a1" }],
+  [{ token = "$sys_datetime", fg = "#94e2d5" }],
+]
 
 [ui.toast]
 delivery = "herdr"

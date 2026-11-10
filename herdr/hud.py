@@ -157,6 +157,16 @@ def refresh_paths():
         return
 
 
+def refresh_status(tokens):
+    try:
+        workspaces = rpc("workspace.list")["workspaces"]
+        for workspace in workspaces:
+            rpc("workspace.report_metadata", workspace_id=workspace["workspace_id"],
+                source="vibe:status", tokens=tokens, seq=time.time_ns(), ttl_ms=15000)
+    except (OSError, ValueError, KeyError, TypeError):
+        return
+
+
 def refresh():
     workspace = os.environ.get("HERDR_ACTIVE_WORKSPACE_ID")
     if not workspace:
