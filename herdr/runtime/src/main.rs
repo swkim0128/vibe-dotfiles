@@ -527,6 +527,60 @@ fn usage() -> Result<()> {
     Ok(())
 }
 
+fn render_view(
+    output: &mut impl Write,
+    values: &Value,
+    notifications: &str,
+    date: &str,
+    style: &Value,
+) -> Result<()> {
+    use crossterm::{cursor, execute, terminal};
+    let (width, height) = terminal::size()?;
+    execute!(
+        output,
+        cursor::MoveTo(0, 0),
+        terminal::Clear(terminal::ClearType::All)
+    )?;
+    if height <= 8 {
+        let width = usize::from(width).saturating_sub(2);
+        let summary = plain(
+            &format!(
+                "{date} · {} {} {}",
+                string(values, "sys_cpu"),
+                string(values, "sys_ram"),
+                string(values, "sys_battery")
+            ),
+            width,
+        );
+        if height > 0 {
+            write!(output, "\x1b[{}m{summary}\x1b[0m", string(style, "heading"))?;
+        }
+        if height > 1 {
+            write!(
+                output,
+                "\r\n\x1b[{}m{}\x1b[0m",
+                string(style, "notifications"),
+                plain(notifications, width)
+            )?;
+        }
+        if height > 2 {
+            write!(
+                output,
+                "\r\n\x1b[{}m{}\x1b[0m",
+                string(style, "hint"),
+                plain("5초 갱신 · q/Esc 닫기", width)
+            )?;
+        }
+    } else {
+        write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n\x1b[{notifications_style}m  {notifications}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",
+            string(values,"sys_cpu"),string(values,"sys_ram"),string(values,"sys_battery"),
+            heading=string(style,"heading"),notifications_style=string(style,"notifications"),
+            cpu=string(style,"cpu"),ram=string(style,"ram"),battery=string(style,"battery"),hint=string(style,"hint"))?;
+    }
+    output.flush()?;
+    Ok(())
+}
+
 fn view() -> Result<()> {
     use crossterm::event::{Event, KeyCode, KeyEventKind};
     use crossterm::{cursor, event, execute, terminal};
@@ -548,27 +602,27 @@ fn view() -> Result<()> {
     loop {
         let values = metrics();
         let notifications = dock(&cache);
+        let notifications = if notifications.starts_with("알림") {
+            notifications
+        } else {
+            format!("알림 {notifications}")
+        };
         let date = quick("date", &["+%Y-%m-%d %H:%M:%S"]).unwrap_or("시각 미확인".into());
-        execute!(
-            output,
-            cursor::MoveTo(0, 0),
-            terminal::Clear(terminal::ClearType::All)
-        )?;
-        write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n\x1b[{notifications_style}m  {}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",
-            if notifications.starts_with("알림") { notifications } else { format!("알림 {notifications}") },
-            string(&values,"sys_cpu"),string(&values,"sys_ram"),string(&values,"sys_battery"),
-            heading=string(&style,"heading"),notifications_style=string(&style,"notifications"),
-            cpu=string(&style,"cpu"),ram=string(&style,"ram"),battery=string(&style,"battery"),hint=string(&style,"hint"))?;
-        output.flush()?;
+        render_view(&mut output, &values, &notifications, &date, &style)?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if event::poll(deadline.saturating_duration_since(Instant::now()))? {
-                if let Event::Key(key) = event::read()? {
-                    if key.kind == KeyEventKind::Press
-                        && matches!(key.code, KeyCode::Char('q' | 'Q') | KeyCode::Esc)
+                match event::read()? {
+                    Event::Key(key)
+                        if key.kind == KeyEventKind::Press
+                            && matches!(key.code, KeyCode::Char('q' | 'Q') | KeyCode::Esc) =>
                     {
-                        return Ok(());
+                        return Ok(())
                     }
+                    Event::Resize(_, _) => {
+                        render_view(&mut output, &values, &notifications, &date, &style)?
+                    }
+                    _ => (),
                 }
             }
         }

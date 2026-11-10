@@ -2,7 +2,7 @@
 
 `herdr/config.toml`과 표시 실행기는 공통 `herdr_config` 단계에서 `~/.config/herdr/`에 파일별 심링크로 배포한다. `herdr/runtime/`의 Rust 실행기를 `cargo build --locked --release`로 빌드한 뒤 `vibe-herdr`를 연결한다. Cargo는 공통 mise 설정의 Rust에서 제공한다. HUD adapter에는 Python 3.11 이상이 필요하다. 기존 Herdr 제어 셸에서 `herdr config check`, `herdr server reload-config`로 적용한다.
 
-시스템 지표·Dock 알림·시각은 workspace sidebar에 표시하고, AI pane 제목에는 경로·브랜치·모델·작업 제목을 보고한다. workspace·tab·pane 이름과 agent의 `working/blocked/done/idle/unknown` 상태는 sidebar에서 확인한다. `done`은 Herdr의 관측 상태이며 요청 큐의 완료 상태를 뜻하지 않는다. 화면 배치는 `config.toml`에서 관리하며 실행기 전환으로 바꾸지 않는다.
+시스템 지표·Dock 알림·시각은 하단 상태 TUI에서 확인하고, AI pane 제목에는 경로·브랜치·모델·작업 제목을 보고한다. workspace·tab·pane 이름과 agent의 `working/blocked/done/idle/unknown` 상태는 sidebar에서 확인한다. workspace마다 반복되던 시스템 지표 행은 제거했으며 공용 sys_* metadata 갱신은 유지한다. `done`은 Herdr의 관측 상태이며 요청 큐의 완료 상태를 뜻하지 않는다.
 
 - 시스템 지표와 HUD는 5초마다 갱신한다. `CPU~`는 `ps %cpu`의 프로세스 평균 합을 논리 CPU 수로 나눈 근삿값이며 순간 CPU 측정치와 다르다. RAM은 active+wired+compressor 페이지의 GiB, 배터리는 `pmset` 값을 표시한다.
 - Dock은 기존 `~/.cache/vibe/dock-badges.raw`만 읽는다. 새 수집기를 시작하지 않는다. 30초가 지난 캐시는 `알림?오래됨`, 없거나 읽지 못하거나 빈 캐시는 `알림?`로 표시한다. 기존 수집기는 성공 표식이 없어 빈 결과를 0건으로 확정하지 않는다.
@@ -31,11 +31,14 @@ Hammerspoon과 로컬 Herdr 플러그인 `vibe.top-alert`로 완료·응답 필�
 
 ## 상태 TUI와 팝업 비교
 
-같은 플러그인의 `tui`와 `popup`은 `vibe-herdr view`를 실행한다. 주기 명령과 같은 시스템·Dock 수집 함수를 사용하며, 5초마다 실제 값을 갱신하고 q 또는 Esc로 닫을 때까지 유지한다. 비교 중에도 기존 sidebar는 유지한다. 두 배치·팝업 크기(68×16)는 플러그인 manifest에, 색상은 빌드에 포함하는 `herdr/runtime/view.json`에 분리했다. 색상을 변경하면 실행기를 다시 빌드한다.
+같은 플러그인의 `tui`와 `popup`은 `vibe-herdr view`를 실행한다. 주기 명령과 같은 시스템·Dock 수집 함수를 사용하며, 5초마다 실제 값을 갱신하고 q 또는 Esc로 닫을 때까지 유지한다. 8행 이하 pane에서는 날짜·시각과 CPU·RAM·배터리를 첫 줄, 알림을 둘째 줄, 짧은 조작 안내를 셋째 줄에 표시한다. 1~2행이면 해당 높이 안의 줄만 표시하고, 긴 문구는 가로 폭에 맞춰 줄인다. 크기 변경은 이미 수집한 값으로 즉시 다시 그리며 추가 수집하지 않는다. 높은 TUI·팝업의 기존 배치는 유지한다. 두 배치·팝업 크기(68×16)는 플러그인 manifest에, 색상은 빌드에 포함하는 `herdr/runtime/view.json`에 분리했다. 색상을 변경하면 실행기를 다시 빌드한다.
 
 Herdr 안의 실행 셸에서 다음 명령으로 연다. TUI의 workspace는 현재 대상 ID를 지정하고 팝업은 활성 pane을 기준으로 연다.
 
 ```bash
 herdr plugin pane open --plugin vibe.top-alert --entrypoint tui --workspace <workspace-id> --focus
 herdr plugin pane open --plugin vibe.top-alert --entrypoint popup --focus
+herdr plugin pane open --plugin vibe.top-alert --entrypoint tui --placement split --target-pane <pane-id> --direction down --no-focus
 ```
+
+하단 배치는 마지막 명령으로 열고 Herdr의 크기 조절로 3~8행을 확보한다. 설치기가 pane을 자동으로 만들거나 기존 화면을 재배치하지 않는다.
