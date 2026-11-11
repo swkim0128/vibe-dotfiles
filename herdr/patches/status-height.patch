@@ -1,0 +1,27 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index aaa207a..87d552b 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -292,7 +292,7 @@ impl TileLayout {
+ 
+     /// Set the ratio of a split node at the given path.
+     pub fn set_ratio_at(&mut self, path: &[bool], ratio: f32) -> bool {
+-        set_ratio_at(&mut self.root, path, ratio.clamp(0.1, 0.9))
++        set_ratio_at(&mut self.root, path, valid_split_ratio(ratio))
+     }
+ 
+     /// Adjust the nearest split in the given direction for the focused pane.
+@@ -625,9 +625,12 @@ fn split_node(target: PaneId, direction: Direction, new_id: PaneId, split_ratio:
+     }
+ }
+ 
++const MIN_SPLIT_RATIO: f32 = 0.01;
++const MAX_SPLIT_RATIO: f32 = 0.99;
++
+ pub(crate) fn valid_split_ratio(ratio: f32) -> f32 {
+     if ratio.is_finite() {
+-        ratio.clamp(0.1, 0.9)
++        ratio.clamp(MIN_SPLIT_RATIO, MAX_SPLIT_RATIO)
+     } else {
+         0.5
+     }

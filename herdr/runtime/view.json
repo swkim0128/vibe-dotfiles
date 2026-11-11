@@ -5,6 +5,16 @@
   "ram": "35",
   "battery": "32",
   "hint": "2",
+  "subagents": {
+    "before": "notifications",
+    "color": "36",
+    "max_agents": 2,
+    "id_chars": 8,
+    "http_timeout_seconds": 2,
+    "adapter_timeout_seconds": 3,
+    "python_relative_path": ".local/share/mise/shims/python3",
+    "ttl_seconds": 60
+  },
   "compact": {
     "rows": ["notifications", "metrics_datetime"],
     "align": "bottom"

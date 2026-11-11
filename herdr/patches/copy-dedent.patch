@@ -1,0 +1,224 @@
+diff --git a/src/client/shell/actions.rs b/src/client/shell/actions.rs
+index 83819b0..eb14206 100644
+--- a/src/client/shell/actions.rs
++++ b/src/client/shell/actions.rs
+@@ -269,6 +269,15 @@ impl ClientShellState {
+     }
+ 
+     pub(super) fn request_selection_copy(&mut self, outcome: &mut ClientShellInput, live: bool) {
++        self.request_selection_copy_with_dedent(outcome, live, false);
++    }
++
++    pub(super) fn request_selection_copy_with_dedent(
++        &mut self,
++        outcome: &mut ClientShellInput,
++        live: bool,
++        dedent: bool,
++    ) {
+         let Some(selection) = self.selection.as_ref() else {
+             return;
+         };
+@@ -297,7 +306,7 @@ impl ClientShellState {
+                     content_revision,
+                 },
+             ),
+-            PendingEndpointKind::SelectionCopy,
++            PendingEndpointKind::SelectionCopy { dedent },
+             outcome,
+         );
+     }
+@@ -633,11 +642,16 @@ impl ClientShellState {
+                 let repaint = self.complete_pane_scroll(pane_id, serial, result, &mut outcome);
+                 return (repaint, outcome.actions);
+             }
+-            PendingEndpointKind::SelectionCopy => {
++            PendingEndpointKind::SelectionCopy { dedent } => {
+                 return match result {
+                     Ok(crate::api::schema::ResponseResult::PaneSelection { text, .. })
+                         if !text.is_empty() =>
+                     {
++                        let text = if dedent {
++                            crate::copy_mode::dedent_copy_text(text)
++                        } else {
++                            text
++                        };
+                         let repaint = self.show_copy_feedback(std::time::Instant::now());
+                         (
+                             repaint,
+diff --git a/src/client/shell/copy_mode.rs b/src/client/shell/copy_mode.rs
+index be5b63e..e65d805 100644
+--- a/src/client/shell/copy_mode.rs
++++ b/src/client/shell/copy_mode.rs
+@@ -7,6 +7,7 @@ impl ClientShellState {
+         self.copy_operation_in_flight = false;
+         self.copy_operation_queue.clear();
+         self.copy_input_queue.clear();
++        self.dedent_after_search = false;
+     }
+ 
+     pub(super) fn enter_copy_mode(&mut self, outcome: &mut ClientShellInput) -> bool {
+@@ -137,7 +138,7 @@ impl ClientShellState {
+                 return;
+             }
+             KeyCode::Enter => {
+-                if !self.defer_copy_until_search_result() {
++                if !self.defer_copy_until_search_result(false) {
+                     self.exit_copy_mode(true, outcome);
+                 }
+                 return;
+@@ -204,9 +205,10 @@ impl ClientShellState {
+         };
+         match command {
+             'q' => self.exit_copy_mode(false, outcome),
+-            'y' => {
+-                if !self.defer_copy_until_search_result() {
+-                    self.exit_copy_mode(true, outcome);
++            'y' | 'Y' => {
++                let dedent = command == 'Y';
++                if !self.defer_copy_until_search_result(dedent) {
++                    self.exit_copy_mode_with_dedent(true, dedent, outcome);
+                 }
+             }
+             'v' | ' ' => self.begin_copy_selection(false),
+@@ -358,7 +360,7 @@ impl ClientShellState {
+         self.request_copy_search(copy_mode.search_query.clone(), direction, true, outcome);
+     }
+ 
+-    fn defer_copy_until_search_result(&mut self) -> bool {
++    fn defer_copy_until_search_result(&mut self, dedent: bool) -> bool {
+         let Some(copy_mode) = self.copy_mode.as_ref() else {
+             return false;
+         };
+@@ -378,6 +380,7 @@ impl ClientShellState {
+             .iter()
+             .any(|operation| matches!(operation, ClientCopyOperation::Search { .. }));
+         if pending {
++            self.dedent_after_search = dedent;
+             if let Some(copy_mode) = self.copy_mode.as_mut() {
+                 copy_mode.copy_after_search = true;
+             }
+@@ -450,7 +453,7 @@ impl ClientShellState {
+             self.sync_copy_selection();
+         }
+         if copy_after_search {
+-            self.exit_copy_mode(true, outcome);
++            self.exit_copy_mode_with_dedent(true, self.dedent_after_search, outcome);
+         }
+         outcome.repaint = true;
+         true
+@@ -811,6 +814,15 @@ impl ClientShellState {
+     }
+ 
+     pub(super) fn exit_copy_mode(&mut self, copy: bool, outcome: &mut ClientShellInput) {
++        self.exit_copy_mode_with_dedent(copy, false, outcome);
++    }
++
++    fn exit_copy_mode_with_dedent(
++        &mut self,
++        copy: bool,
++        dedent: bool,
++        outcome: &mut ClientShellInput,
++    ) {
+         let live_selection = self
+             .selection
+             .as_ref()
+@@ -841,7 +853,7 @@ impl ClientShellState {
+         {
+             // A visible explicit selection is live. If the fallback above supplied
+             // a search match, retain the revision that established its boundaries.
+-            self.request_selection_copy(outcome, live_selection);
++            self.request_selection_copy_with_dedent(outcome, live_selection, dedent);
+         }
+         self.selection = None;
+         self.selection_highlight_clear_deadline = None;
+diff --git a/src/client/shell/state.rs b/src/client/shell/state.rs
+index 5a73292..f81550c 100644
+--- a/src/client/shell/state.rs
++++ b/src/client/shell/state.rs
+@@ -642,7 +642,9 @@ pub(super) enum PendingEndpointKind {
+     WorktreeRemove {
+         forced: bool,
+     },
+-    SelectionCopy,
++    SelectionCopy {
++        dedent: bool,
++    },
+     PaneScroll {
+         pane_id: String,
+         serial: u64,
+@@ -930,6 +932,7 @@ pub(crate) struct ClientShellState {
+     pub(super) copy_operation_in_flight: bool,
+     pub(super) copy_operation_queue: VecDeque<ClientCopyOperation>,
+     pub(super) copy_input_queue: VecDeque<crate::input::TerminalKey>,
++    pub(super) dedent_after_search: bool,
+     pub(super) next_scroll_serial: u64,
+     pub(super) pane_scroll_in_flight: HashMap<String, u64>,
+     pub(super) pane_scroll_queued: HashMap<String, usize>,
+@@ -1098,6 +1101,7 @@ impl ClientShellState {
+             copy_operation_in_flight: false,
+             copy_operation_queue: VecDeque::new(),
+             copy_input_queue: VecDeque::new(),
++            dedent_after_search: false,
+             next_scroll_serial: 0,
+             pane_scroll_in_flight: HashMap::new(),
+             pane_scroll_queued: HashMap::new(),
+diff --git a/src/client/shell/worktrees.rs b/src/client/shell/worktrees.rs
+index 56c554c..5c27eda 100644
+--- a/src/client/shell/worktrees.rs
++++ b/src/client/shell/worktrees.rs
+@@ -533,7 +533,7 @@ impl ClientShellState {
+                 | PendingEndpointKind::ReloadConfig
+                 | PendingEndpointKind::IntegrationList
+                 | PendingEndpointKind::IntegrationInstall
+-                | PendingEndpointKind::SelectionCopy
++                | PendingEndpointKind::SelectionCopy { .. }
+                 | PendingEndpointKind::PaneScroll { .. }
+                 | PendingEndpointKind::WordSelection { .. }
+                 | PendingEndpointKind::PaneLinkActivate { .. }
+diff --git a/src/copy_mode.rs b/src/copy_mode.rs
+index 8f84b9a..5109e01 100644
+--- a/src/copy_mode.rs
++++ b/src/copy_mode.rs
+@@ -57,6 +57,42 @@ pub(crate) fn copy_mode_command_char(key: TerminalKey) -> Option<char> {
+     }
+ }
+ 
++pub(crate) fn dedent_copy_text(text: String) -> String {
++    let mut prefix: Option<&str> = None;
++    for line in text.lines().filter(|line| !line.trim().is_empty()) {
++        let indent_len = line
++            .bytes()
++            .take_while(|byte| matches!(byte, b' ' | b'\t'))
++            .count();
++        let indent = &line[..indent_len];
++        prefix = Some(match prefix {
++            None => indent,
++            Some(common) => {
++                let shared = common
++                    .bytes()
++                    .zip(indent.bytes())
++                    .take_while(|(left, right)| left == right)
++                    .count();
++                &common[..shared]
++            }
++        });
++    }
++    let Some(prefix) = prefix.filter(|prefix| !prefix.is_empty()) else {
++        return text;
++    };
++    let mut result = String::with_capacity(text.len());
++    // Keep the original line endings and remove only matching ASCII indentation.
++    for line in text.split_inclusive('\n') {
++        let remove = line
++            .bytes()
++            .zip(prefix.bytes())
++            .take_while(|(left, right)| left == right)
++            .count();
++        result.push_str(&line[remove..]);
++    }
++    result
++}
++
+ fn shifted_ascii_char(ch: char) -> Option<char> {
+     match ch {
+         'a'..='z' => Some(ch.to_ascii_uppercase()),

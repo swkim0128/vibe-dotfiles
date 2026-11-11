@@ -1,0 +1,21 @@
+{
+  "collector_relative_path": ".config/bin/dock-badges.sh",
+  "collector_timeout_seconds": 2,
+  "display_max_chars": 24,
+  "refresh_seconds": 5,
+  "stale_seconds": 30,
+  "files": {
+    "raw": "dock-badges.raw",
+    "display": "dock-badges",
+    "status": "dock-badges.status.json",
+    "lock": "dock-badges.lock",
+    "pid": "dock-badges-poll.pid"
+  },
+  "backends": {"tmux": "tmux", "herdr": "herdr"},
+  "labels": {
+    "empty": "알림 0건",
+    "unknown": "알림?미수집",
+    "failed": "알림?수집실패",
+    "stale": "알림?오래됨"
+  }
+}

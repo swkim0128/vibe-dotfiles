@@ -2,7 +2,7 @@
 use regex::Regex;
 use serde_json::{json, Value};
 use std::env;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
@@ -15,6 +15,7 @@ use unicode_width::UnicodeWidthChar;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod bar;
+mod dock;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -88,28 +89,7 @@ fn plain(value: &str, width: usize) -> String {
 }
 
 fn dock(cache: &Path) -> String {
-    let path = cache.join("dock-badges.raw");
-    let read = || -> Result<String> {
-        let modified = path.metadata()?.modified()?;
-        if SystemTime::now()
-            .duration_since(modified)
-            .unwrap_or_default()
-            .as_secs()
-            > 30
-        {
-            return Ok("알림?오래됨".into());
-        }
-        let mut value = String::new();
-        File::open(path)?.take(4096).read_to_string(&mut value)?;
-        if value.trim().is_empty() {
-            return Ok("알림?".into());
-        }
-        Ok(plain(
-            &value.trim().replace('\n', " ").replace('=', ":"),
-            20,
-        ))
-    };
-    read().unwrap_or_else(|_| "알림?".into())
+    dock::read(cache)
 }
 
 fn metrics() -> Value {
@@ -532,12 +512,132 @@ fn usage() -> Result<()> {
     Ok(())
 }
 
+fn view_options(args: &[String]) -> Result<Option<(String, String)>> {
+    match args {
+        [] => Ok(None),
+        [flag, pane] if flag == "--parent-pane" && !pane.is_empty() =>
+            Ok(Some((pane.clone(), env::var("VIBE_SUBAGENTS_API_URL").unwrap_or_default()))),
+        [flag, pane, api, url] if flag == "--parent-pane" && !pane.is_empty() && api == "--api-url" =>
+            Ok(Some((pane.clone(), url.clone()))),
+        _ => Err("사용법: view [--parent-pane <pane-id> [--api-url <loopback dashboard URL>]]".into()),
+    }
+}
+
+fn view_pane() -> Option<String> {
+    env::var("HERDR_PANE_ID").ok().filter(|v| !v.is_empty()).or_else(|| {
+        let context: Value = serde_json::from_str(&env::var("HERDR_PLUGIN_CONTEXT_JSON").ok()?).ok()?;
+        context["pane_id"].as_str().filter(|v| !v.is_empty()).map(str::to_owned)
+    })
+}
+
+fn scope_path(pane: &str) -> Result<PathBuf> {
+    if !pane.chars().all(|c| c.is_ascii_alphanumeric() || ":-_".contains(c)) || pane.is_empty() {
+        return Err("invalid pane ID".into());
+    }
+    let socket = PathBuf::from(env::var("HERDR_SOCKET_PATH")?);
+    Ok(socket.with_extension(format!("vibe-subagents-{}-{pane}.json", fs::metadata(&socket)?.ino())))
+}
+
+fn subagent_scope(parent_id: &str, pane_id: &str, api_url: &str) -> Result<Value> {
+    let socket = PathBuf::from(env::var("HERDR_SOCKET_PATH")?);
+    let generation = fs::metadata(&socket)?.ino();
+    let parent = rpc_timeout("pane.get", json!({"pane_id":parent_id}), Duration::from_millis(500))?["pane"].clone();
+    let pane = rpc_timeout("pane.get", json!({"pane_id":pane_id}), Duration::from_millis(500))?["pane"].clone();
+    if parent_id == pane_id || parent["agent"] != "codex" || parent["tab_id"] != pane["tab_id"]
+        || parent["workspace_id"] != pane["workspace_id"] || parent["terminal_id"].as_str().is_none()
+        || pane["terminal_id"].as_str().is_none() || fs::metadata(&socket)?.ino() != generation {
+        return Err("parent pane scope is not connected to this TUI".into());
+    }
+    let info = rpc_timeout("pane.process_info", json!({"pane_id":parent_id}), Duration::from_millis(500))?;
+    let pids = info["process_info"]["foreground_processes"].as_array().ok_or("missing parent processes")?
+        .iter().filter(|p| Path::new(p["name"].as_str().unwrap_or("")).file_name().is_some_and(|v| v == "codex"))
+        .filter_map(|p| p["pid"].as_u64()).collect::<Vec<_>>();
+    if pids.len() != 1 { return Err("parent Codex process is not unique".into()); }
+    let parent_stamp = run("ps", &["-p", &pids[0].to_string(), "-o", "lstart=", "-o", "comm="], Duration::from_millis(300))?;
+    if parent_stamp.is_empty() { return Err("parent Codex process ended".into()); }
+    let view_info = rpc_timeout("pane.process_info", json!({"pane_id":pane_id}), Duration::from_millis(500))?;
+    let view_processes = view_info["process_info"]["foreground_processes"].as_array().ok_or("missing TUI processes")?;
+    let executable = env::current_exe()?.canonicalize()?;
+    let view_pids = view_processes.iter().filter(|process| {
+        let Some(argv) = process["argv"].as_array() else { return false; };
+        let Some(first) = argv.first().and_then(Value::as_str) else { return false; };
+        let path = if Path::new(first).is_absolute() { PathBuf::from(first) }
+            else { PathBuf::from(string(process,"cwd")).join(first) };
+        path.canonicalize().is_ok_and(|path| path == executable)
+            && argv.get(1).and_then(Value::as_str) == Some("view")
+    }).filter_map(|process| process["pid"].as_u64()).collect::<Vec<_>>();
+    if view_pids.len() != 1 { return Err("TUI process is not ready or unique; no scope was installed".into()); }
+    Ok(json!({"parent_pane":parent_id,"view_pane":pane_id,"view_terminal":pane["terminal_id"],
+        "parent_terminal":parent["terminal_id"],"parent_session":parent["agent_session"],
+        "parent_cli_pids":pids,"parent_stamp":parent_stamp,"socket_generation":generation,"api_url":api_url,"view_pid":view_pids[0]}))
+}
+
+fn subagent_line(scope: &mut Value, style: &Value) -> String {
+    if scope["view_pid"].as_u64() != Some(u64::from(std::process::id())) {
+        return "서브 TUI 연결 미확인".into();
+    }
+    scope["http_timeout_seconds"] = style["subagents"]["http_timeout_seconds"].clone();
+    let script = env::var_os("VIBE_HERDR_HUD_ADAPTER").map(PathBuf::from)
+        .unwrap_or(home().join(".config/herdr/hud.py"));
+    let python = home().join(string(&style["subagents"], "python_relative_path"));
+    let result = (|| -> Result<Value> {
+        let raw = run(python.to_str().ok_or("invalid adapter Python path")?, &["-B", script.to_str().ok_or("invalid adapter path")?,
+            "--subagents", &scope.to_string()], Duration::from_secs(style["subagents"]["adapter_timeout_seconds"].as_u64().unwrap_or(3)))?;
+        Ok(serde_json::from_str(&raw)?)
+    })();
+    let Ok(result) = result else { return "서브 조회 실패".into(); };
+    if !result["binding"].is_null() && scope["binding"].is_null() {
+        scope["binding"] = result["binding"].clone();
+    }
+    match result["state"].as_str() {
+        Some("parent_unbound") => return "서브 부모 대화 미연결".into(),
+        Some("unconnected") => return "서브 연결 불일치".into(),
+        Some("observed") => {},
+        _ => return "서브 조회 실패".into(),
+    }
+    let ttl = style["subagents"]["ttl_seconds"].as_f64().unwrap_or(60.0);
+    let age = result["age"].as_f64().unwrap_or(f64::INFINITY);
+    let Some(running) = result["data"]["running"].as_array() else { return "서브 조회 실패".into(); };
+    let limit = style["subagents"]["max_agents"].as_u64().unwrap_or(2) as usize;
+    let id_chars = style["subagents"]["id_chars"].as_u64().unwrap_or(8) as usize;
+    let labels = running.iter().take(limit).map(|agent| {
+        let role = agent["agent_name"].as_str().filter(|v| !v.is_empty())
+            .or_else(|| agent["agent_type"].as_str().filter(|v| !v.is_empty())).unwrap_or("역할 미확인");
+        let id = agent["agent_id"].as_str().unwrap_or("?");
+        let suffix = id.chars().rev().take(id_chars).collect::<String>().chars().rev().collect::<String>();
+        format!("{}#{}", plain(role, 20), suffix)
+    }).collect::<Vec<_>>().join(" · ");
+    if age < 0.0 || age > ttl {
+        return if labels.is_empty() { "서브 현재 관측 오래됨".into() }
+            else { format!("서브 현재 관측 오래됨 · {labels}") };
+    }
+    let current_provider = result["data"]["observation"]["kind"] == "codex-app-server";
+    if !current_provider {
+        return if running.is_empty() { "서브 현재 관측 없음".into() }
+            else { format!("서브 과거 실행 관측 {} · {labels}", running.len()) };
+    }
+    if running.is_empty() {
+        let mut summary = "서브 실행 0".to_owned();
+        if let Some(recent) = result["data"]["recent"].as_array() {
+            let limited = result["data"]["counts"]["recent"].as_u64().unwrap_or(0) > recent.len() as u64;
+            for (state, label) in [("idle", "유휴"), ("notLoaded", "미적재"), ("systemError", "오류")] {
+                let count = recent.iter().filter(|agent| agent["state"] == state).count();
+                if count > 0 { summary.push_str(&format!(" · {label}{}{count}", if limited { "≥" } else { " " })); }
+            }
+        }
+        return summary;
+    }
+    format!("서브 실행 관측 {} · {labels}{}", running.len(),
+        if running.len() > limit { format!(" · +{}", running.len() - limit) } else { String::new() })
+}
+
 fn render_view(
     output: &mut impl Write,
     values: &Value,
     notifications: &str,
     date: &str,
     style: &Value,
+    subagents: Option<&str>,
 ) -> Result<()> {
     use crossterm::{cursor, execute, terminal};
     let (width, height) = terminal::size()?;
@@ -548,12 +648,18 @@ fn render_view(
     )?;
     if height <= 8 {
         let width = usize::from(width).saturating_sub(2);
-        let rows = style["compact"]["rows"]
+        let mut rows = style["compact"]["rows"]
             .as_array()
-            .ok_or("missing compact rows")?;
+            .ok_or("missing compact rows")?.clone();
+        if subagents.is_some() && usize::from(height) > rows.len() {
+            let before = style["subagents"]["before"].as_str().unwrap_or("notifications");
+            let position = rows.iter().position(|row| row.as_str() == Some(before)).unwrap_or(0);
+            rows.insert(position, json!("subagents"));
+        }
         let visible = rows.len().min(usize::from(height));
         for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
             let (text, color) = match row.as_str() {
+                Some("subagents") => (subagents.unwrap_or_default().to_owned(), string(&style["subagents"], "color")),
                 Some("notifications") => (notifications.to_owned(), string(style, "notifications")),
                 Some("metrics_datetime") => {
                     let metrics = format!(
@@ -611,7 +717,8 @@ fn render_view(
             write!(output, "\x1b[{color}m{text}\x1b[0m")?;
         }
     } else {
-        write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n\x1b[{notifications_style}m  {notifications}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",
+        let subagents_line = subagents.map(|text| format!("\x1b[{}m  {}\x1b[0m\r\n", string(&style["subagents"], "color"), plain(text, usize::from(width).saturating_sub(2)))).unwrap_or_default();
+        write!(output, "\x1b[{heading}m  현재 상태\x1b[0m\r\n\r\n  {date}\r\n\r\n{subagents_line}\x1b[{notifications_style}m  {notifications}\x1b[0m\r\n\r\n\x1b[{cpu}m  {}\x1b[0m    \x1b[{ram}m{}\x1b[0m\r\n\r\n\x1b[{battery}m  {}\x1b[0m\r\n\r\n\x1b[{hint}m  실제 시스템 값 · 5초 갱신\r\n  q 또는 Esc: 닫기 · 직접 닫을 때까지 유지\x1b[0m\r\n",
             string(values,"sys_cpu"),string(values,"sys_ram"),string(values,"sys_battery"),
             heading=string(style,"heading"),notifications_style=string(style,"notifications"),
             cpu=string(style,"cpu"),ram=string(style,"ram"),battery=string(style,"battery"),hint=string(style,"hint"))?;
@@ -620,10 +727,16 @@ fn render_view(
     Ok(())
 }
 
-fn view() -> Result<()> {
+fn view(args: &[String]) -> Result<()> {
     use crossterm::event::{Event, KeyCode, KeyEventKind};
     use crossterm::{cursor, event, execute, terminal};
     let style: Value = serde_json::from_str(include_str!("../view.json"))?;
+    let options = view_options(args)?;
+    let own_pane = view_pane();
+    let scope_file = own_pane.as_deref().and_then(|pane| scope_path(pane).ok());
+    let mut scope = options.as_ref().and_then(|(parent, url)|
+        own_pane.as_deref().and_then(|pane| subagent_scope(parent, pane, url).ok()));
+    let mut opted_in = options.is_some();
     struct Screen;
     impl Drop for Screen {
         fn drop(&mut self) {
@@ -639,6 +752,22 @@ fn view() -> Result<()> {
         .map(PathBuf::from)
         .unwrap_or(home().join(".cache/vibe"));
     loop {
+        if scope.is_none() && options.is_none() {
+            if let Some(path) = &scope_file {
+                if let Ok(metadata) = fs::symlink_metadata(path) {
+                    opted_in = true;
+                    if metadata.is_file() && metadata.uid() == fs::metadata(home())?.uid()
+                        && metadata.permissions().mode() & 0o777 == 0o600 && metadata.len() <= 16384 {
+                        scope = fs::read_to_string(path).ok().and_then(|raw| serde_json::from_str(&raw).ok());
+                        if scope.as_ref().is_some_and(|v| v["view_pane"].as_str() != own_pane.as_deref()) {
+                            scope = None;
+                        }
+                    }
+                }
+            }
+        }
+        let subagents = if let Some(scope) = scope.as_mut() { Some(subagent_line(scope, &style)) }
+            else if opted_in { Some("서브 TUI 연결 미확인".into()) } else { None };
         let values = metrics();
         let notifications = dock(&cache);
         let notifications = if notifications.starts_with("알림") {
@@ -647,7 +776,7 @@ fn view() -> Result<()> {
             format!("알림 {notifications}")
         };
         let date = quick("date", &["+%Y-%m-%d %H:%M:%S"]).unwrap_or("시각 미확인".into());
-        render_view(&mut output, &values, &notifications, &date, &style)?;
+        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref())?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if event::poll(deadline.saturating_duration_since(Instant::now()))? {
@@ -656,10 +785,16 @@ fn view() -> Result<()> {
                         if key.kind == KeyEventKind::Press
                             && matches!(key.code, KeyCode::Char('q' | 'Q') | KeyCode::Esc) =>
                     {
+                        if scope.is_some() && options.is_none() {
+                            if let Some(path) = &scope_file {
+                                let _ = fs::remove_file(path);
+                                let _ = fs::remove_file(path.with_extension("observation.json"));
+                            }
+                        }
                         return Ok(())
                     }
                     Event::Resize(_, _) => {
-                        render_view(&mut output, &values, &notifications, &date, &style)?
+                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref())?
                     }
                     _ => (),
                 }
@@ -678,7 +813,7 @@ fn main() {
         Some("notify") if args.len() == 1 => notify(None),
         Some("notify") if args.len() == 3 && args[1] == "--test" => notify(Some(&args[2])),
         Some("usage") => usage(),
-        Some("view") => view(),
+        Some("view") => view(&args[1..]),
         Some("bar") => bar::entry(&args[1..]),
         _ => Err(
             "usage: vibe-herdr status [--sidebar-only] | notify [--test done|blocked] | usage | view"
