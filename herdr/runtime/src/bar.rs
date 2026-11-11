@@ -432,7 +432,29 @@ pub(super) fn entry(args: &[String]) -> Result<()> {
     if args.iter().filter(|arg| arg.as_str() == "--relaunch").count() > 1 {
         return Err("--relaunch는 한 번만 지정하세요".into());
     }
-    let args = args.iter().filter(|arg| arg.as_str() != "--relaunch").cloned().collect::<Vec<_>>();
+    let parent_current = args.iter().any(|arg| arg == "--parent-current");
+    if args.iter().filter(|arg| arg.as_str() == "--parent-current").count() > 1
+        || parent_current && args.iter().any(|arg| arg == "--parent-pane") {
+        return Err("--parent-current와 --parent-pane 중 하나만 한 번 지정하세요".into());
+    }
+    let mut args = args.iter().filter(|arg| arg.as_str() != "--relaunch").cloned().collect::<Vec<_>>();
+    if let Some(index) = args.iter().position(|arg| arg == "--parent-current") {
+        let context: Value = serde_json::from_str(
+            &env::var("HERDR_PLUGIN_CONTEXT_JSON").unwrap_or("{}".into()),
+        )?;
+        let invoked = context["pane_id"].as_str().filter(|id| !id.is_empty());
+        let inherited = env::var("HERDR_PANE_ID").ok().filter(|id| !id.is_empty());
+        if invoked.is_some() && inherited.as_deref().is_some_and(|id| Some(id) != invoked) {
+            return Err("호출 pane 문맥이 다릅니다. Codex pane에서 ~/.config/herdr/vibe-herdr bar ensure --current --parent-current를 실행하세요".into());
+        }
+        let parent = invoked.map(str::to_owned).or(inherited)
+            .ok_or("호출 pane 문맥이 없습니다. Codex pane에서 prefix+i 또는 prefix+ㅑ를 사용하세요")?;
+        let pane = call("pane.get", json!({"pane_id":parent}))?["pane"].clone();
+        if pane["agent"] != "codex" || pane["agent_session"].is_null() {
+            return Err("호출 pane의 공식 Codex 부모 대화가 없습니다. Codex pane에서 prefix+i 또는 prefix+ㅑ를 사용하세요. 기존 pane은 유지합니다".into());
+        }
+        args.splice(index..=index, ["--parent-pane".to_owned(), parent]);
+    }
     let option_start = args.iter().position(|arg| arg == "--parent-pane").unwrap_or(args.len());
     let scope = view_options(&args[option_start..])?;
     let tab = match &args[..option_start] {
@@ -448,7 +470,7 @@ pub(super) fn entry(args: &[String]) -> Result<()> {
                 .or_else(|| env::var("HERDR_TAB_ID").ok())
                 .ok_or("현재 탭 문맥이 없습니다. bar ensure --tab <ID>로 지정하세요")?
         }
-        _ => return Err("사용법: vibe-herdr bar ensure --current|--tab <ID> [--parent-pane <ID> [--api-url <URL>]] [--relaunch]".into()),
+        _ => return Err("사용법: vibe-herdr bar ensure --current|--tab <ID> [--parent-current|--parent-pane <ID> [--api-url <URL>]] [--relaunch]".into()),
     };
     let socket = PathBuf::from(env::var("HERDR_SOCKET_PATH")?);
     let lock = OpenOptions::new()
@@ -460,7 +482,20 @@ pub(super) fn entry(args: &[String]) -> Result<()> {
     lock.try_lock_exclusive()
         .map_err(|_| "다른 상태 배치 명령이 실행 중입니다. 잠시 후 다시 실행하세요")?;
     let config: Value = serde_json::from_str(include_str!("../bar.json"))?;
-    match ensure(&tab,&config,scope.as_ref(),replace) {
+    let outcome = ensure(&tab,&config,scope.as_ref(),replace).and_then(|result| {
+        if parent_current && !replace && result["status"] == "scope_requires_relaunch" {
+            if let (Some((parent, url)), Some(bar)) = (scope.as_ref(), result["pane_id"].as_str()) {
+                let saved: Option<Value> = scope_path(bar).ok()
+                    .and_then(|path| std::fs::read_to_string(path).ok())
+                    .and_then(|text| serde_json::from_str(&text).ok());
+                if saved.is_some() && saved == subagent_scope(parent, bar, url).ok() {
+                    return ensure(&tab, &config, None, false);
+                }
+            }
+        }
+        Ok(result)
+    });
+    match outcome {
         Ok(result) => { println!("{result}"); Ok(()) },
         Err(error) => Err(format!("{error}\n기존 작업 pane은 닫지 않았습니다. 현재 위치 확인: herdr pane list\n다시 배치: ~/.config/herdr/vibe-herdr bar ensure --tab {tab}").into()),
     }

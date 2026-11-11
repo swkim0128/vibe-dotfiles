@@ -56,10 +56,11 @@ compact에서도 `view.json`의 개별 색을 적용해 CPU는 파랑, RAM은 �
 
 ## 하단 상태 위치 고정
 
-Herdr의 현재 탭에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상태 TUI 하나를 만들거나 재사용하고 전체 폭·목표 외곽 5행으로 맞춘다. 서브에이전트·알림·지표와 시각을 위한 내용 3행과 테두리 2행을 확보한다. 단축키는 기존 플러그인의 `bar` action을 호출한다. 이 높이에는 세밀한 분할 비율을 지원하는 Herdr가 필요하다. 지원하지 않는 서버에서는 목표 높이 미적용을 오류로 보고하며 비율 0.9를 적용 성공으로 간주하지 않는다.
+Herdr의 Codex pane에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상태 TUI 하나를 만들거나 재사용하고 전체 폭·목표 외곽 5행으로 맞춘다. 서브에이전트·알림·지표와 시각을 위한 내용 3행과 테두리 2행을 확보한다. 단축키는 기존 플러그인의 `bar` action에 `--parent-current`를 전달한다. 이 높이에는 세밀한 분할 비율을 지원하는 Herdr가 필요하다. 지원하지 않는 서버에서는 목표 높이 미적용을 오류로 보고하며 비율 0.9를 적용 성공으로 간주하지 않는다.
 
 ```bash
 ~/.config/herdr/vibe-herdr bar ensure --current
+~/.config/herdr/vibe-herdr bar ensure --current --parent-current
 ~/.config/herdr/vibe-herdr bar ensure --tab <tab-id>
 ```
 
@@ -85,7 +86,9 @@ Herdr의 현재 탭에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상
 
 첫 명령은 새 하단 TUI를 만들 때만 연결한다. 기존 TUI가 있으면 `scope_requires_relaunch`를 반환하고 그대로 보존한다. 명시한 `--relaunch`는 기존 전체 폭 하단을 대상으로만 교체한다. 먼저 기존 TUI에서 목표 높이 지원을 확인하고 그 아래 새 TUI를 만든다. 새 실행·scope·작업 분할과 프로세스를 확인한 뒤 기존 TUI 하나만 닫아 분할을 합친다. 기존 작업 pane을 이동하거나 다시 만들지 않아 여러 작업 pane이 있는 탭에서도 사용할 수 있다. 기존 TUI를 닫기 전 검증이 실패하면 기존 TUI는 유지하고 식별 가능한 새 TUI만 정리한다.
 
-`view` 명령은 Herdr가 제공하는 해당 pane 문맥 안에서 실행하며, `HERDR_PANE_ID` 또는 `HERDR_PLUGIN_CONTEXT_JSON.pane_id`가 없으면 연결 미확인으로 남는다. 기존 플러그인 단축키와 scope 없는 TUI의 기본 동작은 유지한다. Herdr 서버 handoff로 socket 세대가 바뀌면 이전 scope는 무효이므로 공식 부모 참조를 확인한 뒤 `--relaunch`로 명시적으로 다시 연결한다.
+`--parent-current`는 단축키의 `HERDR_PLUGIN_CONTEXT_JSON.pane_id` 또는 셸의 `HERDR_PANE_ID`에 명시된 호출 pane만 부모로 선택한다. 두 값이 함께 있고 다르면 중단한다. 공식 Codex 참조가 없는 셸에서 호출하면 Codex pane에서 같은 단축키를 사용할 것을 안내하며 다른 pane을 추정하지 않는다. 기존 scope가 현재 공식 부모·TUI·PID·terminal·socket과 정확히 같을 때만 기존 ensure 경로로 재사용한다. scope가 없거나 다르면 `scope_requires_relaunch`를 유지하며 자동 재연결·교체하지 않는다. 명시 `--parent-pane`의 재연결 계약과 부모 옵션 없는 명령의 기존 동작은 유지한다.
+
+`view` 명령은 Herdr가 제공하는 해당 pane 문맥 안에서 실행하며, `HERDR_PANE_ID` 또는 `HERDR_PLUGIN_CONTEXT_JSON.pane_id`가 없으면 연결 미확인으로 남는다. Herdr 서버 handoff로 socket 세대가 바뀌면 이전 scope는 무효이므로 공식 부모 참조를 확인한 뒤 `--relaunch`로 명시적으로 다시 연결한다.
 
 API 주소는 `--api-url <URL>` > `VIBE_SUBAGENTS_API_URL` > 기존 등록 producer 경로에서 불러온 `config.load()['port']` 순으로 정한다. 설정만 읽으며 legacy HUD 모듈이나 저장소의 `configure()`는 호출하지 않는다. 마지막 경로는 `VIBE_DASHBOARD_CONFIG`·`VIBE_DASHBOARD_PORT`와 기존 설정 파일을 따른다. 주소는 loopback HTTP만 허용하며 proxy·redirect를 사용하지 않는다. 저장소 API 주소 `storage.endpoint`를 dashboard API로 사용하지 않는다. adapter의 Python은 `view.json`의 `python_relative_path`로 기존 mise shim을 사용한다. GUI가 물려준 시스템 Python 3.9에는 설정 로드에 필요한 `tomllib`이 없어 조회가 실패하므로 로그인 셸의 PATH에 의존하지 않는다.
 

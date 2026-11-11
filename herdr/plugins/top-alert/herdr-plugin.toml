@@ -12,7 +12,7 @@ command = ["../../runtime/target/release/vibe-herdr", "notify"]
 [[actions]]
 id = "bar"
 title = "하단 상태 TUI 고정"
-command = ["../../runtime/target/release/vibe-herdr", "bar", "ensure", "--current"]
+command = ["../../runtime/target/release/vibe-herdr", "bar", "ensure", "--current", "--parent-current"]
 
 [[actions]]
 id = "test"
