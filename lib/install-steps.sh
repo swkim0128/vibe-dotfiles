@@ -105,6 +105,16 @@ if command -v npm &>/dev/null; then
     fi
   done < "$DOTFILES/$manifest"
   done
+  for project in "${NPM_PROJECTS[@]:-}"; do
+    [[ -n "$project" ]] || continue
+    if [[ ! -f "$DOTFILES/$project/package-lock.json" ]]; then
+      warn "npm 잠금 파일 없음: $project/package-lock.json — 고정 잠금 파일을 받은 뒤 npm ci --ignore-scripts --prefix $DOTFILES/$project"
+    elif npm ci --ignore-scripts --no-fund --prefix "$DOTFILES/$project"; then
+      success "npm 고정 도구 설치 완료: $project"
+    else
+      warn "npm 도구 설치 실패 — 수동 실행: npm ci --ignore-scripts --prefix $DOTFILES/$project"
+    fi
+  done
 else
   warn "npm 없음 — npm 전역 패키지 건너뜀 (brew install node 후 install.sh 재실행)"
 fi
