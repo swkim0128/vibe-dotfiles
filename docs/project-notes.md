@@ -44,6 +44,29 @@ Mac **시스템·터미널 인프라** 원클릭 dotfiles. `./install.sh` 단독
 - `autocmds.lua`: VimEnter/FocusGained 시 **한→영 자동전환(im-select)**, CSV csvview 자동, 저장 시 줄끝 공백 제거(md 제외)
 - 커스텀 플러그인: conform.nvim(자동포맷), render-markdown, lazygit, csvview, nvim-tree
 
+### 2026-11-13 Neovim 읽기 전용 점검
+
+기존 `Helix_도입조사_PHP53_및_실사용_2026-11-13.md`의 기능 대응·Kotlin 서버 차이·CSV 이슈 조사를 재사용했다. Yazi 팝업·Helix 배경 변경 `eb2d7df`는 유지한다. 아래는 현재 개인 기기의 설정·설치 파일을 읽은 결과이며 Neovim 실행·테스트·doctor·벤치마크·업데이트는 하지 않았다.
+
+설치된 `~/.config/nvim/lua`는 이 저장소 `nvim/lua`의 심링크다. 설치본 `lazy-lock.json`의 31개 항목은 각 플러그인 checkout HEAD와 모두 일치했다. 다만 부트스트랩 `init.lua`와 잠금 파일은 이 저장소의 관리·설치 대상이 아니므로 새 기기에서 같은 구성을 재현한다는 보장은 없다. 최신 upstream 유지보수 상태나 각 checkout의 로컬 수정 여부까지 감사한 결과는 아니다.
+
+| 우선순위·구분 | 파일 근거와 현재 상태 | 개선 효과·부작용·미확인 |
+|---|---|---|
+| P1 설정상 문제 — Kotlin | `nvim/lua/configs/lspconfig.lua:9`는 없는 `~/.local/share/nvim/mason/bin/kotlin-lsp`를 고정한다. 실제 실행 파일은 `/opt/homebrew/bin/kotlin-lsp`다. | 기존 실행 파일을 찾도록 연결하면 서버 시작 경로가 맞는다. 서버·JDK·프로젝트 호환성은 별도이며 실제 연결은 미검증. Helix 기본 `kotlin-language-server`와 같은 서버라고 취급하지 않는다. |
+| P1 설정상 문제 — 주석 | `nvim/lua/mappings.lua:13`의 네 매핑은 `Comment.api`를 호출하나 사용자·NvChad 플러그인 선언, 잠금·설치 목록에 해당 모듈이 없다. NvChad 기본 `Space /`는 내장 `gcc`/`gc`를 사용한다. | 추가 플러그인 없이 같은 내장 동작에 연결할 수 있다. 일반·비주얼 모드의 선택 범위와 터미널 `Ctrl+/` 전달은 실제 확인이 필요하다. `Ctrl+/`·`Ctrl+_` 두 표기는 호환용이며 그 자체를 결함으로 보지 않는다. |
+| P1 연결 누락 — LSP·formatter | 설치된 `NvChad/lua/nvchad/configs/mason.lua`는 `PATH="skip"`이다. Mason bin에는 black·stylua·php-cs-fixer만 있고 현재 셸 PATH에서는 세 도구와 lua-language-server·HTML/CSS 서버·php를 찾지 못했다. Intelephense·Prettier는 Homebrew 경로에서 발견했다. php-cs-fixer wrapper도 `php`를 호출한다. | 필요한 서버와 formatter의 경로·실행 런타임을 명시하면 기능을 예측하기 쉽다. Mason PATH 전체를 앞에 넣으면 프로젝트·mise 실행 파일보다 우선할 수 있으므로 범위를 정해야 한다. 실행 중 Neovim PATH·프로젝트 로컬 실행 파일·실제 LSP attach는 미확인이다. |
+| P1 설정상 위험 — 저장·PHP 경계 | `configs/conform.lua:7`·`:11`은 PHP를 포함해 저장 시 500ms 포맷과 LSP fallback을 적용한다. `autocmds.lua:23`은 Markdown 외 모든 파일의 줄끝 공백을 지운다. `configs/lspconfig.lua`에는 PHP 5.3 대상 설정이 없고 기존 버전 명시 포맷 경로와 연결되지 않았다. | 프로젝트·파일형식·인코딩별 저장 정책을 정하면 레거시 파일의 의도치 않은 변경을 줄인다. 제외한 파일은 수동 정리가 필요하다. 인코딩 감지 목록은 저장·formatter·서버의 무손실 보장이 아니며 실제 손상 발생은 확인하지 않았다. 프로젝트별 설정도 이번 조사 대상 밖이다. |
+| P2 키 충돌 — 완성 호출 | `herdr/config.toml:7`의 Ctrl+Space 접두 키와 설치된 `NvChad/.../configs/cmp.lua:19`의 수동 완성 호출이 같다. | Herdr 접두 키 또는 완성 호출 키 중 한쪽만 조정할 수 있다. 다른 도구의 Ctrl+Space 사용에도 영향을 줄 수 있으며 실제 입력 전달은 미검증이다. |
+| P2 재현성·선택 개선 | `manifests/common.conf`는 Neovim lua 디렉터리만 연결한다. `mappings.lua:75`의 Miller 동작은 CSV 입력으로 고정돼 TSV 표시 지원과 범위가 다르다. `autocmds.lua:9`의 im-select는 현재 PATH에서 미발견이다. | 부트스트랩·잠금 관리, TSV 처리/제한, 입력기 전환 의존성을 각각 선택해 보완할 수 있다. 잠금 관리에는 업데이트 절차, TSV에는 구분자 보존, 입력기 변경에는 사용 습관을 고려해야 한다. 이번에 설치·수정하지 않았다. |
+
+사용자 `Alt+i`는 NvChad 기본 매핑을 큰 창으로 의도적으로 덮어쓴다. `Space cf`/`:Format`과 기본 `Space fm`은 같은 formatter의 별도 수동 진입점이며, 중복 실행 증거는 없다. `Space cf`는 비동기·명시적 범위 처리, `Space fm`은 기본 동기 경로여서 무조건 하나를 삭제하지 않는다. NvChad와 사용자 conform 선언도 동일 플러그인 설정을 병합하는 구조다. 설치된 Conform은 `lsp_fallback=true`를 `lsp_format="fallback"`으로 처리하므로 외부 formatter와 LSP를 항상 연속 호출한다는 해석은 맞지 않는다. 수동 포맷 뒤 저장하면 별도의 저장 포맷은 다시 실행될 수 있다.
+
+LSP 완성 capabilities·LuaSnip 확장·nvim-cmp의 LSP/snippet/buffer/Lua/path 소스와 진단 표시는 NvChad 기본 설정에 연결돼 있다. 설정 연결을 실제 완성·진단 성공으로 보고하지 않는다. 현재 소스에서 별도 LSP 저장 포맷 훅은 발견하지 않았다.
+
+병행 사용은 단순 UTF-8 편집·탐색에서 Helix를 시험하고, LuaSnip 모음·Markdown 렌더링·CSV 가상 표·Miller 가공·고정 트리·Diffview 이력·접기가 필요한 작업은 Neovim에 남기는 순서가 적절하다. gitsigns·Diffview·lazygit은 변경 구간·리뷰·Git 조작이라는 역할 차이가 있어 겹치는 메뉴만으로 제거하지 않는다. CSV 렌더링의 기존 재현·가설은 [기존 이슈 초안](csvview-issue-draft.md)을 재사용하며 재현을 반복하지 않았다. 현재 느림의 측정 근거가 없으므로 플러그인 수나 nvim-tree 제한시간만으로 성능 결함을 판정하지 않는다.
+
+우선 변경 후보는 Kotlin 실행 경로·주석 매핑·필요 실행 파일 연결·레거시 저장 정책이다. 실제 변경 범위는 사용자와 정한 뒤 적용한다. Yazi와 기존 Helix 인스턴스, Neovim 제품 설정은 이번 점검에서 변경하지 않았다.
+
 ## 5. vibe-tools/ — 셸 스크립트
 | 파일 | 역할 |
 |------|------|
