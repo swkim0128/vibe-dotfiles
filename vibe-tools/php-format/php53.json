@@ -1,5 +1,6 @@
 {
   "phpVersion": "5.3",
+  "braceStyle": "1tbs",
   "tabWidth": 4,
   "useTabs": false,
   "endOfLine": "auto"

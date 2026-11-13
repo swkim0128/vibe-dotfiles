@@ -1,1 +1,1 @@
-/Users/eunsol/Project/vibe-ai-config/shared/scripts/tmux-suite/pane-wait.sh
+/Users/eunsol/Project/vibe-ai-config/scripts/tmux-suite/pane-wait.sh
