@@ -1,1 +1,1 @@
-/Users/eunsol/Project/vibe-ai-config/shared/scripts/tmux-suite/my-tools.sh
+/Users/eunsol/Project/vibe-ai-config/scripts/tmux-suite/my-tools.sh

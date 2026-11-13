@@ -1,1 +1,1 @@
-/Users/eunsol/Project/vibe-ai-config/shared/scripts/tmux-suite/test-personal-session-routing.py
+/Users/eunsol/Project/vibe-ai-config/scripts/tmux-suite/test-personal-session-routing.py
