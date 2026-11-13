@@ -3,5 +3,6 @@
   "terminal": "ghostty",
   "multiplexer": "herdr",
   "herdr_session": "default",
-  "notifications": "auto"
+  "notifications": "auto",
+  "terminology": {"aliases": {"work_panel": ["패널"]}}
 }
