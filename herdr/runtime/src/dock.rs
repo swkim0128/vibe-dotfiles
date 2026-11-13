@@ -53,7 +53,7 @@ pub(super) fn read(base: &Path) -> String {
     let Ok(saved) = saved else { return string(labels, "failed"); };
     if saved["ok"] == false { return string(labels, "failed"); }
     if saved["ok"] != true { return string(labels, "unknown"); }
-    if saved["badges"].as_str().is_none() || saved["display"].as_str().is_none() {
+    if saved["badges"].as_str().is_none() {
         return string(labels, "failed");
     }
     let age = now() - saved["last_success_at"].as_f64().unwrap_or(0.0);
@@ -61,5 +61,9 @@ pub(super) fn read(base: &Path) -> String {
         return string(labels, "stale");
     }
     if saved["badges"].as_str() == Some("") { return string(labels, "empty"); }
-    plain(&string(&saved, "display"), config["display_max_chars"].as_u64().unwrap_or(24) as usize)
+    let badges = string(&saved, "badges").lines()
+        .filter_map(|line| line.split_once('='))
+        .map(|(name, count)| format!("{name}:{count}"))
+        .collect::<Vec<_>>().join(" ");
+    plain(&badges, usize::MAX)
 }

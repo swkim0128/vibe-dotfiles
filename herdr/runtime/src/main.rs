@@ -638,6 +638,7 @@ fn render_view(
     date: &str,
     style: &Value,
     subagents: Option<&str>,
+    notification_offset: usize,
 ) -> Result<()> {
     use crossterm::{cursor, execute, terminal};
     let (width, height) = terminal::size()?;
@@ -660,7 +661,18 @@ fn render_view(
         for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
             let (text, color) = match row.as_str() {
                 Some("subagents") => (subagents.unwrap_or_default().to_owned(), string(&style["subagents"], "color")),
-                Some("notifications") => (notifications.to_owned(), string(style, "notifications")),
+                Some("notifications") => {
+                    let text = if unicode_width::UnicodeWidthStr::width(notifications) > width {
+                        let mut used = 0;
+                        let text = notifications.chars().skip(notification_offset)
+                            .take_while(|c| {
+                                used += c.width().unwrap_or(0);
+                                used <= width.saturating_sub(2)
+                            }).collect::<String>();
+                        format!("↔ {text}")
+                    } else { notifications.to_owned() };
+                    (text, string(style, "notifications"))
+                }
                 Some("metrics_datetime") => {
                     let metrics = format!(
                         "{} {} {}",
@@ -737,6 +749,7 @@ fn view(args: &[String]) -> Result<()> {
     let mut scope = options.as_ref().and_then(|(parent, url)|
         own_pane.as_deref().and_then(|pane| subagent_scope(parent, pane, url).ok()));
     let mut opted_in = options.is_some();
+    let mut notification_offset = 0;
     struct Screen;
     impl Drop for Screen {
         fn drop(&mut self) {
@@ -776,7 +789,8 @@ fn view(args: &[String]) -> Result<()> {
             format!("알림 {notifications}")
         };
         let date = quick("date", &["+%Y-%m-%d %H:%M:%S"]).unwrap_or("시각 미확인".into());
-        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref())?;
+        notification_offset = notification_offset.min(notifications.chars().count().saturating_sub(1));
+        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if event::poll(deadline.saturating_duration_since(Instant::now()))? {
@@ -794,7 +808,16 @@ fn view(args: &[String]) -> Result<()> {
                         return Ok(())
                     }
                     Event::Resize(_, _) => {
-                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref())?
+                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press
+                        && matches!(key.code, KeyCode::Left | KeyCode::Right | KeyCode::Home) => {
+                        notification_offset = match key.code {
+                            KeyCode::Left => notification_offset.saturating_sub(1),
+                            KeyCode::Right => (notification_offset + 1).min(notifications.chars().count().saturating_sub(1)),
+                            _ => 0,
+                        };
+                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?
                     }
                     _ => (),
                 }
