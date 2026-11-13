@@ -21,6 +21,12 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 검증: `cargo clippy --locked --manifest-path herdr/runtime/Cargo.toml -- -D warnings`, `python3 -B tests/test_herdr_display.py`. 기존 Python 검사는 HUD 검증 계약과 이관 전 동작을 확인한다. 실제 Rust 실행·설정 검사·reload는 Herdr 안의 기존 제어 셸에서 수행한다.
 
+## Yazi 팝업과 Helix 배경
+
+`Ctrl+b` 또는 `Ctrl+Space`를 누른 뒤 `Alt+e`를 누르면 현재 작업 폴더에서 Yazi가 중앙 80% 크기의 팝업으로 열린다. `q`로 종료하면 원래 화면으로 돌아온다. Herdr 내장 팝업을 사용하므로 탭 분할을 추가하지 않는다. 기본 `prefix+e`의 스크롤백 편집 기능은 유지한다. 정본은 `herdr/config.toml`이며 적용은 실행 중인 Herdr 셸에서 `herdr server reload-config`로 한다. 키 입력과 실제 화면 복귀는 별도 사용 확인이 필요하다. [Herdr 공식 설정 안내](https://herdr.dev/tui/docs/configuration/#custom-command-keybindings)
+
+Helix 정본은 `helix/config.toml`과 `helix/themes/catppuccin_mocha_terminal.toml`이다. 공통 `helix_config` 단계가 두 파일을 `~/.config/helix/` 아래 같은 구조로 연결하고 기존 파일은 타임스탬프 백업으로 보존한다. 내장 Mocha를 상속하고 편집 영역의 글자색만 지정해 터미널 기본 배경을 사용한다. 메뉴·상태줄·선택 색상은 내장 테마를 따른다. Helix 25.07.1의 [테마 병합](https://github.com/helix-editor/helix/blob/25.07.1/helix-view/src/theme.rs#L125)과 [깊이별 교체](https://github.com/helix-editor/helix/blob/25.07.1/helix-loader/src/lib.rs#L175)에 따라 `ui.background` 항목 전체가 교체되므로 상속한 `bg`가 남지 않는다. 새 Helix 실행부터 적용되며 이미 열린 편집기는 사용자가 `:config-reload`로 반영할 수 있다.
+
 ## Dock 알림의 환경별 독립 실행
 
 공통 원샷 `bin/dock-badges.sh`의 인자 없는 호출은 cmux가 쓰던 global 캐시 계약을 유지한다. `--slack`은 stdout만 반환하며 캐시를 바꾸지 않는다. tmux와 Herdr는 각각 `--backend tmux`, `--backend herdr`를 명시해 캐시·상태·잠금·PID 경로를 분리한다. 기본 cache root는 `~/.cache/vibe`이고 `VIBE_CACHE_DIR`로 바꿀 수 있다. 하위 경로·파일명·TTL·표시 문구·collector 설치 경로는 `vibe-tools/dock-badges.json`에 정의하며 Rust는 빌드에 포함한다. JSON 변경은 Rust 재빌드가 필요하다.

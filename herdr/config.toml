@@ -19,6 +19,14 @@ navigate_pane_up = ["k", "ㅏ"]
 navigate_pane_right = ["l", "ㅣ"]
 
 [[keys.command]]
+key = "prefix+alt+e"
+type = "popup"
+command = "yazi"
+width = "80%"
+height = "80%"
+description = "Yazi 파일 탐색기"
+
+[[keys.command]]
 key = "prefix+i"
 type = "plugin_action"
 command = "vibe.top-alert.bar"

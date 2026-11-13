@@ -1,0 +1,4 @@
+inherits = "catppuccin_mocha"
+
+# 상속 스타일 전체를 교체해 글자색만 유지하고 터미널 기본 배경을 사용한다.
+"ui.background" = { fg = "text" }

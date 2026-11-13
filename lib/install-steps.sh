@@ -290,6 +290,11 @@ mkdir -p "$HOME/.config/nvim"
 install_declared_links nvim_config
 }
 
+install_helix_config() {
+info "Helix 테마 설정 적용 중..."
+install_declared_links helix_config
+}
+
 install_mise_config() {
 # ── 8-1. mise 전역 설정 (전역 런타임 버전 — mise 설치는 1단계 Brewfile) ──────
 info "mise 전역 설정 적용 중..."
