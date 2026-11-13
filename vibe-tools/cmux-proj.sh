@@ -19,9 +19,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cmux-lib.sh disable=SC1091
 source "$SCRIPT_DIR/cmux-lib.sh"
+cmux_route "$@"
 CONFIG="$SCRIPT_DIR/cmux-projects.txt"
 # 메인 pane 에서 실행할 AI CLI (vibe.sh 와 같은 이름). 창 이름 claude 는 다른 스크립트가 의존 — 유지.
 VIBE_TOOL="${VIBE_TOOL:-claude}"
+VIBE_TOOL_COMMAND="$(cmux_agent_command "$VIBE_TOOL")"
 
 NAME="${1:-}"
 
@@ -143,7 +145,7 @@ if [[ "$create_new" == true ]]; then
       tmux new-session -d -s "$name" -n main -c "$path"
       tmux send-keys -t "$name:main" 'nvim .' Enter
       tmux split-window -h -l 30% -t "$name:main" -c "$path"
-      tmux send-keys -t "$name:main" "$VIBE_TOOL" Enter
+      tmux send-keys -t "$name:main" "$VIBE_TOOL_COMMAND" Enter
       tmux select-pane -L -t "$name:main"
       tmux new-window -t "$name" -n review -c "$path"
       tmux send-keys -t "$name:review" 'lazygit' Enter
@@ -156,7 +158,7 @@ if [[ "$create_new" == true ]]; then
       run_personal_startup
       tmux send-keys -t "$name:main" 'nvim .' Enter
       tmux split-window -h -l 30% -t "$name:main" -c "$path"
-      tmux send-keys -t "$name:main" "$VIBE_TOOL" Enter
+      tmux send-keys -t "$name:main" "$VIBE_TOOL_COMMAND" Enter
       tmux select-pane -L -t "$name:main"
       tmux select-window -t "$name:main"
       layout_desc='main(nvim+claude) 단일 창'
@@ -164,7 +166,7 @@ if [[ "$create_new" == true ]]; then
     personal)
       tmux new-session -d -s "$name" -n claude -c "$hub_path"
       run_personal_startup
-      tmux send-keys -t "$name:claude" "$VIBE_TOOL" Enter
+      tmux send-keys -t "$name:claude" "$VIBE_TOOL_COMMAND" Enter
       tmux new-window -t "$name" -n edit -c "$hub_path"
       tmux send-keys -t "$name:edit" 'nvim .' Enter
       tmux select-window -t "$name:claude"

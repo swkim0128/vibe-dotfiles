@@ -17,6 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cmux-lib.sh disable=SC1091
 source "$SCRIPT_DIR/cmux-lib.sh"
+cmux_route "$@"
 
 NAME=""
 KILL_SESSION=false

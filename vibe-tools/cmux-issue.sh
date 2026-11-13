@@ -45,6 +45,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cmux-lib.sh disable=SC1091
 source "$SCRIPT_DIR/cmux-lib.sh"
+cmux_route "$@"
 CONFIG="$SCRIPT_DIR/cmux-projects.txt"
 
 # 이슈 워크스페이스 시각 마커 (앰버) — 등록 프로젝트 색과 구분

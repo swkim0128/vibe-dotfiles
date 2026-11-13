@@ -17,6 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cmux-lib.sh disable=SC1091
 source "$SCRIPT_DIR/cmux-lib.sh"
+cmux_route "$@"
 CONFIG="$SCRIPT_DIR/cmux-projects.txt"
 
 # $1=name → "path|color|desc" (path 의 $HOME 전개). 미등록 시 return 1.

@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 # cmux-lib.sh — cmux 런처 공통 헬퍼 (cmux-proj/dual/ops/review 가 source). 직접 실행용 아님.
 
+# 외부 하네스가 있으면 선택기에서 이 진입점의 지원 여부를 먼저 판단한다.
+cmux_route() {
+  local runtime="${VIBE_TOOLS_DIR:-$HOME/.config/vibe-tools}/terminal_runtime.py" result
+  if [[ -r "$runtime" ]]; then
+    if "${VIBE_ROUTE_PYTHON:-python3}" "$runtime" entrypoint "$(basename "${BASH_SOURCE[1]}")" "$@"; then
+      exit 0
+    else
+      result=$?
+    fi
+    [[ "$result" == 10 ]] || exit "$result"
+  fi
+}
+
+cmux_agent_command() {
+  local runtime="${VIBE_TOOLS_DIR:-$HOME/.config/vibe-tools}/terminal_runtime.py"
+  if [[ -r "$runtime" ]]; then
+    printf '%q ' "${VIBE_ROUTE_PYTHON:-python3}" "$runtime" terminal launch "$1"
+  else
+    printf '%q' "$1"
+  fi
+}
+
 # 머신로컬 오버레이(.local.txt) 를 기본 설정보다 먼저 병합. 주석/빈줄 제외 후 name(첫 필드) 기준 dedup, 첫 등장(=로컬) 우선. 로컬 부재해도 정상.
 cmux_merged_config() {
   local config="$1"
