@@ -243,14 +243,34 @@ if ! mise exec -- cargo build --locked --release --manifest-path "$DOTFILES/herd
   return 1
 fi
 install_declared_links herdr_config
-if command -v herdr >/dev/null; then
-  herdr plugin link "$DOTFILES/herdr/plugins/top-alert"
+success "Herdr 파일 배포 완료 — 실행 중인 화면 반영은 아래 결과를 확인하세요."
+if ! command -v herdr >/dev/null; then
+  warn "Herdr CLI 없음 — 화면 미적용. Herdr 안의 실행 셸에서 설치기를 다시 실행하세요: bash \"$DOTFILES/install.sh\" $MODE"
+elif [[ ! -S "${HERDR_SOCKET_PATH:-}" || -z "${HERDR_TAB_ID:-}" ]]; then
+  warn "현재 Herdr 소켓·탭 문맥 없음 — 실행 중인 세션은 변경하지 않았습니다."
+  info "적용할 Herdr 탭의 실행 셸에서 다음 명령을 순서대로 실행하세요:"
+  printf '    herdr plugin link "%s/herdr/plugins/top-alert"\n' "$DOTFILES"
+  echo '    herdr server reload-config'
+  echo '    ~/.config/herdr/vibe-herdr bar ensure --current'
+elif ! herdr plugin link "$DOTFILES/herdr/plugins/top-alert"; then
+  warn "Herdr 플러그인 등록 실패 — 화면 미적용. 현재 탭의 실행 셸에서 재실행: bash \"$DOTFILES/install.sh\" $MODE"
+elif ! herdr server reload-config; then
+  warn "Herdr 설정 reload 실패 — TUI 배치를 보류했습니다. 현재 탭의 실행 셸에서 재실행: herdr server reload-config"
+  echo '    ~/.config/herdr/vibe-herdr bar ensure --current'
+elif "$HOME/.config/herdr/vibe-herdr" bar ensure --current; then
+  success "현재 Herdr 설정 reload·하단 TUI 배치 완료 (기존 작업 프로세스 보존)."
+else
+  warn "Herdr 설정은 reload했지만 하단 TUI 배치 미완료 — 위 오류와 복구 명령을 확인하세요."
+  echo '    ~/.config/herdr/vibe-herdr bar ensure --current'
 fi
+warn "기존 TUI를 재사용한 경우 실행 중인 바이너리 변경 반영은 미확인입니다. 공식 부모가 연결된 Codex pane에서 명시 교체: ~/.config/herdr/vibe-herdr bar ensure --current --parent-current --relaunch"
+warn "Herdr 본체 높이 패치는 자동 설치하지 않습니다. 목표 높이 오류가 나면 $DOTFILES/herdr/patches/README.md의 본체 반영 절차가 필요합니다."
 }
 
 install_hammerspoon_config() {
 info "Hammerspoon 알림 설정 적용 중..."
 install_declared_links hammerspoon_config
+warn "Hammerspoon 파일 배포 완료·실행 중 반영 미확인 — Hammerspoon을 실행하고 메뉴의 Reload Config를 선택하세요."
 }
 
 install_vibe_tools() {

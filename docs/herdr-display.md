@@ -1,6 +1,10 @@
 # Herdr 화면 표시
 
-`herdr/config.toml`과 표시 실행기는 공통 `herdr_config` 단계에서 `~/.config/herdr/`에 파일별 심링크로 배포한다. `herdr/runtime/`의 Rust 실행기를 `cargo build --locked --release`로 빌드한 뒤 `vibe-herdr`를 연결한다. Cargo는 공통 mise 설정의 Rust에서 제공한다. HUD adapter에는 Python 3.11 이상이 필요하다. 기존 Herdr 제어 셸에서 `herdr config check`, `herdr server reload-config`로 적용한다.
+`herdr/config.toml`과 표시 실행기는 공통 `herdr_config` 단계에서 `~/.config/herdr/`에 파일별 심링크로 배포한다. `herdr/runtime/`의 Rust 실행기를 `cargo build --locked --release`로 빌드한 뒤 `vibe-herdr`를 연결한다. Cargo는 공통 mise 설정의 Rust에서 제공한다. HUD adapter에는 Python 3.11 이상이 필요하다.
+
+설치는 파일 배포 뒤 실행 중인 화면 반영까지 시도한다. 실제 `HERDR_SOCKET_PATH` 소켓과 `HERDR_TAB_ID`가 있는 Herdr 실행 셸에서 설치하면 해당 서버의 플러그인을 등록하고 `herdr server reload-config`, `~/.config/herdr/vibe-herdr bar ensure --current`를 순서대로 실행한다. 현재 탭의 기존 작업 프로세스·분할을 보존하며 하단 TUI를 만들거나 재사용한다. 문맥이 없으면 기본 세션을 선택하지 않고 후속 명령을 출력한다. 플러그인 등록·reload 실패 시 다음 반영은 보류하고, TUI 배치 실패는 파일 배포와 구분해 경고한다. 설치 종료가 모든 실행 중 화면의 반영 완료를 뜻하지는 않는다.
+
+재사용한 TUI는 실행 중인 바이너리를 유지하므로 새 실행기 변경 반영은 미확인으로 보고한다. 공식 부모가 연결된 Codex pane에서 `~/.config/herdr/vibe-herdr bar ensure --current --parent-current --relaunch`로 명시 교체할 수 있다. 설치는 부모 대화를 추정하거나 AI CLI를 다시 실행하지 않는다. Herdr 본체 높이 패치도 자동 설치하지 않으며, 목표 높이를 지원하지 않으면 해당 TUI 배치는 미완료로 남는다.
 
 시스템 지표·Dock 알림·시각은 하단 상태 TUI에서 확인하고, AI pane 제목에는 경로·브랜치·모델·작업 제목을 보고한다. workspace·tab·pane 이름과 agent의 `working/blocked/done/idle/unknown` 상태는 sidebar에서 확인한다. workspace마다 반복되던 시스템 지표 행은 제거했으며 공용 sys_* metadata 갱신은 유지한다. `done`은 Herdr의 관측 상태이며 요청 큐의 완료 상태를 뜻하지 않는다.
 
@@ -33,7 +37,7 @@ Hammerspoon과 로컬 Herdr 플러그인 `vibe.top-alert`로 완료·응답 필�
 - 실행: `vibe-herdr notify`가 `pane.agent_status_changed` 이벤트의 `done`·`blocked`만 Hammerspoon 로컬 IPC에 전달하고, `hammerspoon/herdr-alert.lua`가 canvas로 알림을 그린다. 이벤트 문자열은 Lua의 십진 byte escape로 전달하며 stdin을 닫고 5초 제한과 UUID 응답 검사를 적용한다. `hs`는 PATH 또는 사용자·공용 Applications에서 찾는다. 가로 중앙을 유지하고 메뉴 막대 아래 작업 영역에서 JSON의 `position.topMargin`(기본 16px)만큼 내려 표시한다. 완료는 초록 4초, 응답 필요는 노랑 8초다. 새 알림은 이전 알림을 대체한다.
 - 표시 내용: 스페이스, pane ID, 에이전트, 보고된 작업 제목. 셸에서 문구를 실행하거나 에이전트 입력을 전송하지 않는다. `blocked`는 Herdr가 보고한 응답 필요 상태이며 질문·실행 승인 유형을 별도로 판독하지 않는다.
 - 카드 구성은 Herdr 기본 toast의 중립 테두리와 상태 표시·보조 본문을 따른다. 글씨 13pt·여백 8px·테두리 1px로 줄이고 `● 상태`만 상태색으로 표시한다. 본문은 중립색·왼쪽 정렬이며 최대 너비 520px 안에서 한 줄로 줄인다. 상단 여백 16px와 기존 표시 시간은 유지한다. 2026-11-11 Herdr 알림 모듈만 다시 로드해 반영했고 로컬 미리보기를 한 번 호출했다. 별도 화면 캡처나 육안 품질 확인은 하지 않았다.
-- 설치: `Brewfile`에 Hammerspoon을 선언하고 `hammerspoon_config` 단계로 `~/.hammerspoon/`에 파일별 링크를 만든다. `herdr_config`는 플러그인 경로를 등록한다. 첫 설치 후 Hammerspoon을 실행해 초기 질문에 답한다. 설정을 읽으면 로그인 시 자동 실행이 활성화된다. 기존 설정 파일은 설치기의 백업 규칙을 따른다.
+- 설치: `Brewfile`에 Hammerspoon을 선언하고 `hammerspoon_config` 단계로 `~/.hammerspoon/`에 파일별 링크를 만든다. `herdr_config`는 현재 Herdr 문맥이 있을 때 플러그인 경로를 등록한다. 첫 설치 후 Hammerspoon을 실행해 초기 질문에 답한다. 설정을 읽으면 로그인 시 자동 실행이 활성화된다. 기존 설정 파일은 설치기의 백업 규칙을 따른다. 설치기는 파일 배포와 실행 중 반영을 구분하고 Hammerspoon 실행·메뉴 Reload Config 안내를 출력한다. 기존 자동 재로드 수단이 없어 실행 중 반영은 미확인으로 남긴다.
 - 설정 변경: JSON 또는 Lua 변경 후 Hammerspoon 메뉴의 Reload Config를 사용한다. 수동 시험은 `herdr plugin action invoke test --plugin vibe.top-alert`, 실행 결과는 `herdr plugin log list --plugin vibe.top-alert`로 확인한다. Hammerspoon이 종료되거나 IPC 설정 로드에 실패하면 알림은 전달되지 않으며 실패가 플러그인 로그에 남는다.
 
 이 연결은 Herdr 알림을 새로 생성한다. Slack 등 다른 앱의 기존 macOS 알림 위치를 옮기지 않는다. 외부 서비스로 데이터를 보내거나 제3자 알림 플러그인을 내려받지 않는다. 공식 동작 근거: [hs.canvas](https://www.hammerspoon.org/docs/hs.canvas.html), [hs.ipc](https://www.hammerspoon.org/docs/hs.ipc.html), [Herdr 플러그인](https://herdr.dev/tui/docs/plugins/).
@@ -50,7 +54,7 @@ herdr plugin pane open --plugin vibe.top-alert --entrypoint popup --focus
 herdr plugin pane open --plugin vibe.top-alert --entrypoint tui --placement split --target-pane <pane-id> --direction down --no-focus
 ```
 
-하단 배치는 마지막 명령으로 열고 Herdr의 크기 조절로 3~8행을 확보한다. 설치기가 pane을 자동으로 만들거나 기존 화면을 재배치하지 않는다.
+위 명령은 수동 비교용이다. 설치 시에는 현재 Herdr 탭 문맥이 있을 때 기존 `bar ensure --current`로 하단 배치를 보장한다. 문맥이 없으면 실행할 후속 명령만 안내한다.
 
 compact에서도 `view.json`의 개별 색을 적용해 CPU는 파랑, RAM은 보라, BAT는 초록으로 표시한다. 문구 길이를 먼저 제한한 뒤 색을 입혀 좁은 화면에서도 제어 코드가 잘리지 않게 한다. 기본 Herdr v0.9.5의 비율 상한 0.9에서는 전체 81행 중 하단이 외곽 8행·내부 6행으로 제한됐다. 2026-11-11 세밀한 비율 지원 패치가 반영된 서버에서 업무·개인 첫 탭의 하단을 각각 비율 0.9382716·외곽 5행·내부 3행으로 적용했다. 전체 폭과 작업 분할·Codex 프로세스를 보존했고 실제 터미널 버퍼도 공백 없이 내용 3행을 반환했다. 사용자 클라이언트의 실제 화면 연결과 API 기하 확인은 구분한다.
 
@@ -66,7 +70,7 @@ Herdr의 Codex pane에서 `prefix+i` 또는 `prefix+ㅑ`를 누르면 하단 상
 ~/.config/herdr/vibe-herdr bar ensure --tab <tab-id>
 ```
 
-`--current`는 플러그인 또는 Herdr 셸의 실제 탭 문맥이 필요하다. 문맥이 없는 셸에서는 탭 ID를 명시한다. 위치를 다시 맞출 때 같은 명령을 사용하며, 자동 실행이나 상주 감시는 하지 않는다.
+`--current`는 플러그인 또는 Herdr 셸의 실제 탭 문맥이 필요하다. 문맥이 없는 셸에서는 탭 ID를 명시한다. 위치를 다시 맞출 때 같은 명령을 사용한다. 설치 시 현재 탭에 한 번 적용하며 상주 감시는 하지 않는다.
 
 상태 TUI는 실제 실행 파일 경로와 `view` argv로 확인한다. 올바른 전체 폭 하단 배치는 작업 pane 수와 무관하게 재사용한다. 새 배치·위치 복원은 작업 pane 1~2개인 탭에서 지원하며, 임시 탭으로 프로세스를 보존해 이동한 뒤 원래 작업 분할의 방향·비율을 복원한다. terminal ID와 셸·Codex/Claude PID를 확인하고 기존 작업 pane을 닫거나 다시 실행하지 않는다. 동시 실행은 세션별 파일 잠금으로 막는다. 상태 TUI가 여러 개거나 확대된 탭·지원하지 않는 분할이면 변경 전에 중단한다. 실패 시 현재 pane 확인과 재실행 명령을 출력하고, 임시 이동한 pane이 남으면 먼저 원래 탭으로 복귀하는 구체적인 명령을 안내한다.
 
