@@ -1,10 +1,14 @@
 {
   "position": {"topMargin": 16},
   "style": {
-    "textSize": 18,
-    "radius": 12,
-    "padding": 14,
-    "strokeWidth": 2,
+    "textSize": 13,
+    "radius": 6,
+    "padding": 8,
+    "lineGap": 3,
+    "maxWidth": 520,
+    "strokeWidth": 1,
+    "strokeColor": {"hex": "#45475a"},
+    "textColor": {"hex": "#bac2de"},
     "fillColor": {"hex": "#1e1e2e", "alpha": 0.95}
   },
   "states": {

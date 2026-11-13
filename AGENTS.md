@@ -4,7 +4,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 
 본 파일은 **자기 완결적(self-contained)** 이다. 전역 룰(`~/.claude/CLAUDE-*.md`)이 없는 환경에서도 본 레포만으로 빌드·VERIFY 가능. 글로벌 룰은 상위 컨텍스트로 우선 적용되되, **부재 시 본 파일이 진실 공급원**.
 
-> **전역 규칙 항상 우선**: `~/.claude/CLAUDE.md` (라우팅 허브) + `CLAUDE-user.md` / `CLAUDE-delegation.md` 와 온디맨드 `~/.claude/sops/` (`sop_gava.md`·`sop_double_cache.md`·`sop_task_mgmt.md`·`sop_work_log.md`) 를 따른다. Subagent-First 는 글로벌에서 강제. 본 레포는 self-contained — 전역 룰 부재 환경에서도 빌드·VERIFY 가능.
+> **공용 작업 계약**: 현재 도구가 로드한 공용 지침과 `~/.agents/agent-workflow.md`를 따른다. 상세 절차는 필요한 `~/.agents/sops/`만 읽는다. 위임은 독립 산출물·입력·쓰기 경계가 확보된 경우에 적용하며 짧은 조회와 작은 설정 변경은 메인이 처리한다. 전역 자산이 없는 환경에서는 본 레포 지침으로 작업한다.
 > 전역 KB (선택적): `${KB_PATH:-<repo>/docs/knowledge-base}` — 본 레포 내부 `docs/knowledge-base/` 자체가 SSoT 이므로 항상 존재. `<repo>` 는 본 레포 루트(`install.sh` 가 있는 디렉토리).
 
 ---
@@ -45,7 +45,7 @@ Mac 개발 환경 **시스템·터미널 인프라** 원클릭 구축 dotfiles.
 하네스 7조항 #6 준수 — 세미콜론·`&&`·`||`·파이프·`2>&1` redirect 회피. 각 명령 독립 실행.
 
 ```bash
-# 셸 스크립트 문법 검증 (필수 — 모든 .sh 변경 시)
+# 셸 스크립트 문법 검증 (별도 검증 요청의 대상 파일만)
 shellcheck install.sh
 shellcheck vibe-tools/*.sh
 

@@ -3,6 +3,9 @@
   "entrypoint": "tui",
   "placement": "split",
   "direction": "down",
-  "ratio": 0.9,
+  "target_content_rows": 3,
+  "pane_border_rows": 2,
+  "minimum_work_rows": 3,
+  "ratio_limits": {"min": 0.01, "max": 0.99},
   "temporary_tab_label": "status-bar-move"
 }

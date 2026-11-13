@@ -15,3 +15,5 @@ openspec/
 .agents/skills/openspec-*/
 # ast-grep(sg new project) 이 생성하는 프로젝트 설정
 sgconfig.yml
+# 고정 Prettier PHP 도구의 설치 의존성
+vibe-tools/php-format/node_modules/
