@@ -50,7 +50,7 @@ def dashboard_script():
             for group in groups:
                 for hook in group.get("hooks", []):
                     for word in shlex.split(hook.get("command", "")):
-                        if Path(word).name == "vibe-dashboard-hook.sh":
+                        if Path(word).name in ("vibe-dashboard-hook.sh", "vibe-dashboard-hook.py"):
                             scripts.add(Path(word).expanduser().resolve().with_name("hud_state.py"))
         if len(scripts) != 1:
             raise ValueError("HUD producer not uniquely installed")

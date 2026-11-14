@@ -134,4 +134,8 @@ compact 화면에는 남는 높이가 있을 때만 알림 바로 위에 한 줄
 
 2026-11-11 개인 대화는 해당 thread가 출력한 일회성 commentary 표식과 실제 pane 출력·PID·시작 시각·계보를 대조해 연결했다. 업무 대화는 사용자의 명시 지정 매핑과 기존 peer의 확정 쌍·현재 PID/계보·동일 공식 daemon의 정확한 loaded 참조를 대조한 연결이다. 업무 표식을 직접 관측했다는 뜻은 아니다. 두 부모 모두 다른 공식 참조가 없음을 확인한 뒤 정상 `pane.report_agent_session`을 사용했으며 가짜 SessionStart나 현재 Codex 재시작은 하지 않았다.
 
+2026-11-14 default/wA:t1 복구에서는 현재 공식 대화의 지시문·실제 p1 출력·session_meta·부모 PID16964를 대조하고, 과거 대화/PID79776이 남은 scope를 공식 `ensure --relaunch`로 교체했다. 새 하단 pN은 외곽 5행과 기존 작업 분할을 유지한다. 등록된 dashboard 훅이 Python 진입점으로 바뀐 것을 반영해 producer 탐색은 기존 `.sh`와 `.py`의 정확한 파일명을 함께 인식한다. 이 adapter는 기존 심링크로 반영되며 바이너리 빌드는 필요하지 않다.
+
+재연결 성공과 서브 조회 성공은 별개다. 이번 실제 8120 API는 부모 ID를 지정해도 scope/observation 없이 다른 대화의 과거 항목을 반환했고, 기존 Observer의 현재 공식 제어 소켓 조회는 `native_parent_not_loaded`, 이전 소켓은 `native_transport_unavailable`였다. 따라서 현재 관측 성공·서브 0개로 보고하지 않으며 하단은 조회 실패를 유지한다. 메인·다른 작업 pane은 재시작하지 않았다. 다음 조치는 실제 부모가 loaded 상태인 공식 관측 경로를 확인한 뒤 대시보드의 기존 scoped API·native_subagents 설정을 그 경로에 반영하는 것이다. 기존 서비스는 시작 시 설정을 읽으므로 파일·Git 갱신과 실행 중 반영을 구분한다.
+
 현재 두 하단에서 실제 관측을 확인했다. 개인은 `서브 실행 관측 1 · worker#e09c9b9c`, 업무는 `서브 실행 0 · 유휴 3 · 미적재 17`을 표시했다. 외곽 5행·Dock 독립 수집·부모 Codex 프로세스는 보존했다. 기존 실행파일·adapter 심링크로 필요한 release 빌드와 해당 bar 재실행만 반영했으며 테스트·린트·전체 설치·전체 회귀 검사는 수행하지 않았다.
