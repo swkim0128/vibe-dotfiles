@@ -27,6 +27,12 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 Helix 정본은 `helix/config.toml`과 `helix/themes/catppuccin_mocha_terminal.toml`이다. 공통 `helix_config` 단계가 두 파일을 `~/.config/helix/` 아래 같은 구조로 연결하고 기존 파일은 타임스탬프 백업으로 보존한다. 내장 Mocha를 상속하고 편집 영역의 글자색만 지정해 터미널 기본 배경을 사용한다. 메뉴·상태줄·선택 색상은 내장 테마를 따른다. Helix 25.07.1의 [테마 병합](https://github.com/helix-editor/helix/blob/25.07.1/helix-view/src/theme.rs#L125)과 [깊이별 교체](https://github.com/helix-editor/helix/blob/25.07.1/helix-loader/src/lib.rs#L175)에 따라 `ui.background` 항목 전체가 교체되므로 상속한 `bg`가 남지 않는다. 새 Helix 실행부터 적용되며 이미 열린 편집기는 사용자가 `:config-reload`로 반영할 수 있다.
 
+## 용어·기능 매핑 팝업
+
+`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `?`를 누르면 용어와 기능 호출 매핑을 90% 크기의 팝업으로 연다. 기존 `~/.config/vibe-tools/vibe.sh` 심볼릭 링크의 실제 위치를 기준으로 하네스의 `docs/skill-trigger-map.md` 정본을 찾아 Glow 페이저로 표시한다. 별도 사본을 만들지 않으므로 정본을 고치면 다음 팝업에 반영된다. 종료는 `q`다.
+
+Instapaper 최신화의 확정 기능명은 **저장 글 정리**, 호출 표현은 **저장 글 정리해**다. 정본의 「1.12 저장 글 정리와 개인관리 자료 조사」에서 범위와 이전 표현을 확인한다. 같은 문서 상단의 「사용자 용어와 도메인 경계」에 프로젝트·레포·작업경로, 작업공간·작업탭·작업패널 등 어제 확정한 구분도 있다. 이 팝업은 매핑을 보여주며 기능을 자동 실행하지 않는다.
+
 ## Dock 알림의 환경별 독립 실행
 
 공통 원샷 `bin/dock-badges.sh`의 인자 없는 호출은 cmux가 쓰던 global 캐시 계약을 유지한다. `--slack`은 stdout만 반환하며 캐시를 바꾸지 않는다. tmux와 Herdr는 각각 `--backend tmux`, `--backend herdr`를 명시해 캐시·상태·잠금·PID 경로를 분리한다. 기본 cache root는 `~/.cache/vibe`이고 `VIBE_CACHE_DIR`로 바꿀 수 있다. 하위 경로·파일명·TTL·표시 문구·collector 설치 경로는 `vibe-tools/dock-badges.json`에 정의하며 Rust는 빌드에 포함한다. JSON 변경은 Rust 재빌드가 필요하다.

@@ -27,6 +27,14 @@ height = "80%"
 description = "Yazi 파일 탐색기"
 
 [[keys.command]]
+key = "prefix+?"
+type = "popup"
+command = 'glow -p "$(dirname "$(readlink "$HOME/.config/vibe-tools/vibe.sh")")/../../docs/skill-trigger-map.md"'
+width = "90%"
+height = "90%"
+description = "사용자 용어·기능 호출 매핑"
+
+[[keys.command]]
 key = "prefix+i"
 type = "plugin_action"
 command = "vibe.top-alert.bar"
