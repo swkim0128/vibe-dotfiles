@@ -40,7 +40,7 @@ type = "popup"
 command = 'bash "$HOME/.config/herdr/term-map-popup.sh"'
 width = "90%"
 height = "90%"
-description = "사용자 용어·저장 글 정리 그림 지도"
+description = "사용자 용어·호출 표현 트리 지도"
 
 [[keys.command]]
 key = "prefix+i"

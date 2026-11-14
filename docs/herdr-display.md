@@ -35,13 +35,13 @@ Herdr 팝업에는 일반 패널의 `HERDR_PANE_ID`가 없다. 선택 후에는 
 
 ## 용어·기능 매핑 팝업
 
-`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `m`을 누르면 용어 매핑 그림을 90% 크기의 팝업으로 연다. 기존 `prefix+?` 사용자 바인딩은 제거해 Herdr 기본 도움말로 돌린다. `m`은 확인한 Herdr 기본·사용자 바인딩과 겹치지 않는다.
+`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `m`을 누르면 용어 매핑 트리 TUI를 90% 크기의 팝업으로 연다. `prefix+?`는 Herdr 기본 도움말을 유지한다. `m`은 확인한 Herdr 기본·사용자 바인딩과 겹치지 않는다.
 
-정본은 하네스 `docs/skill-trigger-map.md`의 「사용자 용어와 도메인 경계」·「1.12 저장 글 정리와 개인관리 자료 조사」다. 기존 `~/.config/vibe-tools/vibe.sh` 링크로 하네스 위치를 찾고, `scripts/term-map.mjs`가 해당 표·흐름·조건을 묶음별 PNG로 생성한다. 그림에는 정본의 파생임을 표시하며 정본 내용을 수정하지 않는다. 저장 위치는 `~/.cache/vibe/term-map/<내용 해시>/`이며 정본·생성기 내용이 바뀌면 다음 호출에 새 그림을 만든다. 별도 정본·복사 레지스트리는 만들지 않는다.
+정본은 하네스 `docs/skill-trigger-map.md`다. 기존 `~/.config/vibe-tools/vibe.sh` 링크로 하네스 위치를 찾고 `scripts/term-map.mjs`가 열 때 직접 읽는다. 왼쪽은 「사용자 용어와 도메인 경계」의 용어 구분, 「1.12 저장 글 정리와 개인관리 자료 조사」의 호출·조건, 「1.3 계획 / 디버깅」·「1.5 업무 관리」의 기존 작업 관리 매핑을 분류 트리로 보여준다. 오른쪽은 선택한 항목의 의미·자연어 호출 표현·기존 연결 수단과 정본을 표시한다. 별도 내용 정본이나 실행 기능은 없으며 새 기능명·재개 명령을 만들지 않는다.
 
-표시는 기존 Yazi와 Ghostty·Herdr의 Kitty graphics를 사용한다. 팝업 전용 `herdr/term-map-yazi/` 설정으로 부모 열을 숨기고 그림 미리보기에 80%, 묶음 목록에 20%를 배정한다. `↑`·`↓` 또는 `j`·`k`로 그림을 바꾸고 파일 탐색 화면의 `Esc`·`q`로 닫는다. 입력창의 기존 취소 키와 일반 Yazi 설정은 보존한다. 새 플러그인·이미지 뷰어 설치는 없으며 기존 Node·Graphviz·Yazi가 필요하다. 실제 표시 크기·한글 가독성·키 종료는 화면 사용 확인과 구분한다.
+`↑↓`·`j/k`로 선택하고 `←→`·`h/l`로 부모 분류를 접거나 펼친다. 자식에서 왼쪽을 누르면 부모로 이동한다. `PgUp/PgDn` 또는 `Shift+J/K`로 오른쪽의 긴 설명을 스크롤한다. `r`은 정본을 다시 읽으며 `Esc/q`는 닫는다. 72열보다 좁으면 위쪽 트리·아래쪽 상세로 바뀌고, 매우 작은 화면에서는 창 크기 안내를 표시한다. 종료·중단 신호에서 커서·raw 모드·대체 화면을 복구한다. Node 내장 기능만 사용하며 이미지 프로토콜·Graphviz·Yazi는 이 팝업에 필요하지 않다.
 
-설치 연결은 공통 `herdr_config` 단계의 helper·전용 Yazi 설정 두 링크다. 전체 설치 없이 그림만 갱신하려면 보이는 셸에서 `bash ~/.config/herdr/term-map-popup.sh --generate`를 실행한다. 키 설정은 Herdr 실행 셸의 `herdr server reload-config`로 반영한다. [Herdr 이미지 표시](https://herdr.dev/tui/docs/configuration/#kitty-graphics) · [Yazi 화면 비율](https://yazi-rs.github.io/docs/configuration/yazi/#ratio)
+설치 연결은 공통 `herdr_config` 단계의 `~/.config/herdr/term-map-popup.sh` 링크다. 기존 PNG용 Yazi 설정과 링크 선언은 제거하며 과거 사용자 캐시는 삭제하지 않는다. 수동 실행은 보이는 셸에서 `bash ~/.config/herdr/term-map-popup.sh`로 한다. 키 설정은 Herdr 실행 셸의 `herdr server reload-config`로 반영한다. 실제 화면 표시와 키 조작·리사이즈 검증은 구분해 보고한다.
 
 Instapaper 최신화의 확정 기능명은 **저장 글 정리**, 호출 표현은 **저장 글 정리해**다. 정본의 「1.12 저장 글 정리와 개인관리 자료 조사」에서 범위와 이전 표현을 확인한다. 같은 문서 상단의 「사용자 용어와 도메인 경계」에 프로젝트·레포·작업경로, 작업공간·작업탭·작업패널 등 어제 확정한 구분도 있다. 이 팝업은 매핑을 보여주며 기능을 자동 실행하지 않는다.
 

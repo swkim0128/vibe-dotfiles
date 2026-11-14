@@ -1,8 +1,0 @@
-[mgr]
-ratio = [0, 2, 8]
-sort_by = "natural"
-show_hidden = false
-
-[preview]
-max_width = 2400
-max_height = 1800
