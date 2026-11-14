@@ -31,6 +31,8 @@ Helix 정본은 `helix/config.toml`과 `helix/themes/catppuccin_mocha_terminal.t
 
 `Ctrl+b` 또는 `Ctrl+Space` 뒤에 `f`를 누르면 기존 프로젝트 선택기를 중앙 80% × 60% 팝업으로 연다. `sessionizer-paths.txt`의 기존 검색 범위와 fzf 선택 함수를 재사용하며, 선택하면 현재 Herdr 작업공간에 해당 경로의 별도 셸 탭을 연다. 취소하면 새 탭을 만들지 않는다. AI CLI나 편집기는 자동 실행하지 않으며 기존 작업 패널·분할은 유지한다. 호출은 기존 `vibe fzf --window`이며 tmux의 같은 명령은 기존 동작을 유지한다. 설정 reload 뒤 단축키·선택·취소의 실제 동작은 사용하며 확인한다.
 
+Herdr 팝업에는 일반 패널의 `HERDR_PANE_ID`가 없다. 선택 후에는 공식 `HERDR_ACTIVE_PANE_ID`·`HERDR_ACTIVE_TAB_ID`·`HERDR_ACTIVE_WORKSPACE_ID`를 같은 소켓의 실제 패널 목록과 대조해 원래 작업공간을 확인한다. 일반 패널 문맥을 가정하면 선택 화면은 열려도 탭 생성 단계에서 중단된다. 문맥이 없거나 달라지면 다른 작업공간을 추정하지 않고 생성하지 않는다.
+
 ## 용어·기능 매핑 팝업
 
 `Ctrl+b` 또는 `Ctrl+Space` 뒤에 `?`를 누르면 용어와 기능 호출 매핑을 90% 크기의 팝업으로 연다. 기존 `~/.config/vibe-tools/vibe.sh` 심볼릭 링크의 실제 위치를 기준으로 하네스의 `docs/skill-trigger-map.md` 정본을 찾아 Glow 페이저로 표시한다. 별도 사본을 만들지 않으므로 정본을 고치면 다음 팝업에 반영된다. 종료는 `q`다.
