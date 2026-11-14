@@ -16,7 +16,7 @@
 #
 # 🔴 정리·회고 규칙은 본 스크립트에 없다 — 정본은 스킬·도메인 문서다:
 #   ~/.agents/skills/notion-weekly-retrospective/SKILL.md (KPT 회고 — Claude·Codex 공용 배포본)
-#   $PARA_VAULT/02.Areas/07.개인관리/04.일정.md · 01.다이어리.md · 05.프로젝트.md
+#   $PARA_VAULT/02.Areas/01.개인관리/04.일정.md · 01.다이어리.md · 05.프로젝트.md
 #   $PARA_VAULT/.agents/rules/two-devices.md 「기록 정본」
 #   워커는 그 규칙을 읽게 하는 실행기일 뿐이므로, 규칙 본문을 여기에 옮겨 적지 말 것.
 #
@@ -71,7 +71,7 @@ ISO_WEEK="$(date +%G-W%V)"
 # 이번 ISO 주 월요일·일요일 (BSD date -v 상대 조정)
 WEEK_START="$(date -v-"$((DOW_NUM - 1))"d +%F)"
 WEEK_END="$(date -v+"$((7 - DOW_NUM))"d +%F)"
-PERSONAL_DIR="${PARA_DIR}/02.Areas/07.개인관리"
+PERSONAL_DIR="${PARA_DIR}/02.Areas/01.개인관리"
 TWO_DEVICES_RULE="${PARA_DIR}/.agents/rules/two-devices.md"
 RETRO_SKILL="${HOME}/.agents/skills/notion-weekly-retrospective/SKILL.md"
 CODEX_MODEL="${CODEX_MODEL:-gpt-6.1-sol}"
