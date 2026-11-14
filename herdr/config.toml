@@ -35,12 +35,12 @@ height = "60%"
 description = "프로젝트 선택"
 
 [[keys.command]]
-key = "prefix+?"
+key = "prefix+m"
 type = "popup"
-command = 'glow -p "$(dirname "$(readlink "$HOME/.config/vibe-tools/vibe.sh")")/../../docs/skill-trigger-map.md"'
+command = 'bash "$HOME/.config/herdr/term-map-popup.sh"'
 width = "90%"
 height = "90%"
-description = "사용자 용어·기능 호출 매핑"
+description = "사용자 용어·저장 글 정리 그림 지도"
 
 [[keys.command]]
 key = "prefix+i"

@@ -35,7 +35,13 @@ Herdr 팝업에는 일반 패널의 `HERDR_PANE_ID`가 없다. 선택 후에는 
 
 ## 용어·기능 매핑 팝업
 
-`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `?`를 누르면 용어와 기능 호출 매핑을 90% 크기의 팝업으로 연다. 기존 `~/.config/vibe-tools/vibe.sh` 심볼릭 링크의 실제 위치를 기준으로 하네스의 `docs/skill-trigger-map.md` 정본을 찾아 Glow 페이저로 표시한다. 별도 사본을 만들지 않으므로 정본을 고치면 다음 팝업에 반영된다. 종료는 `q`다.
+`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `m`을 누르면 용어 매핑 그림을 90% 크기의 팝업으로 연다. 기존 `prefix+?` 사용자 바인딩은 제거해 Herdr 기본 도움말로 돌린다. `m`은 확인한 Herdr 기본·사용자 바인딩과 겹치지 않는다.
+
+정본은 하네스 `docs/skill-trigger-map.md`의 「사용자 용어와 도메인 경계」·「1.12 저장 글 정리와 개인관리 자료 조사」다. 기존 `~/.config/vibe-tools/vibe.sh` 링크로 하네스 위치를 찾고, `scripts/term-map.mjs`가 해당 표·흐름·조건을 묶음별 PNG로 생성한다. 그림에는 정본의 파생임을 표시하며 정본 내용을 수정하지 않는다. 저장 위치는 `~/.cache/vibe/term-map/<내용 해시>/`이며 정본·생성기 내용이 바뀌면 다음 호출에 새 그림을 만든다. 별도 정본·복사 레지스트리는 만들지 않는다.
+
+표시는 기존 Yazi와 Ghostty·Herdr의 Kitty graphics를 사용한다. 팝업 전용 `herdr/term-map-yazi/` 설정으로 부모 열을 숨기고 그림 미리보기에 80%, 묶음 목록에 20%를 배정한다. `↑`·`↓` 또는 `j`·`k`로 그림을 바꾸고 파일 탐색 화면의 `Esc`·`q`로 닫는다. 입력창의 기존 취소 키와 일반 Yazi 설정은 보존한다. 새 플러그인·이미지 뷰어 설치는 없으며 기존 Node·Graphviz·Yazi가 필요하다. 실제 표시 크기·한글 가독성·키 종료는 화면 사용 확인과 구분한다.
+
+설치 연결은 공통 `herdr_config` 단계의 helper·전용 Yazi 설정 두 링크다. 전체 설치 없이 그림만 갱신하려면 보이는 셸에서 `bash ~/.config/herdr/term-map-popup.sh --generate`를 실행한다. 키 설정은 Herdr 실행 셸의 `herdr server reload-config`로 반영한다. [Herdr 이미지 표시](https://herdr.dev/tui/docs/configuration/#kitty-graphics) · [Yazi 화면 비율](https://yazi-rs.github.io/docs/configuration/yazi/#ratio)
 
 Instapaper 최신화의 확정 기능명은 **저장 글 정리**, 호출 표현은 **저장 글 정리해**다. 정본의 「1.12 저장 글 정리와 개인관리 자료 조사」에서 범위와 이전 표현을 확인한다. 같은 문서 상단의 「사용자 용어와 도메인 경계」에 프로젝트·레포·작업경로, 작업공간·작업탭·작업패널 등 어제 확정한 구분도 있다. 이 팝업은 매핑을 보여주며 기능을 자동 실행하지 않는다.
 
