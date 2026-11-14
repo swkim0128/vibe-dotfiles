@@ -27,6 +27,10 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 Helix 정본은 `helix/config.toml`과 `helix/themes/catppuccin_mocha_terminal.toml`이다. 공통 `helix_config` 단계가 두 파일을 `~/.config/helix/` 아래 같은 구조로 연결하고 기존 파일은 타임스탬프 백업으로 보존한다. 내장 Mocha를 상속하고 편집 영역의 글자색만 지정해 터미널 기본 배경을 사용한다. 메뉴·상태줄·선택 색상은 내장 테마를 따른다. Helix 25.07.1의 [테마 병합](https://github.com/helix-editor/helix/blob/25.07.1/helix-view/src/theme.rs#L125)과 [깊이별 교체](https://github.com/helix-editor/helix/blob/25.07.1/helix-loader/src/lib.rs#L175)에 따라 `ui.background` 항목 전체가 교체되므로 상속한 `bg`가 남지 않는다. 새 Helix 실행부터 적용되며 이미 열린 편집기는 사용자가 `:config-reload`로 반영할 수 있다.
 
+## 프로젝트 선택 팝업
+
+`Ctrl+b` 또는 `Ctrl+Space` 뒤에 `f`를 누르면 기존 프로젝트 선택기를 중앙 80% × 60% 팝업으로 연다. `sessionizer-paths.txt`의 기존 검색 범위와 fzf 선택 함수를 재사용하며, 선택하면 현재 Herdr 작업공간에 해당 경로의 별도 셸 탭을 연다. 취소하면 새 탭을 만들지 않는다. AI CLI나 편집기는 자동 실행하지 않으며 기존 작업 패널·분할은 유지한다. 호출은 기존 `vibe fzf --window`이며 tmux의 같은 명령은 기존 동작을 유지한다. 설정 reload 뒤 단축키·선택·취소의 실제 동작은 사용하며 확인한다.
+
 ## 용어·기능 매핑 팝업
 
 `Ctrl+b` 또는 `Ctrl+Space` 뒤에 `?`를 누르면 용어와 기능 호출 매핑을 90% 크기의 팝업으로 연다. 기존 `~/.config/vibe-tools/vibe.sh` 심볼릭 링크의 실제 위치를 기준으로 하네스의 `docs/skill-trigger-map.md` 정본을 찾아 Glow 페이저로 표시한다. 별도 사본을 만들지 않으므로 정본을 고치면 다음 팝업에 반영된다. 종료는 `q`다.
