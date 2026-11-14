@@ -23,7 +23,7 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 ## Yazi 팝업과 Helix 배경
 
-`Ctrl+b` 또는 `Ctrl+Space`를 누른 뒤 `Alt+e`를 누르면 현재 작업 폴더에서 Yazi가 중앙 80% 크기의 팝업으로 열린다. `q`로 종료하면 원래 화면으로 돌아온다. Herdr 내장 팝업을 사용하므로 탭 분할을 추가하지 않는다. 기본 `prefix+e`의 스크롤백 편집 기능은 유지한다. 정본은 `herdr/config.toml`이며 적용은 실행 중인 Herdr 셸에서 `herdr server reload-config`로 한다. 키 입력과 실제 화면 복귀는 별도 사용 확인이 필요하다. [Herdr 공식 설정 안내](https://herdr.dev/tui/docs/configuration/#custom-command-keybindings)
+`Ctrl+b` 또는 `Ctrl+Space`를 누른 뒤 `Tab`을 누르면 현재 작업 폴더에서 Yazi가 중앙 80% 크기의 팝업으로 열린다. `q`로 종료하면 원래 화면으로 돌아온다. Herdr 내장 팝업을 사용하므로 탭 분할을 추가하지 않는다. 기본 `prefix+e`의 스크롤백 편집 기능은 유지한다. 정본은 `herdr/config.toml`이며 적용은 실행 중인 Herdr 셸에서 `herdr server reload-config`로 한다. 사용자가 기존 팝업 동작을 확인했으며, 2026-11-14 선택한 새 단축키의 실제 입력은 미검증이다. [Herdr 공식 설정 안내](https://herdr.dev/tui/docs/configuration/#custom-command-keybindings)
 
 Helix 정본은 `helix/config.toml`과 `helix/themes/catppuccin_mocha_terminal.toml`이다. 공통 `helix_config` 단계가 두 파일을 `~/.config/helix/` 아래 같은 구조로 연결하고 기존 파일은 타임스탬프 백업으로 보존한다. 내장 Mocha를 상속하고 편집 영역의 글자색만 지정해 터미널 기본 배경을 사용한다. 메뉴·상태줄·선택 색상은 내장 테마를 따른다. Helix 25.07.1의 [테마 병합](https://github.com/helix-editor/helix/blob/25.07.1/helix-view/src/theme.rs#L125)과 [깊이별 교체](https://github.com/helix-editor/helix/blob/25.07.1/helix-loader/src/lib.rs#L175)에 따라 `ui.background` 항목 전체가 교체되므로 상속한 `bg`가 남지 않는다. 새 Helix 실행부터 적용되며 이미 열린 편집기는 사용자가 `:config-reload`로 반영할 수 있다.
 

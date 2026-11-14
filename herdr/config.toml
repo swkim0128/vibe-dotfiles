@@ -19,7 +19,7 @@ navigate_pane_up = ["k", "ㅏ"]
 navigate_pane_right = ["l", "ㅣ"]
 
 [[keys.command]]
-key = "prefix+alt+e"
+key = "prefix+tab"
 type = "popup"
 command = "yazi"
 width = "80%"
