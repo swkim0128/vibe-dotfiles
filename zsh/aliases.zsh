@@ -23,15 +23,13 @@ alias lg="lazygit"
 unalias gco 2>/dev/null
 function gco() {
   local branch
-  branch=$(git branch --sort=-committerdate -a \
-    | sed 's/^[* ]*//' \
-    | sed 's|remotes/origin/||' \
-    | grep -v '^HEAD' \
-    | awk '!seen[$0]++' \
+  branch=$(git for-each-ref --sort=-committerdate \
+    --format='%(refname:lstrip=2)%09%(HEAD)%09%(worktreepath)' refs/heads/ \
+    | awk -F '\t' '$2 == "*" || $3 == "" { print $1 }' \
     | fzf --height=50% --reverse --border \
           --prompt="브랜치 전환: " \
           --preview='git log --oneline --color=always -10 {} 2>/dev/null')
-  [[ -n "$branch" ]] && git checkout "$branch"
+  [[ -n "$branch" ]] && git checkout --no-guess "$branch"
 }
 
 unalias gbd 2>/dev/null
