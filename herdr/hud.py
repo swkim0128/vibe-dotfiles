@@ -225,11 +225,12 @@ def subagents(scope):
             or view["terminal_id"] != scope["view_terminal"]
             or parent["terminal_id"] != scope["parent_terminal"]
             or parent["tab_id"] != view["tab_id"]
-            or parent["workspace_id"] != view["workspace_id"]
-            or parent.get("agent_session") != scope["parent_session"]):
+            or parent["workspace_id"] != view["workspace_id"]):
         raise ScopeError("TUI scope changed")
     if not parent.get("agent_session"):
         return {"state": "parent_unbound"}
+    if parent["agent_session"] != scope["parent_session"]:
+        raise ScopeError("parent conversation changed")
     scope["_phase"] = "parent_identity"
     try:
         harness, native, pid, stamp = identity(parent)

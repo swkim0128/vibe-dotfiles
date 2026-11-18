@@ -124,7 +124,9 @@ API 주소는 `--api-url <URL>` > `VIBE_SUBAGENTS_API_URL` > 기존 등록 produ
 
 새 bar에는 socket 옆 `*.vibe-subagents-<socket-inode>-<pane-id>.json` 파일을 `0600`·덮어쓰기 금지로 만든다. 파일에는 대상 TUI와 부모 pane·terminal·PID·부모 프로세스 시작 시각·공식 session 참조를 고정하며 토큰·요청 원문을 넣지 않는다. TUI는 본인 pane·프로세스에 해당하는 파일만 읽고, socket 세대나 어느 식별자라도 바뀌면 연결을 거부한다. 정상적인 q/Esc 종료 시 본인이 읽은 파일을 지운다. 강제 종료 뒤 파일이 남아도 다른 TUI PID나 새 socket에는 재사용하지 않는다. 남은 파일을 자동 청소하거나 다른 TUI에 배포하지 않는다.
 
-공식 session이 없으면 `서브 부모 대화 미연결`, API 오류·읽기 실패이면 `서브 조회 실패`, scope가 달라지면 `서브 연결 불일치`로 구분한다. 정확한 전체 부모 ID를 받는 `/api/subagents.json?session_id=…&internal=1`의 scope와 개별 항목을 대조하며, 실패 시 전역 조회나 과거 HUD 원장으로 돌아가지 않는다. 부모 CLI의 계보·PID·시작 시각과 TUI terminal·socket을 조회 전후 다시 확인한다. 연결 뒤 다른 대화로 자동 재결합하지 않는다. 공식 session 참조가 나중에 생겼거나 실행 프로세스가 바뀌었다면 명시적으로 다시 열어야 한다. 새 pane의 TUI 프로세스가 아직 준비되지 않았을 때도 scope 설치를 중단하며 자동 재시도하지 않는다.
+공식 session이 없으면 `서브 부모 대화 미연결`, API 오류·읽기 실패이면 `서브 조회 실패`, scope가 달라지면 `서브 연결 불일치`로 구분한다. 기존 scope에 과거 대화 참조가 있어도 현재 부모 참조가 없으면, pane·terminal·socket 검증 뒤 `서브 부모 대화 미연결`로 표시한다. 현재 참조가 존재하면서 scope와 다른 경우에는 연결 불일치를 유지한다. 정확한 전체 부모 ID를 받는 `/api/subagents.json?session_id=…&internal=1`의 scope와 개별 항목을 대조하며, 실패 시 전역 조회나 과거 HUD 원장으로 돌아가지 않는다. 부모 CLI의 계보·PID·시작 시각과 TUI terminal·socket을 조회 전후 다시 확인한다. 연결 뒤 다른 대화로 자동 재결합하지 않는다. 공식 session 참조가 나중에 생겼거나 실행 프로세스가 바뀌었다면 명시적으로 다시 열어야 한다. 새 pane의 TUI 프로세스가 아직 준비되지 않았을 때도 scope 설치를 중단하며 자동 재시도하지 않는다.
+
+현재 목록을 보려면 대시보드의 기기별 설정에서도 `[native_subagents] enabled = true`가 필요하다. 설정 반영 후 해당 부모 범위 API가 `kind: codex-app-server`, `parent_loaded: true`, `complete: true`를 반환하는지 확인한다. API 조회 성공과 Herdr의 pane↔대화 연결은 별개다. plain `codex` 또는 공유 daemon에서 공식 SessionStart가 정확한 소유권을 입증하지 못하면 부모 연결은 보류된다. 현재 지원 경로에는 실행 중 대화를 임의로 재연결하는 명령이 없으므로, active/cwd 일치만으로 대화를 보고하거나 scope를 직접 고치지 않는다.
 
 현재 관측은 공식 Codex app-server에서 loaded 부모의 직접 자식을 전부 조회한 응답을 사용한다. `kind=codex-app-server`, `complete=true`, `parent_loaded=true`와 coverage를 확인하고 실제 조회 시각 `observed_at`으로 신선도를 판정한다. native `active`만 실행 관측, `idle`은 유휴, `notLoaded`는 미적재로 표시하며 완료로 추정하지 않는다. 이 완전한 현재 관측에서만 `서브 실행 0`을 확정한다. 과거 lifecycle 목록이 비어 있는 것은 `서브 현재 관측 없음`으로 표시한다. 마지막 lifecycle 이벤트가 오래됐다는 이유만으로 장기 실행 목록을 숨기지 않는다.
 
