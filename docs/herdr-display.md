@@ -21,6 +21,26 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 검증: `cargo clippy --locked --manifest-path herdr/runtime/Cargo.toml -- -D warnings`, `python3 -B tests/test_herdr_display.py`. 기존 Python 검사는 HUD 검증 계약과 이관 전 동작을 확인한다. 실제 Rust 실행·설정 검사·reload는 Herdr 안의 기존 제어 셸에서 수행한다.
 
+## 개인용 빠른 실행 버튼
+
+하단 TUI의 알림 행 오른쪽에 `이어서 진행`·`변경 설명`·`코드 리뷰`·`검증`·`상황 저장` 버튼을 표시한다. 알림은 왼쪽의 남은 폭을 사용하며 기존 좌우 스크롤로 전체 내용을 읽을 수 있다. 기존 서브·자원·시각 행과 pane 높이·분할은 유지한다. 버튼 다섯 개와 알림 최소 폭이 함께 들어가지 않으면 `[a 동작]`만 표시한다.
+
+버튼은 마우스 클릭으로 요청을 접수한다. `a` 또는 `Tab`을 누르면 동작 화면이 열리고 `Tab`·`Shift+Tab`·좌우 방향키로 선택한 뒤 `Enter`로 접수할 수 있다. 동작 화면에서 `Esc`는 상태 화면으로 돌아가며, 상태 화면의 `q`·`Esc`는 기존대로 TUI를 닫는다. 좁은 화면에서는 선택 항목 주변의 표시 가능한 버튼만 그리며, 숨은 항목이나 리사이즈 전 좌표로는 접수하지 않는다. 접수 상태·실패 사유가 길면 상태 화면으로 돌아와 알림 행의 좌우 스크롤로 읽는다.
+
+버튼 이름과 전달 문구는 `herdr/runtime/view.json`의 `actions.buttons`에 둔다. 이 파일은 기존 표시 설정처럼 Rust 빌드에 포함되므로 문구 변경도 재빌드와 해당 TUI의 명시 재실행 뒤 반영된다. 실행 중인 화면에 JSON 저장만으로 반영되는 동적 설정은 아니다.
+
+사용자가 버튼을 누르면 TUI의 기존 부모 scope를 기준으로 공식 Codex 대화 UUID, 실제 pane·terminal·socket 세대, TUI·부모 CLI PID와 시작 시각·프로세스 계보·cwd를 다시 확인한다. 확인 후 `codex queue --thread <UUID> --message <문구> -C <확인한 cwd>`를 argv 배열로 한 번 호출한다. 이는 사용자가 누른 버튼의 입력 접수이며 에이전트 간 전달 경로를 바꾸지 않는다. `--resume`·패널 키입력·자동 재전송은 사용하지 않는다. 접수 중 중복 클릭을 막고, 성공은 `접수됨`으로 표시한다. 접수 성공은 실행·작업 완료를 뜻하지 않는다.
+
+부모 연결이 없거나 달라지면 발신하지 않고 Codex 패널에서 사용할 `~/.config/herdr/vibe-herdr bar ensure --current --parent-current --relaunch`를 안내한다. 기존 scope를 직접 고치거나 대화를 추정하지 않는다. 버튼의 연결 확인은 서브 목록 API의 성공 여부와 별개이며 TUI 자체의 Herdr 문맥을 사용한다. Codex 도구 셸에 `HERDR_*`가 없다는 이유만으로 연결을 대신 만들지 않는다. 현재 부모의 공식 `agent_session`이 없다면 버튼은 사용할 수 없으며, 과거 scope나 대시보드의 현재 부모 조회 성공만으로 이를 해제하지 않는다.
+
+## plain codex 시작별 문맥 전달
+
+`zsh/aliases.zsh`의 `codex` 함수는 입력 인자를 그대로 `vibe terminal launch codex`에 넘긴다. 기존 런처가 현재 터미널의 실제 문맥을 확인한 뒤 해당 실행에 필요한 환경변수와 소켓 설정을 전달하며, 함수는 provider 분기·고정 ID·환경변수 복사 로직을 갖지 않는다. 런처는 PATH의 실제 Codex 실행파일을 찾으므로 셸 함수를 다시 호출하지 않는다. `--help`·`--version` 등 문맥이 필요 없는 유지관리 호출은 기존 런처의 예외를 따른다.
+
+정본을 불러오는 새 Zsh부터 `codex`·`codex resume ...`에 적용된다. 이미 열린 셸은 사용자가 `source ~/Project/vibe-dotfiles/zsh/aliases.zsh`로 함수를 다시 읽은 뒤 사용할 수 있다. 이번 구현에서는 셸 재로드·Codex 시작을 실행하지 않았다. 명시적으로 기존 실행파일을 사용할 때는 `command codex ...`로 함수를 우회한다. 이 경로는 시작별 문맥을 전달하지 않으므로 문맥 없는 셸에서 런처를 대신 사용한 것과 같다고 볼 수 없다.
+
+이미 실행 중인 Codex·공유 daemon·현재 대화에는 소스 수정으로 환경변수가 소급 적용되지 않는다. 시작별 변수 전달은 SessionStart가 정확한 대화 소유권을 입증하는 것과도 별개다. 공유 daemon에서 공식 연결을 입증하지 못하는 경우의 부모 연결 보류와 기존 검증을 유지한다.
+
 ## Yazi 팝업과 Helix 배경
 
 `Ctrl+b` 또는 `Ctrl+Space`를 누른 뒤 `Tab`을 누르면 현재 작업 폴더에서 Yazi가 중앙 80% 크기의 팝업으로 열린다. 파일 탐색 화면에서 `q` 또는 `Esc`로 종료하면 원래 화면으로 돌아온다. 검색·이름 변경 등의 입력창에서 `Esc`는 기존 취소 동작을 유지한다. Herdr 내장 팝업을 사용하므로 탭 분할을 추가하지 않는다. 기본 `prefix+e`의 스크롤백 편집 기능은 유지한다. 팝업 정본은 `herdr/config.toml`이며 적용은 실행 중인 Herdr 셸에서 `herdr server reload-config`로 한다. Yazi 키맵 정본은 `yazi/keymap.toml`이며 `~/.config/yazi/keymap.toml`에 연결한다. 이 키맵은 일반 셸에서 실행한 Yazi에도 적용되며 다음 Yazi 실행부터 읽힌다. 사용자가 2026-11-14 새 단축키와 팝업 동작을 확인했다. 이후 추가한 `Esc` 종료는 실제 입력 미검증이다. [Herdr 공식 설정 안내](https://herdr.dev/tui/docs/configuration/#custom-command-keybindings) · [Yazi 공식 키맵 안내](https://yazi-rs.github.io/docs/configuration/keymap)

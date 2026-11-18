@@ -47,6 +47,12 @@ function gbd() {
 # vibe-ai-config/claude-config/plugins/tmux-suite/install.sh 가 등록한다.
 # (해당 install.sh 가 ~/.zshrc 에 source 라인을 멱등 추가)
 
+# 현재 터미널 문맥을 기존 런처가 시작별로 전달한다.
+unalias codex 2>/dev/null
+function codex() {
+  command vibe terminal launch codex "$@"
+}
+
 # ── cmux per-project 워크스페이스 런처 ────────────────
 cmux-proj() { bash "$HOME/.config/vibe-tools/cmux-proj.sh" "$@"; }
 # cmux 듀얼-프로젝트 워크스페이스 런처

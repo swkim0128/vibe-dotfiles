@@ -16,6 +16,7 @@ use unicode_width::UnicodeWidthChar;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod bar;
 mod dock;
+mod actions;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -639,7 +640,8 @@ fn render_view(
     style: &Value,
     subagents: Option<&str>,
     notification_offset: usize,
-) -> Result<()> {
+    actions: &actions::Actions,
+) -> Result<Vec<actions::Hit>> {
     use crossterm::{cursor, execute, terminal};
     let (width, height) = terminal::size()?;
     execute!(
@@ -647,6 +649,8 @@ fn render_view(
         cursor::MoveTo(0, 0),
         terminal::Clear(terminal::ClearType::All)
     )?;
+    if actions.open { return actions.overlay(output, width, height); }
+    let mut action_hits = Vec::new();
     if height <= 8 {
         let width = usize::from(width).saturating_sub(2);
         let mut rows = style["compact"]["rows"]
@@ -659,15 +663,26 @@ fn render_view(
         }
         let visible = rows.len().min(usize::from(height));
         for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
+            let y = if style["compact"]["align"] == "bottom" {
+                height - visible as u16 + index as u16
+            } else if style["compact"]["align"] == "edges" && index + 1 == visible {
+                height - 1
+            } else {
+                index as u16
+            };
+            let (notification_width, buttons, hits) = if row == "notifications" {
+                actions.bar(width as u16, y)
+            } else { (width as u16, String::new(), Vec::new()) };
             let (text, color) = match row.as_str() {
                 Some("subagents") => (subagents.unwrap_or_default().to_owned(), string(&style["subagents"], "color")),
                 Some("notifications") => {
-                    let text = if unicode_width::UnicodeWidthStr::width(notifications) > width {
+                    let notification_width = usize::from(notification_width);
+                    let text = if unicode_width::UnicodeWidthStr::width(notifications) > notification_width {
                         let mut used = 0;
                         let text = notifications.chars().skip(notification_offset)
                             .take_while(|c| {
                                 used += c.width().unwrap_or(0);
-                                used <= width.saturating_sub(2)
+                                used <= notification_width.saturating_sub(2)
                             }).collect::<String>();
                         format!("↔ {text}")
                     } else { notifications.to_owned() };
@@ -702,15 +717,8 @@ fn render_view(
                 }
                 _ => return Err("unknown compact row".into()),
             };
-            let y = if style["compact"]["align"] == "bottom" {
-                height - visible as u16 + index as u16
-            } else if style["compact"]["align"] == "edges" && index + 1 == visible {
-                height - 1
-            } else {
-                index as u16
-            };
             execute!(output, cursor::MoveTo(0, y))?;
-            let mut text = plain(&text, width);
+            let mut text = plain(&text, if row == "notifications" { usize::from(notification_width) } else { width });
             if row == "metrics_datetime" {
                 for (key, style_key) in [
                     ("sys_cpu", "cpu"),
@@ -727,6 +735,12 @@ fn render_view(
                 }
             }
             write!(output, "\x1b[{color}m{text}\x1b[0m")?;
+            if !buttons.is_empty() {
+                let x = hits.first().map(|hit| hit.start).unwrap_or(0);
+                execute!(output, cursor::MoveTo(x, y))?;
+                write!(output, "{buttons}")?;
+                action_hits.extend(hits);
+            }
         }
     } else {
         let subagents_line = subagents.map(|text| format!("\x1b[{}m  {}\x1b[0m\r\n", string(&style["subagents"], "color"), plain(text, usize::from(width).saturating_sub(2)))).unwrap_or_default();
@@ -734,15 +748,23 @@ fn render_view(
             string(values,"sys_cpu"),string(values,"sys_ram"),string(values,"sys_battery"),
             heading=string(style,"heading"),notifications_style=string(style,"notifications"),
             cpu=string(style,"cpu"),ram=string(style,"ram"),battery=string(style,"battery"),hint=string(style,"hint"))?;
+        let row = height - 1;
+        let (_, buttons, hits) = actions.bar(width, row);
+        if !buttons.is_empty() {
+            execute!(output, cursor::MoveTo(hits.first().map(|hit| hit.start).unwrap_or(0), row))?;
+            write!(output, "{buttons}")?;
+            action_hits.extend(hits);
+        }
     }
     output.flush()?;
-    Ok(())
+    Ok(action_hits)
 }
 
 fn view(args: &[String]) -> Result<()> {
-    use crossterm::event::{Event, KeyCode, KeyEventKind};
+    use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton, MouseEventKind};
     use crossterm::{cursor, event, execute, terminal};
     let style: Value = serde_json::from_str(include_str!("../view.json"))?;
+    let mut actions = actions::Actions::new(&style["actions"])?;
     let options = view_options(args)?;
     let own_pane = view_pane();
     let scope_file = own_pane.as_deref().and_then(|pane| scope_path(pane).ok());
@@ -754,13 +776,13 @@ fn view(args: &[String]) -> Result<()> {
     impl Drop for Screen {
         fn drop(&mut self) {
             let _ = terminal::disable_raw_mode();
-            let _ = execute!(io::stdout(), cursor::Show, terminal::LeaveAlternateScreen);
+            let _ = execute!(io::stdout(), DisableMouseCapture, cursor::Show, terminal::LeaveAlternateScreen);
         }
     }
     terminal::enable_raw_mode()?;
     let _screen = Screen;
     let mut output = io::stdout();
-    execute!(output, terminal::EnterAlternateScreen, cursor::Hide)?;
+    execute!(output, terminal::EnterAlternateScreen, cursor::Hide, EnableMouseCapture)?;
     let cache = env::var_os("VIBE_CACHE_DIR")
         .map(PathBuf::from)
         .unwrap_or(home().join(".cache/vibe"));
@@ -789,12 +811,23 @@ fn view(args: &[String]) -> Result<()> {
             format!("알림 {notifications}")
         };
         let date = quick("date", &["+%Y-%m-%d %H:%M:%S"]).unwrap_or("시각 미확인".into());
-        notification_offset = notification_offset.min(notifications.chars().count().saturating_sub(1));
-        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?;
+        let notices = if actions.message.is_empty() { notifications.clone() }
+            else { format!("{} · {notifications}", actions.message) };
+        notification_offset = notification_offset.min(notices.chars().count().saturating_sub(1));
+        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+        let mut rendered_size = terminal::size()?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
-            if event::poll(deadline.saturating_duration_since(Instant::now()))? {
+            if actions.poll() {
+                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+                rendered_size = terminal::size()?;
+            }
+            let wait = deadline.saturating_duration_since(Instant::now());
+            if event::poll(if actions.busy() { wait.min(Duration::from_millis(100)) } else { wait })? {
                 match event::read()? {
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && actions.open => {
+                        actions.close();
+                    }
                     Event::Key(key)
                         if key.kind == KeyEventKind::Press
                             && matches!(key.code, KeyCode::Char('q' | 'Q') | KeyCode::Esc) =>
@@ -808,19 +841,42 @@ fn view(args: &[String]) -> Result<()> {
                         return Ok(())
                     }
                     Event::Resize(_, _) => {
-                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?
+                        // Redraw before accepting any click at the new terminal size.
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('a') => actions.toggle(),
+                    Event::Key(key) if key.kind == KeyEventKind::Press && matches!(key.code, KeyCode::Tab | KeyCode::BackTab) =>
+                        actions.select(key.code == KeyCode::Tab),
+                    Event::Key(key) if key.kind == KeyEventKind::Press && actions.open && matches!(key.code, KeyCode::Left | KeyCode::Right) =>
+                        actions.select(key.code == KeyCode::Right),
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Enter => {
+                        if let Some(index) = actions.selected().filter(|index| action_hits.iter().any(|hit| hit.action == Some(*index))) {
+                            actions.submit(index, scope.as_ref());
+                        }
+                    }
+                    Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) => {
+                        if terminal::size()? == rendered_size {
+                            if let Some(hit) = action_hits.iter().find(|hit| hit.row == mouse.row && mouse.column >= hit.start && mouse.column < hit.end) {
+                                if let Some(index) = hit.action { actions.submit(index, scope.as_ref()); }
+                                else { actions.toggle(); }
+                            }
+                        }
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press
                         && matches!(key.code, KeyCode::Left | KeyCode::Right | KeyCode::Home) => {
+                        let notification_length = notifications.chars().count()
+                            + if actions.message.is_empty() { 0 } else { actions.message.chars().count() + 3 };
                         notification_offset = match key.code {
                             KeyCode::Left => notification_offset.saturating_sub(1),
-                            KeyCode::Right => (notification_offset + 1).min(notifications.chars().count().saturating_sub(1)),
+                            KeyCode::Right => (notification_offset + 1).min(notification_length.saturating_sub(1)),
                             _ => 0,
                         };
-                        render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset)?
                     }
                     _ => (),
                 }
+                let notifications = if actions.message.is_empty() { notifications.clone() }
+                    else { format!("{} · {notifications}", actions.message) };
+                action_hits = render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+                rendered_size = terminal::size()?;
             }
         }
     }
