@@ -1,1 +1,0 @@
-/Users/eunsol/Project/vibe-ai-config/scripts/tmux-suite/test-delegation-ledger.sh

@@ -29,7 +29,7 @@ description = "Yazi 파일 탐색기"
 [[keys.command]]
 key = "prefix+f"
 type = "popup"
-command = "~/.config/vibe-tools/vibe.sh fzf --window"
+command = "bash ~/.config/vibe-tools/vibe-terminal.sh fzf --window"
 width = "80%"
 height = "60%"
 description = "프로젝트 선택"

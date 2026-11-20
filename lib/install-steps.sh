@@ -325,7 +325,7 @@ else
 fi
 echo ""
 echo "  자세한 SoC 분담:"
-echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, vibe-tools/claude-*.sh)"
+echo "    - vibe-dotfiles      : 시스템·터미널 인프라 (tmux/nvim/zsh, vibe-terminal)"
 echo "    - 외부 AI 하네스 레포 : CLAUDE-*.md, hooks/, settings.work.json, plugins/"
 }
 

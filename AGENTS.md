@@ -83,7 +83,7 @@ tmux -L verifytest kill-server
 
 본 레포에 추가 금지: AI 스킬·에이전트·커맨드·`CLAUDE-*.md` 신설·Claude Code 훅·`settings.work.json`. 이런 자산은 별도 AI 하네스 레포로 분리.
 
-**코드 의존 0**: 본 레포 `vibe-tools/` 는 사용자 설정 데이터(`sessionizer-paths.txt`, `project-paths.txt`, `commands_*.txt`, `git-template-config.json`, `cmux-projects.txt`, `cmux-ops.txt`, `cmux-no-workspace.txt`) + 자동화 워커 3종(`overnight_worker.sh`, `notion_diary_worker.sh`, `skill_audit_worker.sh`)과 launchd plist 3종(`com.swkim0128.{overnight,notion-diary,skill-audit}.plist`) + `issue-start.sh` + cmux 정규화 런처(`cmux-lib.sh` + `cmux-proj*.sh` 6종 + 멀티 레포 이슈 런처 `cmux-issue.sh`)를 보관. tmux/CLI 통합 셸(`vibe.sh`, `claude-{send,delegate,callback,switch}.sh`, `my-tools.sh`, `vhelp.sh`, `claude-skills.sh`, `cheatsheet.md`)은 vibe-ai-config/claude-config/plugins/tmux-suite/scripts/ 가 SSoT (2026-06-02 이관, Skill Internal-Dependency Rule).
+**책임과 공개 명령**: `vibe-tools/`의 사용자 설정 데이터·워커·cmux 런처와 일반 터미널 실행기(`vibe-terminal.sh`, `terminal_runtime.py`, `terminal-backends.json`, `ghostty-open.applescript`)는 본 레포가 소유한다. `vibe-terminal`은 터미널 선택·일반 작업공간·실행 셸을 제공하고 `~/.local/bin/vibe-terminal`로 배포한다. AI 지침·위임·큐·모델 실행·용어 지도는 외부 하네스의 `vibe`가 제공한다. 서로의 소스 파일을 링크하거나 읽지 않고 공개 CLI로만 연동한다. 하네스가 없으면 일반 터미널 기능은 그대로 동작하며 AI 시작은 설치된 CLI를 직접 실행한다. 공개 계약은 [`docs/terminal-cli.md`](docs/terminal-cli.md)를 따른다.
 
 - 개인 주간 정리 워커 `personal_weekly_worker.sh` + `com.swkim0128.personal-weekly.plist`(일요일 22:00, Codex `codex exec` 실행, 초안 + KPT 회고 — 다음 주 계획은 `/personal 주간루틴` 수동)도 보관.
 - cmux 목록의 머신 로컬 오버레이 `*.local.txt` (`cmux-projects.local.txt`, `cmux-ops.local.txt`) 는 **비커밋**(gitignore) — 회사 경로 등 머신별 항목은 여기에만 등록.

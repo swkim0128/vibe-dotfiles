@@ -11,7 +11,6 @@ export EDITOR="nvim"
 # 회사컴/개인컴 양쪽에서 git pull 로 자동 동기화. 머신별 차이는 PERSONAL_PARA_ROOT 만.
 export KB_ROOT="${KB_ROOT:-$HOME/Project/vibe-dotfiles/docs/knowledge-base}"
 export PARA_PROJECTS_ROOT="${PARA_PROJECTS_ROOT:-$HOME/Project/para/01.Projects}"
-export PLUGIN_CONFIG_ROOT="${PLUGIN_CONFIG_ROOT:-$HOME/Project/vibe-ai-config/claude-config}"
 # PERSONAL_PARA_ROOT — 개인용 LLM 지식 위키 (머신별 자율 export, 기본값 없음)
 #   개인컴 예시: export PERSONAL_PARA_ROOT="$HOME/Project/personal-para"
 #   회사컴: 미설정 유지 — 이중 볼트 가드레일 자동 활성화
@@ -44,13 +43,17 @@ function gbd() {
 
 # ── Vibe Coding ───────────────────────────────────────
 # vibe/vhelp/claude-{delegate,callback,switch} alias 와 Ctrl+F 위젯은
-# vibe-ai-config/claude-config/plugins/tmux-suite/install.sh 가 등록한다.
+# AI 하네스의 별도 설치기가 등록한다.
 # (해당 install.sh 가 ~/.zshrc 에 source 라인을 멱등 추가)
 
 # 현재 터미널 문맥을 기존 런처가 시작별로 전달한다.
 unalias codex 2>/dev/null
 function codex() {
-  command vibe terminal launch codex "$@"
+  if (( $+commands[vibe] )); then
+    command vibe terminal launch codex "$@"
+  else
+    command codex "$@"
+  fi
 }
 
 # ── cmux per-project 워크스페이스 런처 ────────────────

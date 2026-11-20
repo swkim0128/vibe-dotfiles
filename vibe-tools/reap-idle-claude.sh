@@ -1,1 +1,0 @@
-/Users/eunsol/Project/vibe-ai-config/claude/plugins/tmux-suite/scripts/reap-idle-claude.sh

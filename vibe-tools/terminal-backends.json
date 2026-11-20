@@ -1,0 +1,411 @@
+{
+  "version": 1,
+  "defaults": {
+    "version": 1,
+    "terminal": "cmux",
+    "multiplexer": "tmux",
+    "herdr_session": "personal",
+    "notifications": "auto"
+  },
+  "paths": {
+    "selection_file": {
+      "env": "VIBE_TERMINAL_CONFIG",
+      "default": "{config_home}/vibe-tools/terminal-runtime.json"
+    },
+    "tools_dir": {
+      "env": "VIBE_TOOLS_DIR",
+      "default": "{config_home}/vibe-tools"
+    },
+    "state_dir": {
+      "env": "VIBE_RUNTIME_STATE_DIR",
+      "default": "{state_home}/vibe-tools"
+    }
+  },
+  "project_mappings": [
+    "cmux-projects.local.txt",
+    "cmux-projects.txt",
+    "cmux-ops.local.txt",
+    "cmux-ops.txt"
+  ],
+  "entrypoints": {
+    "cmux-proj.sh": "project_select",
+    "cmux-proj-dual.sh": "unsupported",
+    "cmux-proj-ops.sh": "unsupported",
+    "cmux-proj-review.sh": "unsupported",
+    "cmux-proj-close.sh": "unsupported",
+    "cmux-proj-pair.sh": "unsupported",
+    "cmux-issue.sh": "unsupported"
+  },
+  "tools": {
+    "ghostty": {
+      "binary": "ghostty",
+      "app_candidates": [
+        "/Applications/Ghostty.app/Contents/MacOS/ghostty",
+        "~/Applications/Ghostty.app/Contents/MacOS/ghostty"
+      ],
+      "context_env": {
+        "TERM_PROGRAM": "ghostty"
+      }
+    },
+    "cmux": {
+      "binary": "cmux",
+      "app_candidates": [
+        "/Applications/cmux.app/Contents/MacOS/cmux",
+        "~/Applications/cmux.app/Contents/MacOS/cmux"
+      ],
+      "context_env": {
+        "CMUX_WORKSPACE_ID": "*",
+        "CMUX_SURFACE_ID": "*"
+      }
+    },
+    "herdr": {
+      "binary": "herdr",
+      "app_candidates": []
+    },
+    "tmux": {
+      "binary": "tmux",
+      "app_candidates": []
+    },
+    "osascript": {
+      "binary": "osascript",
+      "app_candidates": []
+    }
+  },
+  "host_priority": [
+    "cmux",
+    "ghostty"
+  ],
+  "context_priority": [
+    "herdr",
+    "tmux"
+  ],
+  "providers": {
+    "herdr": {
+      "terminal": "ghostty",
+      "multiplexer": "herdr",
+      "execution": "native",
+      "tool": "herdr",
+      "required_tools": [
+        "ghostty",
+        "herdr"
+      ],
+      "check_tools": [
+        "osascript"
+      ],
+      "context_env": {
+        "HERDR_ENV": "1"
+      },
+      "context_keys": {
+        "pane": "HERDR_PANE_ID",
+        "workspace": "HERDR_WORKSPACE_ID",
+        "scope": "HERDR_SOCKET_PATH"
+      },
+      "command_context_keys": {
+        "pane": "HERDR_ACTIVE_PANE_ID",
+        "workspace": "HERDR_ACTIVE_WORKSPACE_ID",
+        "tab": "HERDR_ACTIVE_TAB_ID"
+      },
+      "tab_context": "HERDR_TAB_ID",
+      "launch_context": [
+        "HERDR_ENV",
+        "HERDR_SOCKET_PATH",
+        "HERDR_WORKSPACE_ID",
+        "HERDR_TAB_ID",
+        "HERDR_PANE_ID",
+        "HERDR_CONFIG_PATH"
+      ],
+      "required_context": [
+        "HERDR_ENV",
+        "HERDR_SOCKET_PATH",
+        "HERDR_WORKSPACE_ID",
+        "HERDR_TAB_ID",
+        "HERDR_PANE_ID"
+      ],
+      "socket_context": {
+        "env": "HERDR_SOCKET_PATH"
+      },
+      "prefix_current": [
+        "{binary}"
+      ],
+      "prefix_external": [
+        "{binary}",
+        "--session",
+        "{session}"
+      ],
+      "open": {
+        "runner_tool": "osascript",
+        "script": "ghostty-open.applescript",
+        "command_prefix": [
+          "/usr/bin/env"
+        ],
+        "unset_flag": "-u",
+        "unset_env": [
+          "TMUX",
+          "TMUX_PANE"
+        ],
+        "unset_prefixes": [
+          "CMUX_",
+          "HERDR_"
+        ],
+        "keep_env": [
+          "HERDR_CONFIG_PATH"
+        ],
+        "attach_argv": [
+          "{binary}",
+          "--session",
+          "{session}"
+        ]
+      },
+      "operations": {
+        "workspace_list": {
+          "argv": [
+            "workspace",
+            "list"
+          ],
+          "response": "json"
+        },
+        "pane_list": {
+          "argv": [
+            "pane",
+            "list"
+          ],
+          "response": "json"
+        },
+        "workspace_panes": {
+          "argv": [
+            "pane",
+            "list",
+            "--workspace",
+            "{workspace}"
+          ],
+          "response": "json"
+        },
+        "workspace_create": {
+          "argv": [
+            "workspace",
+            "create",
+            "--cwd",
+            "{cwd}",
+            "--label",
+            "{label}",
+            "--no-focus"
+          ],
+          "response": "json"
+        },
+        "workspace_focus": {
+          "argv": [
+            "workspace",
+            "focus",
+            "{workspace}"
+          ],
+          "response": "json"
+        },
+        "tab_list": {
+          "argv": [
+            "tab",
+            "list",
+            "--workspace",
+            "{workspace}"
+          ],
+          "response": "json"
+        },
+        "tab_create": {
+          "argv": [
+            "tab",
+            "create",
+            "--workspace",
+            "{workspace}",
+            "--cwd",
+            "{cwd}",
+            "--label",
+            "{label}",
+            "--no-focus"
+          ],
+          "response": "json"
+        },
+        "pane_layout": {
+          "argv": [
+            "pane",
+            "layout",
+            "--pane",
+            "{pane}"
+          ],
+          "response": "json"
+        },
+        "pane_move_tab": {
+          "argv": [
+            "pane",
+            "move",
+            "{pane}",
+            "--tab",
+            "{tab}",
+            "--target-pane",
+            "{target}",
+            "--split",
+            "{direction}",
+            "--ratio",
+            "{ratio}",
+            "--no-focus"
+          ],
+          "response": "json"
+        },
+        "pane_move_new_tab": {
+          "argv": [
+            "pane",
+            "move",
+            "{pane}",
+            "--new-tab",
+            "--workspace",
+            "{workspace}",
+            "--label",
+            "{label}",
+            "--no-focus"
+          ],
+          "response": "json"
+        },
+        "pane_current": {
+          "argv": [
+            "pane",
+            "current",
+            "--current"
+          ],
+          "response": "json"
+        },
+        "pane_process_info": {
+          "argv": [
+            "pane",
+            "process-info",
+            "--pane",
+            "{pane}"
+          ],
+          "response": "json"
+        },
+        "pane_read": {
+          "argv": [
+            "pane",
+            "read",
+            "{pane}",
+            "--source",
+            "recent-unwrapped",
+            "--lines",
+            "{lines}"
+          ],
+          "response": "text"
+        },
+        "pane_run": {
+          "argv": [
+            "pane",
+            "run",
+            "{pane}",
+            "{command}"
+          ],
+          "response": "empty_ack"
+        },
+        "notification": {
+          "argv": [
+            "notification",
+            "show",
+            "{title}",
+            "--body",
+            "{body}",
+            "--sound",
+            "{sound}"
+          ],
+          "response": "json"
+        }
+      }
+    },
+    "tmux": {
+      "terminal": "cmux",
+      "multiplexer": "tmux",
+      "execution": "legacy",
+      "tool": "tmux",
+      "required_tools": [
+        "cmux",
+        "tmux"
+      ],
+      "check_tools": [],
+      "context_env": {
+        "TMUX": "*",
+        "TMUX_PANE": "*"
+      },
+      "context_keys": {
+        "pane": "TMUX_PANE",
+        "scope": "TMUX"
+      },
+      "launch_context": [
+        "TMUX",
+        "TMUX_PANE",
+        "CMUX_WORKSPACE_ID",
+        "CMUX_SURFACE_ID",
+        "CMUX_SOCKET_PATH",
+        "TERM_PROGRAM"
+      ],
+      "required_context": [
+        "TMUX",
+        "TMUX_PANE"
+      ],
+      "socket_context": {
+        "env": "TMUX",
+        "separator": ","
+      },
+      "prefix_current": [
+        "{binary}"
+      ],
+      "prefix_external": [
+        "{binary}"
+      ],
+      "operations": {
+        "target_inventory": {
+          "argv": [
+            "list-panes",
+            "-a",
+            "-F",
+            "#{session_id}|#{window_id}|#{pane_id}|#{pane_left}|#{pane_top}|#{pane_pid}|#{pane_tty}|#{window_zoomed_flag}"
+          ],
+          "response": "text",
+          "separator": "|",
+          "columns": [
+            "workspace_id",
+            "tab_id",
+            "pane_id",
+            "x",
+            "y",
+            "process_id",
+            "terminal_id",
+            "zoomed"
+          ]
+        },
+        "pane_identity": {
+          "argv": [
+            "display-message",
+            "-p",
+            "-t",
+            "{pane}",
+            "#{pane_id}"
+          ],
+          "response": "text"
+        },
+        "notification_highlight": {
+          "argv": [
+            "set-window-option",
+            "-t",
+            "{pane}",
+            "window-status-style",
+            "bg=colour226,fg=colour16,bold"
+          ],
+          "response": "empty_ack"
+        },
+        "notification_message": {
+          "argv": [
+            "display-message",
+            "-t",
+            "{pane}",
+            "{title}"
+          ],
+          "response": "empty_ack"
+        }
+      }
+    }
+  }
+}

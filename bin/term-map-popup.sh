@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# 기존 하네스 설치 링크로 정본 위치를 찾는다. 개인 경로를 고정하지 않는다.
-vibe_script=$(readlink "$HOME/.config/vibe-tools/vibe.sh")
-config_root=$(cd "$(dirname "$vibe_script")/../.." && pwd)
-exec node "$config_root/scripts/term-map.mjs" "$config_root/docs/skill-trigger-map.md"
+# AI 명령 지도는 설치된 하네스의 공개 명령으로 연다.
+if ! command -v vibe >/dev/null 2>&1; then
+  printf 'AI 명령 지도에는 vibe가 필요합니다. 하네스 설치 후 실행: vibe terminal map\n' >&2
+  exit 2
+fi
+exec vibe terminal map

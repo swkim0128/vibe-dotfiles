@@ -1,1 +1,0 @@
-/Users/eunsol/Project/vibe-ai-config/scripts/tmux-suite/pane-list.sh

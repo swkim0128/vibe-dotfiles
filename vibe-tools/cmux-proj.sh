@@ -53,16 +53,9 @@ IFS='|' read -r name raw_path color desc pin_flag <<< "$MATCH"
 path="$(cmux_expand_home "$raw_path")"
 
 # 개인 허브만 origin을 확인해 공용 최신화로 연결한다. 업무 para는 그대로 둔다.
-sync_script=''
 hub_path=''
-if [[ "$name" == para || "$name" == personal ]]; then
-  config_match=$(cmux_lookup "$CONFIG" vibe-ai-config)
-  IFS='|' read -r _config_name config_path _config_rest <<< "$config_match"
-  config_path="${VIBE_AI_CONFIG_PATH:-$(cmux_expand_home "$config_path")}"
-  sync_script="$config_path/shared/scripts/git-suite/personal-git-sync.sh"
-  if [[ -f "$sync_script" ]]; then
-    hub_path=$(bash "$sync_script" --hub-path "$path") || hub_path=''
-  fi
+if [[ "$name" == para || "$name" == personal ]] && command -v vibe >/dev/null 2>&1; then
+  hub_path=$(vibe sync --hub-path "$path") || hub_path=''
   if [[ "$name" == personal && -z "$hub_path" ]]; then
     printf '오류: 개인 PARA 경로·origin 확인 필요: %s\n등록 경로: %s\n' "$path" "$CONFIG" >&2
     exit 3
@@ -71,7 +64,7 @@ fi
 
 run_personal_startup() {
   [[ -n "$hub_path" ]] || return 0
-  bash "$sync_script" --startup "$target" "$hub_path" || echo '최신화 보류 항목은 personal-sync 실행 창에서 확인하세요.' >&2
+  vibe sync --startup "$target" "$hub_path" || echo '최신화 보류 항목은 personal-sync 실행 창에서 확인하세요.' >&2
 }
 
 if [[ ! -d "$path" ]]; then
