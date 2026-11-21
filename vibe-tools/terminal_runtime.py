@@ -391,7 +391,7 @@ def peek_run(cfg, path, command):
     panes = workspace_panes(cfg, workspace)
     selected = None
     for tab in live_tabs:
-        if (type(tab.get("number")) is not int or tab["number"] <= 1
+        if (tab.get("label") != label or type(tab.get("number")) is not int or tab["number"] <= 1
                 or tab.get("pane_count") != 1 or tab.get("wspace_id", tab.get("workspace_id")) != workspace):
             continue
         candidates = [p for p in panes if p.get("tab_id") == tab.get("tab_id")]
