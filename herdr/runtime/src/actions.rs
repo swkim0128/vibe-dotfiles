@@ -27,6 +27,7 @@ struct Action {
 struct Pending {
     child: Child,
     output: Receiver<std::io::Result<Vec<u8>>>,
+    errors: Option<Receiver<std::io::Result<Vec<u8>>>>,
     started: Instant,
     label: String,
     completion: Option<(i64, String)>,
@@ -175,7 +176,7 @@ impl Actions {
                 let result = output.take(1_048_576).read_to_end(&mut bytes).map(|_| bytes);
                 let _ = sender.send(result);
             });
-            Ok(Pending { child, output: receiver, started: Instant::now(), label: item.label.clone(), completion: None })
+            Ok(Pending { child, output: receiver, errors: None, started: Instant::now(), label: item.label.clone(), completion: None })
         });
         match request {
             Ok(pending) => {
@@ -207,15 +208,22 @@ impl Actions {
                 .args(["queue", "completion-confirm", &id.to_string(), "--tool", "codex",
                     "--conversation-id", &native, "--version", version,
                     "--evidence", "TUI 상세에서 사용자가 완료 확인·목록에서 치우기를 선택", "--json"])
-                .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn()?;
+                .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
             let output = child.stdout.take().ok_or("확인 결과 출력 미확인")?;
+            let errors = child.stderr.take().ok_or("확인 오류 출력 미확인")?;
+            let (error_sender, error_receiver) = mpsc::channel();
+            thread::spawn(move || {
+                let mut bytes = Vec::new();
+                let result = errors.take(65_536).read_to_end(&mut bytes).map(|_| bytes);
+                let _ = error_sender.send(result);
+            });
             let (sender, receiver) = mpsc::channel();
             thread::spawn(move || {
                 let mut bytes = Vec::new();
                 let result = output.take(1_048_576).read_to_end(&mut bytes).map(|_| bytes);
                 let _ = sender.send(result);
             });
-            Ok(Pending { child, output: receiver, started: Instant::now(),
+            Ok(Pending { child, output: receiver, errors: Some(error_receiver), started: Instant::now(),
                 label: format!("완료 확인 #{id}"), completion: Some((id, version.to_owned())) })
         })();
         match request {
@@ -242,7 +250,14 @@ impl Actions {
                     _ => "접수 결과 미확인 · 자동 재전송하지 않음".into(),
                 }
             } else if pending.completion.is_some() {
-                format!("완료 확인 실패 · {status} · 상세를 새로 열고 결과/연결을 확인하세요 · 자동 재전송하지 않음")
+                let reason = pending.errors.as_ref()
+                    .and_then(|errors| errors.recv_timeout(Duration::from_millis(100)).ok())
+                    .and_then(std::result::Result::ok)
+                    .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+                    .and_then(|value| value["error"].as_str().map(|text|
+                        text.chars().filter(|c| !c.is_control()).take(240).collect::<String>()))
+                    .filter(|text| !text.is_empty()).unwrap_or_else(|| "구조화된 오류 사유 미확보".into());
+                format!("{} 실패 · {status} · {reason} · 상세를 새로 확인하세요 · 자동 재전송하지 않음", pending.label)
             } else {
                 format!("접수 실패 · {} · 자동 재전송하지 않음", status)
             }),
