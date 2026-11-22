@@ -3,11 +3,15 @@ require("nvchad.configs.lspconfig").defaults()
 local servers = { "html", "cssls", "intelephense" }
 vim.lsp.enable(servers)
 
--- Kotlin LSP (JetBrains 공식 kotlin-lsp, mason 설치). shopping-danuri 등 Kotlin 소스 추적용.
--- lspconfig 기본 cmd 는 intellij-server 라 mason 바이너리명(kotlin-lsp)과 달라 cmd override 필요.
-vim.lsp.config("kotlin_lsp", {
-  cmd = { vim.fn.stdpath "data" .. "/mason/bin/kotlin-lsp", "--stdio" },
-})
-vim.lsp.enable "kotlin_lsp"
+-- JetBrains Kotlin LSP: 현재 실행 환경의 설치 경로를 사용한다.
+local kotlin_lsp = vim.fn.exepath("kotlin-lsp")
+if kotlin_lsp ~= "" then
+  vim.lsp.config("kotlin_lsp", { cmd = { kotlin_lsp, "--stdio" } })
+  vim.lsp.enable "kotlin_lsp"
+else
+  vim.schedule(function()
+    vim.notify("Kotlin LSP 미시작: kotlin-lsp를 찾지 못했습니다. Neovim에서 :echo exepath('kotlin-lsp')로 실행 경로를 확인하세요.", vim.log.levels.WARN)
+  end)
+end
 
 -- read :h vim.lsp.config for changing options of lsp servers

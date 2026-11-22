@@ -10,10 +10,10 @@ map("i", "jk", "<ESC>")
 -- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")
 
 -- 주석 토글 (일반/비주얼 모드 모두 지원, 터미널 <C-_> 호환)
-map("n", "<C-/>", function() require("Comment.api").toggle.linewise.current() end, { desc = "주석 토글" })
-map("n", "<C-_>", function() require("Comment.api").toggle.linewise.current() end, { desc = "주석 토글" })
-map("v", "<C-/>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.visualmode())<CR>", { desc = "선택 영역 주석" })
-map("v", "<C-_>", "<ESC><cmd>lua require('Comment.api').toggle.linewise(vim.fn.visualmode())<CR>", { desc = "선택 영역 주석" })
+map("n", "<C-/>", "gcc", { remap = true, desc = "주석 토글" })
+map("n", "<C-_>", "gcc", { remap = true, desc = "주석 토글" })
+map("x", "<C-/>", "gc", { remap = true, desc = "선택 영역 주석" })
+map("x", "<C-_>", "gc", { remap = true, desc = "선택 영역 주석" })
 
 -- lazygit
 map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "Git: Toggle LazyGit" })
@@ -100,6 +100,12 @@ map("n", "<leader>cF", function() mlr_pipe("filter", "Filter expression (e.g. $m
 
 -- conform 수동 포맷: 변경이 없거나 저장하지 않아도 즉시 포맷
 vim.api.nvim_create_user_command("Format", function(args)
+  if require("configs.save-policy").is_legacy_encoding(0) then
+    vim.notify("레거시 인코딩의 직접 포맷을 건너뜁니다. PHP 5.3 대상임을 확인한 경우 UTF-8 캐시에 실행: bash "
+      .. vim.fn.expand("~/.config/vibe-tools/php-format.sh") .. " --config "
+      .. vim.fn.expand("~/.config/vibe-tools/php-format/php53.json") .. " --write <UTF-8-캐시-파일>", vim.log.levels.WARN)
+    return
+  end
   local range = nil
   if args.count ~= -1 then
     local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)[1]
@@ -113,6 +119,7 @@ end, { range = true, desc = "Conform: Format buffer or range" })
 
 map("n", "<leader>cf", "<cmd>Format<CR>", { desc = "Conform: Format buffer" })
 map("v", "<leader>cf", ":Format<CR>", { desc = "Conform: Format selection" })
+map("n", "<leader>fm", "<cmd>Format<CR>", { desc = "Conform: Format buffer" })
 
 -- floating terminal: 기본 NvChad 크기 오버라이드 (90% x 85%)
 map({ "n", "t" }, "<A-i>", function()

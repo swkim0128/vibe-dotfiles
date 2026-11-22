@@ -24,6 +24,7 @@ autocmd("BufWritePre", {
   pattern = "*",
   callback = function()
     if vim.bo.filetype == "markdown" then return end
+    if require("configs.save-policy").is_legacy_encoding(0) then return end
     local save_cursor = vim.fn.getpos(".")
     pcall(function() vim.cmd [[%s/\s\+$//e]] end)
     vim.fn.setpos(".", save_cursor)
