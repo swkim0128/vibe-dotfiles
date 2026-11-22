@@ -681,6 +681,9 @@ fn task_line(task: &Value, style: &Value) -> String {
 const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 
 fn stage_diagram(record: &Value, compact: bool) -> String {
+    if record["queue_status"] == "done" && record["stage_definition"] == "default" && record["stage"].is_null() {
+        return "작업 완료 · 과거 단계 기록 없음".into();
+    }
     if record["stage_definition"] != "observed" && record["stage_definition"] != "default" {
         return if record["stage_definition"] == "mismatch" { "단계 정의/실행 판본 미확인" } else { "단계 미정의" }.into();
     }
