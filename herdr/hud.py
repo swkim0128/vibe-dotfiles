@@ -378,14 +378,17 @@ def current_task(scope):
               if not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
     ordered = sorted(listed, key=lambda item: (2 if item.get("status") == "running"
                      else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
+    common_definition = next(((item.get("request_data") or {}).get("definition") for item in listed
+                              if ((item.get("request_data") or {}).get("definition") or {}).get("definition_id")
+                              == "common-workflow"), None)
     visible = ordered
     records = []
     for item in visible:
-        scope["_phase"] = "queue_show"
+        scope["_phase"] = "queue_projection"
         full = item
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
-        record = task_record(full, execution)
+        record = task_record(full, execution, common_definition if full.get("kind") == "request" else None)
         records.append(record)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
@@ -445,7 +448,8 @@ def task_record(item, execution, default_definition=None):
     stages = definition.get("stages") or []
     completed = execution.get("completed_stages") or []
     stage_ids = [entry.get("id") for entry in stages if isinstance(entry, dict)]
-    valid_definition = (bool(stage_ids) and all(isinstance(key, str) and key for key in stage_ids)
+    valid_definition = (bool(metadata.get("definition")) and bool(stage_ids)
+                        and all(isinstance(key, str) and key for key in stage_ids)
                         and len(set(stage_ids)) == len(stages)
                         and execution.get("definition_id") == definition.get("definition_id")
                         and execution.get("definition_version") == definition.get("version")
@@ -468,7 +472,7 @@ def task_record(item, execution, default_definition=None):
             flow.append({"id": key, "state": status})
     elif stage_ids and not execution:
         # Reading old records never fabricates historical stage completion.
-        flow = [{"id": key, "state": "waiting" if item.get("status") == "queued" else "unknown"}
+        flow = [{"id": key, "state": "waiting" if metadata.get("definition") and item.get("status") == "queued" else "unknown"}
                 for key in stage_ids]
     return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
             "owner_tool": item.get("owner_tool"), "owner_thread": item.get("owner_conversation_id"),

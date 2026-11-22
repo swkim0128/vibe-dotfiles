@@ -685,7 +685,8 @@ fn task_line(task: &Value, style: &Value) -> String {
 const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 
 fn stage_diagram(record: &Value, compact: bool) -> String {
-    if record["queue_status"] == "done" && matches!(record["stage_definition"].as_str(), Some("default" | "undefined")) && record["stage"].is_null() {
+    if record["queue_status"] == "done" && matches!(record["stage_definition"].as_str(), Some("default" | "undefined")) && record["stage"].is_null()
+        && record["stages"].as_array().is_none_or(Vec::is_empty) {
         return "작업 완료 · 과거 단계 기록 없음".into();
     }
     if record["queue_status"] == "queued" && record["stage_definition"] == "undefined" {
@@ -694,7 +695,7 @@ fn stage_diagram(record: &Value, compact: bool) -> String {
     if record["stage_definition"] != "observed" && record["stage_definition"] != "default" {
         return if record["stage_definition"] == "mismatch" { "단계 정의/실행 판본 미확인" } else { "단계 미정의" }.into();
     }
-    record["stages"].as_array().into_iter().flatten().map(|stage| {
+    let diagram = record["stages"].as_array().into_iter().flatten().map(|stage| {
         let id = string(stage, "id");
         let label = match id.as_str() {
             "intake" => "접수", "requirements" => "요구", "plan" => "계획", "test_design" => "테스트",
@@ -706,7 +707,10 @@ fn stage_diagram(record: &Value, compact: bool) -> String {
             Some("waiting") => ("○", "예정"), _ => ("?", "미확인"),
         };
         if compact { format!("[{mark} {label}]") } else { format!("[{mark} {label} {state}]") }
-    }).collect::<Vec<_>>().join(" → ")
+    }).collect::<Vec<_>>().join(" → ");
+    if !compact && record["stage_definition"] == "default" {
+        format!("공통 기준 · 실제 단계 기록 없음 · {diagram}")
+    } else { diagram }
 }
 
 fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
