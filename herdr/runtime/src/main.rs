@@ -680,50 +680,81 @@ fn task_line(task: &Value, style: &Value) -> String {
 
 const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 
-fn task_rows(task: &Value, style: &Value) -> Vec<(&'static str, String)> {
-    let thread = task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>();
-    let observed = task["observed_at"].as_str().unwrap_or("미확인");
-    let at = observed.get(11..19).unwrap_or(observed);
-    let record = task["records"].as_array().and_then(|records| records.first());
-    if task["state"] != "observed" || record.is_none() {
-        return vec![("현재 작업", format!("스레드 {thread} · 확인 {at}")),
-            ("목표", "연결된 작업 상세에서 확인".into()),
-            ("상태/단계", task_line(task, style)),
-            ("최근 결과", task["reason"].as_str().unwrap_or("선택된 작업 결과 미확인").into()),
-            ("다음 행동", "작업 상세에서 연결 상태와 요청 목록 확인".into())];
+fn stage_diagram(record: &Value) -> String {
+    if record["stage_definition"] != "observed" {
+        return if record["stage_definition"] == "mismatch" { "단계 정의/실행 판본 미확인" } else { "단계 미정의" }.into();
     }
-    let record = record.unwrap();
-    let freshness = match record["updated_age"].as_f64() {
-        Some(age) if age < 0.0 || age > style["task"]["stale_seconds"].as_f64().unwrap_or(60.0) => "기록 오래됨",
-        None => "기록 갱신시각 미확인",
-        _ => "최근 갱신 기록",
-    };
-    let wait = record["wait"].as_str().filter(|v| !v.is_empty());
-    let state = if let Some(reason) = wait { format!("{} · 대기: {reason}", string(record, "state")) }
-        else { string(record, "state") };
-    let next = if matches!(record["queue_status"].as_str(), Some("done" | "failed")) {
-        "종료 기록 · 후속 안내는 작업 상세에서 확인"
-    } else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
-    vec![("현재 작업", format!("#{} · 스레드 {thread} · 확인 {at} · {freshness}", record["id"])),
-        ("목표", string(record, "goal")),
-        ("상태/단계", format!("{state} · 단계 {}", record["stage"].as_str().unwrap_or("미기록"))),
-        ("최근 결과", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("현재 판본의 결과 미확인").into()),
-        ("다음 행동", next.into())]
+    record["stages"].as_array().into_iter().flatten().map(|stage| {
+        let id = string(stage, "id");
+        let label = match id.as_str() { "implement" => "구현", "verify" => "화면 확인", "publish" => "저장·배포", _ => &id };
+        let (mark, state) = match stage["state"].as_str() {
+            Some("completed") => ("✓", "완료"), Some("current") => ("●", "진행"),
+            Some("blocked") => ("Ⅱ", "대기"), Some("failed") => ("!", "실패"),
+            Some("waiting") => ("○", "예정"), _ => ("?", "미확인"),
+        };
+        format!("[{mark} {label} {state}]")
+    }).collect::<Vec<_>>().join(" → ")
 }
 
-fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize) -> Result<()> {
+fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
+    let position = task["records"].as_array().and_then(|records| records.iter().position(|r| r["id"].as_i64() == selected)).unwrap_or(0);
+    let page_size = usize::from(body_height.saturating_sub(2)).max(1);
+    position / page_size * page_size
+}
+
+fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
-    let mut lines = vec![format!("스레드: {}", string(task, "thread")),
+    let columns = usize::from(width);
+    let title = format!("작업 목록 · 스레드 {} · 확인 {} · ↑↓ 선택 / Enter·클릭 상세{}",
+        task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
+        task["observed_at"].as_str().unwrap_or("미확인"), if task["limited"] == true { " · 최근12건" } else { "" });
+    write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
+    if task["state"] != "observed" || task["records"].as_array().is_none_or(Vec::is_empty) {
+        if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", plain("연결/작업 기록 미확인 · t 상세에서 확인", columns))?; }
+        return Ok(());
+    }
+    let goal_width = (columns / 3).min(64);
+    let diagram_width = columns.saturating_sub(goal_width + 30);
+    let cell = |value: &str, size: usize| {
+        let text = plain(value, size);
+        format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
+    };
+    let row = |id: &str, goal: &str, status: &str, diagram: &str| {
+        if columns < 64 { return plain(&format!("{id} {goal} · {diagram}"), columns); }
+        let status_color = match status { "완료 기록" => "32", "실패 기록" => "31", "실행 기록" => "36", "대기 기록" => "33", _ => "90" };
+        let diagram = cell(diagram, diagram_width)
+            .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
+            .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
+            .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?")
+            .replace(']', "]\x1b[39m");
+        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 12))
+    };
+    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "단계 흐름"))?; }
+    let first = task_page(task, selected, height);
+    for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
+        execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
+        let status = match record["queue_status"].as_str() { Some("done") => "완료 기록", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
+        if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
+        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &stage_diagram(record)))?;
+    }
+    Ok(())
+}
+
+fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
+    use crossterm::{cursor, execute};
+    let mut lines = Vec::new();
+    let mut connection_lines = vec![format!("스레드: {}", string(task, "thread")),
         format!("관측: {} · 확인 {} · {} {}", string(task, "state"), string(task, "observed_at"), string(task, "phase"), string(task, "error_type")),
         format!("연결: {}", task["reason"].as_str().unwrap_or(if task["state"] == "observed" {
             "공식 부모 thread/PID/cwd 검증 · public vibe queue" } else { "검증/조회 미완료" })),
         "에이전트·thread·pane은 별개 · 실행/접수/열람은 완료·승인 근거 아님".into()];
     if task["state"] != "observed" {
-        lines.push(format!("연결 확인 후 Codex 패널에서 실행: {} bar ensure --current --parent-current --relaunch",
+        connection_lines.push(format!("연결 확인 후 Codex 패널에서 실행: {} bar ensure --current --parent-current --relaunch",
             home().join(".config/herdr/vibe-herdr").display()));
     }
-    for record in task["records"].as_array().into_iter().flatten() {
+    for record in task["records"].as_array().into_iter().flatten().filter(|record| record["id"].as_i64() == selected) {
         lines.extend([format!("요청 #{} 목표: {}", record["id"], string(record, "goal")),
+            format!("단계 흐름: {}", stage_diagram(record)),
             format!("현재 단계: {} · 상태: {} · 큐 기록: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
             format!("대기사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
             format!("현재 단계/판본/시도의 실제 결과: {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인")),
@@ -738,9 +769,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
                 format!("확인 근거: {}", artifact["confirmation_reference"])]);
         }
     }
-    for request in task["requests"].as_array().into_iter().flatten() {
-        lines.push(format!("연결 요청 #{} · 큐 {} · {}", request["id"], string(request, "status"), string(request, "goal")));
-    }
+    lines.extend(connection_lines);
     if task["limited"] == true { lines.push("연결 요청 목록 일부만 표시".into()); }
     if let Some(subagents) = task["subagents"].as_str() { lines.push(format!("별도 서브 실행 관측: {subagents}")); }
     let columns = usize::from(width).max(1);
@@ -776,10 +805,10 @@ fn render_view(
     date: &str,
     style: &Value,
     task: &Value,
-    interaction: (&actions::Actions, usize, Option<(&Value, &mut usize)>),
+    interaction: (&actions::Actions, usize, Option<(&Value, &mut usize)>, Option<i64>),
 ) -> Result<Vec<actions::Hit>> {
     use crossterm::{cursor, execute, terminal};
-    let (actions, notification_offset, task_detail) = interaction;
+    let (actions, notification_offset, task_detail, selected) = interaction;
     let (width, height) = terminal::size()?;
     execute!(
         output,
@@ -793,34 +822,29 @@ fn render_view(
         let columns = usize::from(width);
         let body_height = height - 2;
         if let Some((task, offset)) = task_detail {
-            task_overlay(output, width, body_height, task, offset)?;
+            task_overlay(output, width, body_height, task, offset, selected)?;
         } else if actions.open {
             action_hits.extend(actions.overlay(output, width, body_height)?);
         } else {
-            for (index, (label, value)) in task_rows(task, style).iter().take(usize::from(body_height)).enumerate() {
-                execute!(output, cursor::MoveTo(0, index as u16))?;
-                let color = if index == 0 { string(style, "heading") } else { "0".into() };
-                let line = if columns >= 24 {
-                    let value = plain(value, columns - 17);
-                    let label_padding = 10usize.saturating_sub(unicode_width::UnicodeWidthStr::width(*label));
-                    let value_padding = (columns - 17).saturating_sub(unicode_width::UnicodeWidthStr::width(value.as_str()));
-                    format!("│ {label}{} │ {value}{} │", " ".repeat(label_padding), " ".repeat(value_padding))
-                } else { plain(&format!("{label}: {value}"), columns) };
-                write!(output, "\x1b[{color}m{line}\x1b[0m")?;
-            }
+            task_list(output, width, body_height, task, selected)?;
         }
         let system = format!("{} {} {} · {date}", string(values, "sys_cpu"), string(values, "sys_ram"), string(values, "sys_battery"));
         let system_width = unicode_width::UnicodeWidthStr::width(system.as_str());
         let notice_width = columns.saturating_sub(system_width + 3);
         execute!(output, cursor::MoveTo(0, height - 2))?;
         if notice_width >= 20 {
-            write!(output, "{}", plain(notifications, notice_width))?;
+            write!(output, "\x1b[{}m{}\x1b[0m", string(style, "notifications"), plain(notifications, notice_width))?;
             execute!(output, cursor::MoveTo((columns - system_width) as u16, height - 2))?;
-            write!(output, "{}", plain(&system, system_width))?;
-        } else { write!(output, "{}", plain(notifications, columns))?; }
+            let mut system = plain(&system, system_width);
+            for (key, style_key) in [("sys_cpu", "cpu"), ("sys_ram", "ram"), ("sys_battery", "battery")] {
+                let value = string(values, key);
+                if !value.is_empty() { system = system.replace(&value, &format!("\x1b[{}m{value}\x1b[0m", string(style, style_key))); }
+            }
+            write!(output, "{system}")?;
+        } else { write!(output, "\x1b[{}m{}\x1b[0m", string(style, "notifications"), plain(notifications, columns))?; }
         let row = height - 1;
         execute!(output, cursor::MoveTo(0, row))?;
-        write!(output, "{}", plain(TASK_DETAIL_BUTTON, columns))?;
+        write!(output, "\x1b[36m{}\x1b[0m", plain(TASK_DETAIL_BUTTON, columns))?;
         let (_, buttons, hits) = actions.bar(width, row);
         if !buttons.is_empty() {
             execute!(output, cursor::MoveTo(hits.first().map(|hit| hit.start).unwrap_or(0), row))?;
@@ -828,7 +852,7 @@ fn render_view(
             action_hits.extend(hits);
         }
     } else {
-        if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset)?; return Ok(vec![]); }
+        if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset, selected)?; return Ok(vec![]); }
         if actions.open { return actions.overlay(output, width, height); }
         let width = usize::from(width).saturating_sub(2);
         let mut rows = style["compact"]["rows"]
@@ -939,6 +963,7 @@ fn view(args: &[String]) -> Result<()> {
     let mut notification_offset = 0;
     let mut task_open = false;
     let mut task_offset = 0;
+    let mut selected_task = None;
     let mut show_subagents = false;
     struct Screen;
     impl Drop for Screen {
@@ -970,6 +995,9 @@ fn view(args: &[String]) -> Result<()> {
             }
         }
         let mut task = task_observation(scope.as_mut(), &style);
+        if selected_task.is_none() {
+            selected_task = task["records"].as_array().and_then(|records| records.first()).and_then(|record| record["id"].as_i64());
+        }
         if task_open && show_subagents {
             task["subagents"] = json!(if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) }
                 else { "서브 TUI 연결 미확인".into() });
@@ -986,12 +1014,12 @@ fn view(args: &[String]) -> Result<()> {
         let notices = if actions.message.is_empty() { notifications.clone() }
             else { format!("{} · {notifications}", actions.message) };
         notification_offset = notification_offset.min(notices.chars().count().saturating_sub(1));
-        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
+        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
         let mut rendered_size = terminal::size()?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if actions.poll() {
-                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
+                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
             let wait = deadline.saturating_duration_since(Instant::now());
@@ -1032,18 +1060,32 @@ fn view(args: &[String]) -> Result<()> {
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('a') => { task_open = false; actions.toggle(); },
                     Event::Key(_) if task_open => (),
+                    Event::Key(key) if key.kind == KeyEventKind::Press && !actions.open && matches!(key.code, KeyCode::Up | KeyCode::Down) => {
+                        if let Some(records) = task["records"].as_array().filter(|records| !records.is_empty()) {
+                            let position = records.iter().position(|record| record["id"].as_i64() == selected_task).unwrap_or(0);
+                            let next = if key.code == KeyCode::Up { position.saturating_sub(1) } else { (position + 1).min(records.len() - 1) };
+                            selected_task = records[next]["id"].as_i64();
+                        }
+                    }
                     Event::Key(key) if key.kind == KeyEventKind::Press && matches!(key.code, KeyCode::Tab | KeyCode::BackTab) =>
                         actions.select(key.code == KeyCode::Tab),
                     Event::Key(key) if key.kind == KeyEventKind::Press && actions.open && matches!(key.code, KeyCode::Left | KeyCode::Right) =>
                         actions.select(key.code == KeyCode::Right),
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Enter => {
-                        if let Some(index) = actions.selected().filter(|index| action_hits.iter().any(|hit| hit.action == Some(*index))) {
+                        if !actions.open {
+                            task_open = true; task_offset = 0;
+                        } else if let Some(index) = actions.selected().filter(|index| action_hits.iter().any(|hit| hit.action == Some(*index))) {
                             actions.submit(index, scope.as_ref());
                         }
                     }
                     Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) => {
                         if terminal::size()? == rendered_size {
-                            if rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 1
+                            if !task_open && !actions.open && mouse.row >= 2 && mouse.row < rendered_size.1.saturating_sub(2) {
+                                let index = task_page(&task, selected_task, rendered_size.1.saturating_sub(2)) + usize::from(mouse.row - 2);
+                                if let Some(record) = task["records"].as_array().and_then(|records| records.get(index)) {
+                                    selected_task = record["id"].as_i64(); task_open = true; task_offset = 0;
+                                }
+                            } else if rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 1
                                 && usize::from(mouse.column) < unicode_width::UnicodeWidthStr::width(TASK_DETAIL_BUTTON) {
                                 task_open = !task_open; task_offset = 0; actions.close();
                             } else if let Some(hit) = action_hits.iter().find(|hit| hit.row == mouse.row && mouse.column >= hit.start && mouse.column < hit.end) {
@@ -1066,7 +1108,7 @@ fn view(args: &[String]) -> Result<()> {
                 }
                 let notifications = if actions.message.is_empty() { notifications.clone() }
                     else { format!("{} · {notifications}", actions.message) };
-                action_hits = render_view(&mut output, &values, &notifications, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
+                action_hits = render_view(&mut output, &values, &notifications, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
         }

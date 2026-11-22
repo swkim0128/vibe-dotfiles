@@ -12,7 +12,7 @@ import time
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 
@@ -376,29 +376,9 @@ def current_task(scope):
                 or item.get("owner_conversation_id") != native or type(item.get("id")) is not int):
             raise ScopeError("other owner in scoped queue response")
     listed = [item for item in listed if item.get("kind") == "request"]
-    active = [item for item in listed if item.get("status") == "running"]
-    selected = active[0] if len(active) == 1 else listed[0] if len(listed) == 1 else None
-    if selected is None and not active:
-        finished = []
-        for item in listed:
-            stamp = item.get("finished_at")
-            if (item.get("status") not in ("done", "failed") or not isinstance(stamp, str)
-                    or not re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?", stamp)):
-                continue
-            try:
-                at = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-                if at.tzinfo is None:
-                    at = at.replace(tzinfo=timezone.utc)
-                finished.append((at.timestamp(), item))
-            except (ValueError, OverflowError, OSError):
-                continue
-        if finished:
-            latest = max(stamp for stamp, _ in finished)
-            candidates = [item for stamp, item in finished if stamp == latest]
-            if len(candidates) == 1:
-                selected = candidates[0]
+    ordered = sorted(listed, key=lambda item: (item.get("status") == "running", item["id"]), reverse=True)
     records = []
-    for item in ([selected] if selected else []):
+    for item in ordered[:12]:
         scope["_phase"] = "queue_show"
         full = read("show", item["id"])
         if (full.get("id") != item["id"] or full.get("owner_tool") != "codex"
@@ -412,15 +392,13 @@ def current_task(scope):
             if execution != metadata["execution"]:
                 raise ValueError("queue stage changed during read")
         record = task_record(full, execution)
-        if not active and full.get("status") in ("done", "failed"):
-            record["state"] = "최근 종료 · " + record["state"]
         records.append(record)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
             "observed_at": datetime.now().astimezone().isoformat(), "records": records,
             "requests": [{"id": item["id"], "status": item.get("status"),
                           "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
-                         for item in listed[:20]], "limited": len(listed) > 20}
+                         for item in ordered[:12]], "limited": len(listed) > 12}
 
 
 def task_record(item, execution):
@@ -465,12 +443,32 @@ def task_record(item, execution):
         updated = datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
         if updated.tzinfo is not None:
             updated_age = time.time() - updated.timestamp()
+    definition = metadata.get("definition") or {}
+    stages = definition.get("stages") or []
+    completed = execution.get("completed_stages") or []
+    stage_ids = [entry.get("id") for entry in stages if isinstance(entry, dict)]
+    valid_definition = (bool(stage_ids) and all(isinstance(key, str) and key for key in stage_ids)
+                        and len(set(stage_ids)) == len(stages)
+                        and execution.get("definition_id") == definition.get("definition_id")
+                        and execution.get("definition_version") == definition.get("version")
+                        and stage in stage_ids and all(key in stage_ids for key in completed))
+    flow = []
+    if valid_definition:
+        for key in stage_ids:
+            status = "waiting"
+            if key in completed:
+                status = "completed"
+            elif key == stage:
+                status = ("blocked" if wait else "failed" if item.get("status") == "failed"
+                          else "current" if item.get("status") == "running" else "unknown")
+            flow.append({"id": key, "state": status})
     return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
             "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
             "wait": str(wait.get("reason") or "")[:512], "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
                                else metadata.get("next_action") or "")[:512],
-            "version": version, "attempt": attempt, "artifacts": artifacts,
+            "version": version, "attempt": attempt, "artifacts": artifacts, "stages": flow,
+            "stage_definition": "observed" if valid_definition else "mismatch" if definition else "undefined",
             "updated_at": item.get("updated_at"), "updated_age": updated_age}
 
 
