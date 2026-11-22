@@ -635,25 +635,23 @@ fn subagent_line(scope: &mut Value, style: &Value) -> String {
         if running.len() > limit { format!(" · +{}", running.len() - limit) } else { String::new() })
 }
 
-fn task_observation(scope: Option<&mut Value>, style: &Value, queue_view: bool) -> Value {
+fn task_observation(scope: Option<&mut Value>, style: &Value) -> Value {
     let Some(scope) = scope else { return json!({"state":"unconnected","reason":"공식 부모 연결 미확인"}); };
     if scope["view_pid"].as_u64() != Some(u64::from(std::process::id())) {
         return json!({"state":"unconnected","reason":"현재 TUI scope 아님"});
     }
     scope["queue_timeout_seconds"] = style["task"]["queue_timeout_seconds"].clone();
-    let mut query_scope = scope.clone();
-    query_scope["queue_view"] = json!(queue_view);
     let script = env::var_os("VIBE_HERDR_HUD_ADAPTER").map(PathBuf::from)
         .unwrap_or(home().join(".config/herdr/hud.py"));
     let python = home().join(string(&style["subagents"], "python_relative_path"));
     let result = (|| -> Result<Value> {
         let raw = run(python.to_str().ok_or("invalid adapter Python path")?,
-            &["-B", script.to_str().ok_or("invalid adapter path")?, "--current-task", &query_scope.to_string()],
+            &["-B", script.to_str().ok_or("invalid adapter path")?, "--current-task", &scope.to_string()],
             Duration::from_secs(style["task"]["adapter_timeout_seconds"].as_u64().unwrap_or(6)))?;
         Ok(serde_json::from_str(&raw)?)
     })();
     let mut result = result.unwrap_or_else(|_| json!({"state":"failed"}));
-    result["view"] = json!(if queue_view { "queue" } else { "current" });
+    result["view"] = json!("queue");
     if !result["binding"].is_null() && scope["binding"].is_null() {
         scope["binding"] = result["binding"].clone();
     }
@@ -720,28 +718,25 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
 fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
-    let queue_view = task["view"] == "queue";
-    let title = format!("[1 현재 대화] [2 전체 큐] · {} · {}건(대기 {}) · 연결 {} · 조회 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
-        if queue_view { "모든 대화·완료 이력 포함 / 조회 전용" } else { "현재 대화·확인 완료 제외" },
+    let title = format!("전체 작업 큐 · 확인 완료 제외 · {}건(대기 {}) · 연결 {} · 조회 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
         task["total"], task["queued_count"],
         task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
         task["observed_at"].as_str().and_then(|at| at.get(11..19)).unwrap_or("미확인"),
         if task["limited"] == true { " · 최근12건" } else { "" });
     write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
     if task["state"] != "observed" || task["records"].as_array().is_none_or(Vec::is_empty) {
-        let empty = if task["state"] == "observed" && queue_view { "전체 요청 큐가 비어 있습니다" }
-            else if task["state"] == "observed" { "진행 중·완료 확인 대기 작업 없음 · 2 전체 큐에서 이력 조회" }
+        let empty = if task["state"] == "observed" { "진행 중·대기·완료 확인 대기 작업 없음 · 확인된 결과는 큐 이력에 보존" }
             else { "연결/작업 기록 미확인 · t 상세에서 확인" };
         if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", plain(empty, columns))?; }
         return Ok(());
     }
-    let goal_width = (columns / 3).min(64);
-    let diagram_width = columns.saturating_sub(goal_width + 32);
+    let goal_width = (columns / 4).min(50);
+    let diagram_width = columns.saturating_sub(goal_width + 53);
     let cell = |value: &str, size: usize| {
         let text = plain(value, size);
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
-    let row = |id: &str, goal: &str, status: &str, diagram: &str| {
+    let row = |id: &str, goal: &str, status: &str, owner: &str, diagram: &str| {
         if columns < 64 { return plain(&format!("{id} {goal} · {diagram}"), columns); }
         let status_color = match status { "완료·확인대기" | "완료·확인됨" => "32", "실패 기록" | "수정 요청" => "31", "실행 기록" => "36", "대기 기록" | "검토 보류" => "33", _ => "90" };
         let diagram = cell(diagram, diagram_width)
@@ -749,9 +744,9 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
             .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
-        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14))
+        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ {} │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14), cell(owner, 18))
     };
-    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", if queue_view { "배정 대화 / 요청 종류" } else { "단계 흐름" }))?; }
+    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "배정 도구/대화", "단계 흐름"))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
         execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
@@ -760,11 +755,11 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             Some("done") if record["review_decision"] == "deferred" => "검토 보류",
             Some("done") if record["review_decision"] == "changes_requested" => "수정 요청",
             Some("done") => "완료·확인대기", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
-        let detail = if queue_view { format!("{} / {} · {}", record["owner_tool"].as_str().unwrap_or("미배정"),
-            record["owner_thread"].as_str().unwrap_or("미배정"), if record["kind"] == "command" { "명령형" } else { "요청형" }) }
-            else { stage_diagram(record, true) };
+        let owner = format!("{}/{}", record["owner_tool"].as_str().unwrap_or("미배정"),
+            record["owner_thread"].as_str().unwrap_or("미배정").chars().take(8).collect::<String>());
+        let detail = stage_diagram(record, true);
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
-        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &detail))?;
+        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &owner, &detail))?;
     }
     Ok(())
 }
@@ -772,10 +767,17 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
 const COMPLETION_BUTTON: &str = "[c 완료 확인·목록에서 치우기]";
 
 fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
-    if task["state"] != "observed" || task["view"] == "queue" { return None; }
+    if task["state"] != "observed" { return None; }
     task["records"].as_array()?.iter().find(|record| record["id"].as_i64() == selected
+        && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]
         && record["queue_status"] == "done" && record["completion_confirmed"] != true
         && record["completion_token"].as_str().is_some_and(|v| !v.is_empty()))
+}
+
+fn selection_owned(task: &Value, selected: Option<i64>) -> bool {
+    task["state"] == "observed" && task["records"].as_array().is_some_and(|records|
+        records.iter().any(|record| record["id"].as_i64() == selected
+            && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]))
 }
 
 fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
@@ -823,9 +825,9 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
                 else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
             lines = vec![format!("#{} · {} · {}", record["id"], string(record, "state"), string(record, "goal")),
                 format!("결과: {brief}"),
-                if task["view"] == "queue" { format!("배정: {} / {} · 전체 큐 조회 전용", record["owner_tool"].as_str().unwrap_or("미배정"), record["owner_thread"].as_str().unwrap_or("미배정")) }
-                else if let Some(wait) = record["wait"].as_str().filter(|v| !v.is_empty()) { format!("대기: {wait} · 재개: {next}") }
-                    else { format!("다음: {next}") }];
+                format!("배정: {} / {} · {} · 다음: {next}", record["owner_tool"].as_str().unwrap_or("미배정"),
+                    record["owner_thread"].as_str().unwrap_or("미배정"),
+                    if selection_owned(task, selected) { "연결 대화 일치" } else { "조회 전용" })];
         }
     }
     let columns = usize::from(width).max(1);
@@ -1024,7 +1026,6 @@ fn view(args: &[String]) -> Result<()> {
     let mut notification_offset = 0;
     let mut task_open = false;
     let mut detail_expanded = false;
-    let mut queue_view = false;
     let mut task_offset = 0;
     let mut selected_task = None;
     let mut show_subagents = false;
@@ -1057,7 +1058,7 @@ fn view(args: &[String]) -> Result<()> {
                 }
             }
         }
-        let mut task = task_observation(scope.as_mut(), &style, queue_view);
+        let mut task = task_observation(scope.as_mut(), &style);
         if !task_open { detail_expanded = false; }
         task["expanded"] = json!(detail_expanded);
         if task["state"] == "observed" && !task["records"].as_array().is_some_and(|records|
@@ -1087,7 +1088,6 @@ fn view(args: &[String]) -> Result<()> {
         while Instant::now() < deadline {
             if actions.poll() {
                 if let Some((id, version)) = actions.take_confirmed_completion() {
-                    if queue_view { break; }
                     if let Some(records) = task["records"].as_array_mut() {
                         let removed = records.iter().position(|record| record["id"].as_i64() == Some(id)
                             && record["completion_token"].as_str() == Some(version.as_str()));
@@ -1100,6 +1100,7 @@ fn view(args: &[String]) -> Result<()> {
                             }
                         }
                     }
+                    task["total"] = json!(task["records"].as_array().map_or(0, Vec::len));
                 }
                 action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
@@ -1107,11 +1108,6 @@ fn view(args: &[String]) -> Result<()> {
             let wait = deadline.saturating_duration_since(Instant::now());
             if event::poll(if actions.busy() { wait.min(Duration::from_millis(100)) } else { wait })? {
                 match event::read()? {
-                    Event::Key(key) if key.kind == KeyEventKind::Press && matches!(key.code, KeyCode::Char('1' | '2')) => {
-                        queue_view = key.code == KeyCode::Char('2');
-                        task_open = false; detail_expanded = false; task_offset = 0; selected_task = None; actions.close();
-                        actions.message.clear(); break;
-                    }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && task_open => {
                         task_open = false;
                     }
@@ -1119,7 +1115,7 @@ fn view(args: &[String]) -> Result<()> {
                         task_open = !task_open; task_offset = 0; actions.close();
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('c') && !actions.open => {
-                        if queue_view { actions.message = "전체 큐는 조회 전용 · 1 현재 대화에서 결과를 확인하세요".into(); }
+                        if !selection_owned(&task, selected_task) { actions.message = "선택 요청은 다른 배정 대화의 조회 항목입니다 · 원담당 대화에서 확인하세요".into(); }
                         else if let Some(record) = completed_selection(&task, selected_task) {
                             if task_open { actions.confirm_completion(record, scope.as_ref()); }
                             else {
@@ -1176,16 +1172,13 @@ fn view(args: &[String]) -> Result<()> {
                         if !actions.open {
                             task_open = true; task_offset = 0;
                         } else if let Some(index) = actions.selected().filter(|index| action_hits.iter().any(|hit| hit.action == Some(*index))) {
-                            if queue_view { actions.message = "전체 큐는 조회 전용 · 1 현재 대화에서 요청 버튼을 사용하세요".into(); }
+                            if !selection_owned(&task, selected_task) { actions.message = "선택 요청은 조회 전용 · 연결 대화와 배정이 일치할 때 요청 버튼을 사용할 수 있습니다".into(); }
                             else { actions.submit(index, scope.as_ref()); }
                         }
                     }
                     Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) => {
                         if terminal::size()? == rendered_size {
-                            if mouse.row == 0 && usize::from(mouse.column) < unicode_width::UnicodeWidthStr::width("[1 현재 대화] [2 전체 큐]") && !task_open && !actions.open {
-                                queue_view = usize::from(mouse.column) >= unicode_width::UnicodeWidthStr::width("[1 현재 대화] ");
-                                task_offset = 0; selected_task = None; actions.message.clear(); break;
-                            } else if task_open && rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 3
+                            if task_open && rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 3
                                 && usize::from(mouse.column) < unicode_width::UnicodeWidthStr::width(COMPLETION_BUTTON) {
                                 if let Some(record) = completed_selection(&task, selected_task) { actions.confirm_completion(record, scope.as_ref()); }
                             } else if !task_open && !actions.open && mouse.row >= 2 && mouse.row < rendered_size.1.saturating_sub(2) {
@@ -1198,7 +1191,7 @@ fn view(args: &[String]) -> Result<()> {
                                 task_open = !task_open; task_offset = 0; actions.close();
                             } else if let Some(hit) = action_hits.iter().find(|hit| hit.row == mouse.row && mouse.column >= hit.start && mouse.column < hit.end) {
                                 if let Some(index) = hit.action {
-                                    if queue_view { actions.message = "전체 큐는 조회 전용 · 1 현재 대화에서 요청 버튼을 사용하세요".into(); }
+                                    if !selection_owned(&task, selected_task) { actions.message = "선택 요청은 조회 전용 · 연결 대화와 배정이 일치할 때 요청 버튼을 사용할 수 있습니다".into(); }
                                     else { actions.submit(index, scope.as_ref()); }
                                 }
                                 else { actions.toggle(); }

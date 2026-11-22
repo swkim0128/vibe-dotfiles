@@ -337,7 +337,7 @@ def subagents(scope):
 
 
 def current_task(scope):
-    """Project existing owner-scoped queue records; never read dashboard's other queue."""
+    """Project the public queue snapshot without changing any request's owner."""
     context = bound_parent(scope)
     if isinstance(context, dict):
         return context
@@ -368,48 +368,33 @@ def current_task(scope):
         return json.loads(result.stdout)
 
     scope["_phase"] = "queue_list"
-    queue_view = scope.get("queue_view") is True
-    listed = read("list", *(["--all"] if queue_view else []))
+    listed = read("list", "--all")
     if not isinstance(listed, list):
         raise ValueError("queue list contract unavailable")
     for item in listed:
-        if (not isinstance(item, dict) or type(item.get("id")) is not int
-                or (not queue_view and (item.get("owner_tool") != "codex"
-                    or item.get("owner_conversation_id") != native))):
-            raise ScopeError("other owner in scoped queue response")
-    if not queue_view:
-        listed = [item for item in listed if item.get("kind") == "request"
-                  and not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
+        if not isinstance(item, dict) or type(item.get("id")) is not int:
+            raise ValueError("queue record identity unavailable")
+    listed = [item for item in listed
+              if not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
     ordered = sorted(listed, key=lambda item: (2 if item.get("status") == "running"
-                     else 1 if queue_view and item.get("status") == "queued" else 0, item["id"]), reverse=True)
-    visible = ordered if queue_view else ordered[:12]
+                     else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
+    visible = ordered
     records = []
     for item in visible:
         scope["_phase"] = "queue_show"
-        full = item if queue_view else read("show", item["id"])
-        if (full.get("id") != item["id"] or (not queue_view and (full.get("owner_tool") != "codex"
-                or full.get("owner_conversation_id") != native))):
-            raise ScopeError("queue detail owner changed")
-        if not queue_view and full.get("status") == "done" and full.get("completion_confirmed") is True:
-            continue
+        full = item
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
-        if isinstance(execution, dict) and not queue_view:
-            scope["_phase"] = "queue_execution"
-            execution = read("execution-show", item["id"])
-            if execution != metadata["execution"]:
-                raise ValueError("queue stage changed during read")
-        default_definition = read("definition-show", item["id"]) if not queue_view and not metadata.get("definition") else None
-        record = task_record(full, execution, default_definition)
+        record = task_record(full, execution)
         records.append(record)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
-            "view": "queue" if queue_view else "current", "total": len(listed),
+            "view": "queue", "total": len(listed),
             "queued_count": sum(item.get("status") == "queued" for item in listed),
             "observed_at": datetime.now().astimezone().isoformat(), "records": records,
             "requests": [{"id": item["id"], "status": item.get("status"),
                           "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
-                         for item in visible], "limited": not queue_view and len(listed) > 12}
+                         for item in visible], "limited": False}
 
 
 def task_record(item, execution, default_definition=None):

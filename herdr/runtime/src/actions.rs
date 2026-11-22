@@ -204,6 +204,9 @@ impl Actions {
             let version = record["completion_token"].as_str().filter(|v| !v.is_empty()).ok_or("완료 판본 미확인 · 목록을 새로 확인하세요")?;
             if record["queue_status"] != "done" { return Err("완료한 작업만 확인할 수 있습니다".into()); }
             let (native, cwd) = checked_target(scope)?;
+            if record["owner_tool"] != "codex" || record["owner_thread"].as_str() != Some(native.as_str()) {
+                return Err("선택 요청은 다른 배정 대화의 조회 항목입니다 · 원담당 대화에서 확인하세요".into());
+            }
             let mut child = Command::new("vibe").current_dir(&cwd)
                 .args(["queue", "completion-confirm", &id.to_string(), "--tool", "codex",
                     "--conversation-id", &native, "--version", version,
