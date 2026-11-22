@@ -375,7 +375,8 @@ def current_task(scope):
         if (not isinstance(item, dict) or item.get("owner_tool") != "codex"
                 or item.get("owner_conversation_id") != native or type(item.get("id")) is not int):
             raise ScopeError("other owner in scoped queue response")
-    listed = [item for item in listed if item.get("kind") == "request"]
+    listed = [item for item in listed if item.get("kind") == "request"
+              and not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
     ordered = sorted(listed, key=lambda item: (item.get("status") == "running", item["id"]), reverse=True)
     records = []
     for item in ordered[:12]:
@@ -384,6 +385,8 @@ def current_task(scope):
         if (full.get("id") != item["id"] or full.get("owner_tool") != "codex"
                 or full.get("owner_conversation_id") != native):
             raise ScopeError("queue detail owner changed")
+        if full.get("status") == "done" and full.get("completion_confirmed") is True:
+            continue
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
         if isinstance(execution, dict):
@@ -475,6 +478,7 @@ def task_record(item, execution, default_definition=None):
                 for key in stage_ids]
     return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
             "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
+            "completion_token": item.get("completion_token"),
             "wait": str(wait.get("reason") or "")[:512], "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
                                else metadata.get("next_action") or "")[:512],

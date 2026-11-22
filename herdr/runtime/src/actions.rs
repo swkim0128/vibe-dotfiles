@@ -29,6 +29,7 @@ struct Pending {
     output: Receiver<std::io::Result<Vec<u8>>>,
     started: Instant,
     label: String,
+    completion: Option<(i64, String)>,
 }
 
 pub struct Actions {
@@ -173,7 +174,7 @@ impl Actions {
                 let result = output.take(1_048_576).read_to_end(&mut bytes).map(|_| bytes);
                 let _ = sender.send(result);
             });
-            Ok(Pending { child, output: receiver, started: Instant::now(), label: item.label.clone() })
+            Ok(Pending { child, output: receiver, started: Instant::now(), label: item.label.clone(), completion: None })
         });
         match request {
             Ok(pending) => {
@@ -191,14 +192,51 @@ impl Actions {
         }
     }
 
+    pub fn confirm_completion(&mut self, record: &Value, scope: Option<&Value>) {
+        if self.pending.is_some() { return; }
+        let request = (|| -> Result<Pending> {
+            let id = record["id"].as_i64().ok_or("작업 ID 미확인")?;
+            let version = record["completion_token"].as_str().filter(|v| !v.is_empty()).ok_or("완료 판본 미확인 · 목록을 새로 확인하세요")?;
+            if record["queue_status"] != "done" { return Err("완료한 작업만 확인할 수 있습니다".into()); }
+            let (native, cwd) = checked_target(scope)?;
+            let mut child = Command::new("vibe").current_dir(&cwd)
+                .args(["queue", "completion-confirm", &id.to_string(), "--tool", "codex",
+                    "--conversation-id", &native, "--version", version,
+                    "--evidence", "TUI 상세에서 사용자가 완료 확인·목록에서 치우기를 선택", "--json"])
+                .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn()?;
+            let output = child.stdout.take().ok_or("확인 결과 출력 미확인")?;
+            let (sender, receiver) = mpsc::channel();
+            thread::spawn(move || {
+                let mut bytes = Vec::new();
+                let result = output.take(1_048_576).read_to_end(&mut bytes).map(|_| bytes);
+                let _ = sender.send(result);
+            });
+            Ok(Pending { child, output: receiver, started: Instant::now(),
+                label: format!("완료 확인 #{id}"), completion: Some((id, version.to_owned())) })
+        })();
+        match request {
+            Ok(pending) => { self.message = format!("저장 중 · {}", pending.label); self.pending = Some(pending); }
+            Err(error) => { self.message = format!("완료 확인하지 않음 · {error}"); }
+        }
+    }
+
     pub fn poll(&mut self) -> bool {
         let Some(pending) = self.pending.as_mut() else { return false; };
         let result = match pending.child.try_wait() {
             Ok(Some(status)) => Some(if status.success() {
                 match pending.output.recv_timeout(Duration::from_millis(100)) {
-                    Ok(Ok(_)) => format!("접수됨 · {} · 작업 완료는 별도 확인", pending.label),
+                    Ok(Ok(bytes)) => if let Some((id, version)) = &pending.completion {
+                        match serde_json::from_slice::<Value>(&bytes) {
+                            Ok(value) if value["id"].as_i64() == Some(*id) && value["completion_confirmed"] == true
+                                && value["completion_token"].as_str() == Some(version.as_str()) =>
+                                format!("완료 확인 저장됨 · #{id} · 목록 갱신 시 숨김 / 큐 이력 보존"),
+                            _ => "완료 확인 결과 미확인 · 자동 재전송하지 않음".into(),
+                        }
+                    } else { format!("접수됨 · {} · 작업 완료는 별도 확인", pending.label) },
                     _ => "접수 결과 미확인 · 자동 재전송하지 않음".into(),
                 }
+            } else if pending.completion.is_some() {
+                format!("완료 확인 실패 · {status} · 상세를 새로 열고 결과/연결을 확인하세요 · 자동 재전송하지 않음")
             } else {
                 format!("접수 실패 · {} · 자동 재전송하지 않음", status)
             }),
@@ -206,7 +244,8 @@ impl Actions {
             Ok(None) | Err(_) => {
                 let _ = pending.child.kill();
                 let _ = pending.child.wait();
-                Some("접수 결과 미확인 · 자동 재전송하지 않음".into())
+                Some(if pending.completion.is_some() { "완료 확인 결과 미확인 · 상세를 새로 확인하세요 · 자동 재전송하지 않음".into() }
+                    else { "접수 결과 미확인 · 자동 재전송하지 않음".into() })
             }
         };
         if let Some(message) = result {

@@ -713,34 +713,44 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         task["observed_at"].as_str().unwrap_or("미확인"), if task["limited"] == true { " · 최근12건" } else { "" });
     write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
     if task["state"] != "observed" || task["records"].as_array().is_none_or(Vec::is_empty) {
-        if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", plain("연결/작업 기록 미확인 · t 상세에서 확인", columns))?; }
+        let empty = if task["state"] == "observed" { "진행 중·완료 확인 대기 작업 없음 · 확인한 완료 결과는 큐 이력에 보존" }
+            else { "연결/작업 기록 미확인 · t 상세에서 확인" };
+        if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", plain(empty, columns))?; }
         return Ok(());
     }
     let goal_width = (columns / 3).min(64);
-    let diagram_width = columns.saturating_sub(goal_width + 30);
+    let diagram_width = columns.saturating_sub(goal_width + 32);
     let cell = |value: &str, size: usize| {
         let text = plain(value, size);
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
     let row = |id: &str, goal: &str, status: &str, diagram: &str| {
         if columns < 64 { return plain(&format!("{id} {goal} · {diagram}"), columns); }
-        let status_color = match status { "완료 기록" => "32", "실패 기록" => "31", "실행 기록" => "36", "대기 기록" => "33", _ => "90" };
+        let status_color = match status { "완료·확인대기" => "32", "실패 기록" => "31", "실행 기록" => "36", "대기 기록" => "33", _ => "90" };
         let diagram = cell(diagram, diagram_width)
             .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
             .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
-        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 12))
+        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14))
     };
     if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "단계 흐름"))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
         execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
-        let status = match record["queue_status"].as_str() { Some("done") => "완료 기록", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
+        let status = match record["queue_status"].as_str() { Some("done") => "완료·확인대기", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
         write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &stage_diagram(record, true)))?;
     }
     Ok(())
+}
+
+const COMPLETION_BUTTON: &str = "[c 완료 확인·목록에서 치우기]";
+
+fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
+    if task["state"] != "observed" { return None; }
+    task["records"].as_array()?.iter().find(|record| record["id"].as_i64() == selected
+        && record["queue_status"] == "done" && record["completion_token"].as_str().is_some_and(|v| !v.is_empty()))
 }
 
 fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
@@ -795,7 +805,11 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     }
     if height > 0 {
         execute!(output, cursor::MoveTo(0, height - 1))?;
-        write!(output, "{}", plain("작업 상세 · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
+        if completed_selection(task, selected).is_some() {
+            write!(output, "\x1b[32m{}\x1b[0m", plain(&format!("{COMPLETION_BUTTON} · 열람만으로는 숨기지 않음 · t/Esc 복귀"), columns))?;
+        } else {
+            write!(output, "{}", plain("작업 상세 · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
+        }
     }
     output.flush()?;
     Ok(())
@@ -998,7 +1012,9 @@ fn view(args: &[String]) -> Result<()> {
             }
         }
         let mut task = task_observation(scope.as_mut(), &style);
-        if selected_task.is_none() {
+        if task["state"] == "observed" && !task["records"].as_array().is_some_and(|records|
+            records.iter().any(|record| record["id"].as_i64() == selected_task)) {
+            if selected_task.is_some() { task_open = false; task_offset = 0; }
             selected_task = task["records"].as_array().and_then(|records| records.first()).and_then(|record| record["id"].as_i64());
         }
         if task_open && show_subagents {
@@ -1033,6 +1049,9 @@ fn view(args: &[String]) -> Result<()> {
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('t') => {
                         task_open = !task_open; task_offset = 0; actions.close();
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('c') => {
+                        if let Some(record) = completed_selection(&task, selected_task) { actions.confirm_completion(record, scope.as_ref()); }
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('s') => {
                         show_subagents = !show_subagents;
@@ -1083,7 +1102,10 @@ fn view(args: &[String]) -> Result<()> {
                     }
                     Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) => {
                         if terminal::size()? == rendered_size {
-                            if !task_open && !actions.open && mouse.row >= 2 && mouse.row < rendered_size.1.saturating_sub(2) {
+                            if task_open && rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 3
+                                && usize::from(mouse.column) < unicode_width::UnicodeWidthStr::width(COMPLETION_BUTTON) {
+                                if let Some(record) = completed_selection(&task, selected_task) { actions.confirm_completion(record, scope.as_ref()); }
+                            } else if !task_open && !actions.open && mouse.row >= 2 && mouse.row < rendered_size.1.saturating_sub(2) {
                                 let index = task_page(&task, selected_task, rendered_size.1.saturating_sub(2)) + usize::from(mouse.row - 2);
                                 if let Some(record) = task["records"].as_array().and_then(|records| records.get(index)) {
                                     selected_task = record["id"].as_i64(); task_open = true; task_offset = 0;
