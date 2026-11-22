@@ -680,19 +680,22 @@ fn task_line(task: &Value, style: &Value) -> String {
 
 const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 
-fn stage_diagram(record: &Value) -> String {
-    if record["stage_definition"] != "observed" {
+fn stage_diagram(record: &Value, compact: bool) -> String {
+    if record["stage_definition"] != "observed" && record["stage_definition"] != "default" {
         return if record["stage_definition"] == "mismatch" { "단계 정의/실행 판본 미확인" } else { "단계 미정의" }.into();
     }
     record["stages"].as_array().into_iter().flatten().map(|stage| {
         let id = string(stage, "id");
-        let label = match id.as_str() { "implement" => "구현", "verify" => "화면 확인", "publish" => "저장·배포", _ => &id };
+        let label = match id.as_str() {
+            "intake" => "접수", "requirements" => "요구", "plan" => "계획", "test_design" => "테스트",
+            "implement" => "실행", "verify" => "검증", "report" => "보고", "publish" => "저장·배포", _ => &id };
         let (mark, state) = match stage["state"].as_str() {
             Some("completed") => ("✓", "완료"), Some("current") => ("●", "진행"),
             Some("blocked") => ("Ⅱ", "대기"), Some("failed") => ("!", "실패"),
+            Some("not_applicable") => ("—", "해당 없음"),
             Some("waiting") => ("○", "예정"), _ => ("?", "미확인"),
         };
-        format!("[{mark} {label} {state}]")
+        if compact { format!("[{mark} {label}]") } else { format!("[{mark} {label} {state}]") }
     }).collect::<Vec<_>>().join(" → ")
 }
 
@@ -725,7 +728,7 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         let diagram = cell(diagram, diagram_width)
             .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
-            .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?")
+            .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
         format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 12))
     };
@@ -735,7 +738,7 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
         let status = match record["queue_status"].as_str() { Some("done") => "완료 기록", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
-        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &stage_diagram(record)))?;
+        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &stage_diagram(record, true)))?;
     }
     Ok(())
 }
@@ -754,7 +757,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     }
     for record in task["records"].as_array().into_iter().flatten().filter(|record| record["id"].as_i64() == selected) {
         lines.extend([format!("요청 #{} 목표: {}", record["id"], string(record, "goal")),
-            format!("단계 흐름: {}", stage_diagram(record)),
+            format!("단계 흐름: {}", stage_diagram(record, false)),
             format!("현재 단계: {} · 상태: {} · 큐 기록: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
             format!("대기사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
             format!("현재 단계/판본/시도의 실제 결과: {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인")),

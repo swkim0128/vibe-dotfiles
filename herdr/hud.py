@@ -391,7 +391,8 @@ def current_task(scope):
             execution = read("execution-show", item["id"])
             if execution != metadata["execution"]:
                 raise ValueError("queue stage changed during read")
-        record = task_record(full, execution)
+        default_definition = read("definition-show", item["id"]) if not metadata.get("definition") else None
+        record = task_record(full, execution, default_definition)
         records.append(record)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
@@ -401,7 +402,7 @@ def current_task(scope):
                          for item in ordered[:12]], "limited": len(listed) > 12}
 
 
-def task_record(item, execution):
+def task_record(item, execution, default_definition=None):
     metadata = item.get("request_data") or {}
     execution = execution if isinstance(execution, dict) else {}
     control = metadata.get("control") or {}
@@ -443,7 +444,7 @@ def task_record(item, execution):
         updated = datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
         if updated.tzinfo is not None:
             updated_age = time.time() - updated.timestamp()
-    definition = metadata.get("definition") or {}
+    definition = metadata.get("definition") or default_definition or {}
     stages = definition.get("stages") or []
     completed = execution.get("completed_stages") or []
     stage_ids = [entry.get("id") for entry in stages if isinstance(entry, dict)]
@@ -458,17 +459,27 @@ def task_record(item, execution):
             status = "waiting"
             if key in completed:
                 status = "completed"
+                evidence = [artifact for artifact in execution.get("artifacts", [])
+                            if artifact.get("stage") == key and artifact.get("id") == "evidence"]
+                latest = max(evidence, key=lambda artifact: artifact.get("version", 0), default={})
+                if (definition.get("definition_id") == "common-workflow"
+                        and str(latest.get("reference", "")).startswith("not-applicable:")):
+                    status = "not_applicable"
             elif key == stage:
                 status = ("blocked" if wait else "failed" if item.get("status") == "failed"
                           else "current" if item.get("status") == "running" else "unknown")
             flow.append({"id": key, "state": status})
+    elif stage_ids and not execution:
+        # Reading old records never fabricates historical stage completion.
+        flow = [{"id": key, "state": "waiting" if item.get("status") == "queued" else "unknown"}
+                for key in stage_ids]
     return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
             "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
             "wait": str(wait.get("reason") or "")[:512], "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
                                else metadata.get("next_action") or "")[:512],
             "version": version, "attempt": attempt, "artifacts": artifacts, "stages": flow,
-            "stage_definition": "observed" if valid_definition else "mismatch" if definition else "undefined",
+            "stage_definition": "observed" if valid_definition else "default" if flow else "mismatch" if definition else "undefined",
             "updated_at": item.get("updated_at"), "updated_age": updated_age}
 
 
