@@ -376,7 +376,10 @@ def current_task(scope):
             raise ValueError("queue record identity unavailable")
     listed = [item for item in listed
               if not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
-    ordered = sorted(listed, key=lambda item: (2 if item.get("status") == "running"
+    ordered = sorted(listed, key=lambda item: (3 if item.get("status") == "done"
+                     and item.get("completion_confirmed") is False
+                     and item.get("completion_review") not in ("deferred", "changes_requested")
+                     else 2 if item.get("status") == "running"
                      else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
     common_definition = next(((item.get("request_data") or {}).get("definition") for item in listed
                               if ((item.get("request_data") or {}).get("definition") or {}).get("definition_id")
