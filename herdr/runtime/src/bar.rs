@@ -109,7 +109,7 @@ fn desired_size(pane: &str, tree: &Value, config: &Value) -> Result<(f64, u64)> 
         + config["pane_border_rows"].as_u64().ok_or("테두리 높이가 없습니다")?;
     let work_rows = required_work_rows(tree, config["minimum_work_rows"].as_u64().ok_or("작업 최소 높이가 없습니다")?)?;
     if rows == 0 || height < rows + work_rows {
-        return Err("화면이 작아 상태 3행과 기존 작업 pane의 최소 높이를 함께 보존할 수 없습니다. 기존 배치를 유지합니다".into());
+        return Err("화면이 작아 설정된 상태 높이와 기존 작업 pane의 최소 높이를 함께 보존할 수 없습니다. 기존 배치를 유지합니다".into());
     }
     let ratio = (height - rows) as f64 / height as f64;
     let minimum = config["ratio_limits"]["min"].as_f64().ok_or("최소 비율이 없습니다")?;

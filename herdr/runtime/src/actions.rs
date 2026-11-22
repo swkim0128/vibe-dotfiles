@@ -87,10 +87,10 @@ impl Actions {
     pub fn bar(&self, width: u16, row: u16) -> (u16, String, Vec<Hit>) {
         let total = self.items.iter().map(|item| UnicodeWidthStr::width(item.label.as_str()) + 2)
             .sum::<usize>() + self.items.len().saturating_sub(1);
-        if total + 12 > usize::from(width) {
-            let label = "[a 동작]";
+        if total + 20 > usize::from(width) {
+            let label = "[a 더보기]";
             let size = UnicodeWidthStr::width(label) as u16;
-            if width < size + 4 { return (width, String::new(), vec![]); }
+            if width < size + 16 { return (width, String::new(), vec![]); }
             let start = width - size;
             return (start.saturating_sub(1), label.into(), vec![Hit { start, end: width, row, action: None }]);
         }

@@ -3,7 +3,7 @@
   "entrypoint": "tui",
   "placement": "split",
   "direction": "down",
-  "target_content_rows": 3,
+  "target_content_rows": 7,
   "pane_border_rows": 2,
   "minimum_work_rows": 3,
   "ratio_limits": {"min": 0.01, "max": 0.99},
