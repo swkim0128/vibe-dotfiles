@@ -680,17 +680,17 @@ fn task_line(task: &Value, style: &Value) -> String {
 
 const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 
-fn task_rows(task: &Value, style: &Value) -> Vec<String> {
+fn task_rows(task: &Value, style: &Value) -> Vec<(&'static str, String)> {
     let thread = task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>();
     let observed = task["observed_at"].as_str().unwrap_or("미확인");
     let at = observed.get(11..19).unwrap_or(observed);
     let record = task["records"].as_array().and_then(|records| records.first());
     if task["state"] != "observed" || record.is_none() {
-        return vec![format!("현재 작업  설정 스레드 {thread} · 확인 {at}"),
-            "목표       연결된 작업 상세에서 확인".into(),
-            format!("상태       {}", task_line(task, style)),
-            format!("최근 결과  {}", task["reason"].as_str().unwrap_or("선택된 작업 결과 미확인")),
-            "다음 행동  작업 상세에서 연결 상태와 요청 목록 확인".into()];
+        return vec![("현재 작업", format!("스레드 {thread} · 확인 {at}")),
+            ("목표", "연결된 작업 상세에서 확인".into()),
+            ("상태/단계", task_line(task, style)),
+            ("최근 결과", task["reason"].as_str().unwrap_or("선택된 작업 결과 미확인").into()),
+            ("다음 행동", "작업 상세에서 연결 상태와 요청 목록 확인".into())];
     }
     let record = record.unwrap();
     let freshness = match record["updated_age"].as_f64() {
@@ -704,11 +704,11 @@ fn task_rows(task: &Value, style: &Value) -> Vec<String> {
     let next = if matches!(record["queue_status"].as_str(), Some("done" | "failed")) {
         "종료 기록 · 후속 안내는 작업 상세에서 확인"
     } else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
-    vec![format!("현재 작업  #{} · 스레드 {thread} · 확인 {at} · {freshness}", record["id"]),
-        format!("목표       {}", string(record, "goal")),
-        format!("상태       {state}    │ 단계  {}", record["stage"].as_str().unwrap_or("미기록")),
-        format!("최근 결과  {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("현재 판본의 결과 미확인")),
-        format!("다음 행동  {next}")]
+    vec![("현재 작업", format!("#{} · 스레드 {thread} · 확인 {at} · {freshness}", record["id"])),
+        ("목표", string(record, "goal")),
+        ("상태/단계", format!("{state} · 단계 {}", record["stage"].as_str().unwrap_or("미기록"))),
+        ("최근 결과", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("현재 판본의 결과 미확인").into()),
+        ("다음 행동", next.into())]
 }
 
 fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize) -> Result<()> {
@@ -786,17 +786,28 @@ fn render_view(
         cursor::MoveTo(0, 0),
         terminal::Clear(terminal::ClearType::All)
     )?;
-    if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset)?; return Ok(vec![]); }
-    if actions.open { return actions.overlay(output, width, height); }
     let summary = task_line(task, style);
     let subagents = Some(summary.as_str());
     let mut action_hits = Vec::new();
-    if height >= 7 {
+    if height >= 3 {
         let columns = usize::from(width);
-        for (index, line) in task_rows(task, style).iter().enumerate() {
-            execute!(output, cursor::MoveTo(0, index as u16))?;
-            let color = if index == 0 { string(style, "heading") } else { "0".into() };
-            write!(output, "\x1b[{color}m{}\x1b[0m", plain(line, columns))?;
+        let body_height = height - 2;
+        if let Some((task, offset)) = task_detail {
+            task_overlay(output, width, body_height, task, offset)?;
+        } else if actions.open {
+            action_hits.extend(actions.overlay(output, width, body_height)?);
+        } else {
+            for (index, (label, value)) in task_rows(task, style).iter().take(usize::from(body_height)).enumerate() {
+                execute!(output, cursor::MoveTo(0, index as u16))?;
+                let color = if index == 0 { string(style, "heading") } else { "0".into() };
+                let line = if columns >= 24 {
+                    let value = plain(value, columns - 17);
+                    let label_padding = 10usize.saturating_sub(unicode_width::UnicodeWidthStr::width(*label));
+                    let value_padding = (columns - 17).saturating_sub(unicode_width::UnicodeWidthStr::width(value.as_str()));
+                    format!("│ {label}{} │ {value}{} │", " ".repeat(label_padding), " ".repeat(value_padding))
+                } else { plain(&format!("{label}: {value}"), columns) };
+                write!(output, "\x1b[{color}m{line}\x1b[0m")?;
+            }
         }
         let system = format!("{} {} {} · {date}", string(values, "sys_cpu"), string(values, "sys_ram"), string(values, "sys_battery"));
         let system_width = unicode_width::UnicodeWidthStr::width(system.as_str());
@@ -817,6 +828,8 @@ fn render_view(
             action_hits.extend(hits);
         }
     } else {
+        if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset)?; return Ok(vec![]); }
+        if actions.open { return actions.overlay(output, width, height); }
         let width = usize::from(width).saturating_sub(2);
         let mut rows = style["compact"]["rows"]
             .as_array()
@@ -1030,9 +1043,9 @@ fn view(args: &[String]) -> Result<()> {
                     }
                     Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) => {
                         if terminal::size()? == rendered_size {
-                            if !task_open && !actions.open && rendered_size.1 >= 7 && mouse.row == rendered_size.1 - 1
+                            if rendered_size.1 >= 3 && mouse.row == rendered_size.1 - 1
                                 && usize::from(mouse.column) < unicode_width::UnicodeWidthStr::width(TASK_DETAIL_BUTTON) {
-                                task_open = true; task_offset = 0;
+                                task_open = !task_open; task_offset = 0; actions.close();
                             } else if let Some(hit) = action_hits.iter().find(|hit| hit.row == mouse.row && mouse.column >= hit.start && mouse.column < hit.end) {
                                 if let Some(index) = hit.action { actions.submit(index, scope.as_ref()); }
                                 else { actions.toggle(); }
