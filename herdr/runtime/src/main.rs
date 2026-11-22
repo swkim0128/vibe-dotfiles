@@ -755,6 +755,7 @@ fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
 
 fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
+    let expanded = task["expanded"] == true || task["state"] != "observed";
     let mut lines = Vec::new();
     let mut connection_lines = vec![format!("스레드: {}", string(task, "thread")),
         format!("관측: {} · 확인 {} · {} {}", string(task, "state"), string(task, "observed_at"), string(task, "phase"), string(task, "error_type")),
@@ -785,9 +786,23 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     lines.extend(connection_lines);
     if task["limited"] == true { lines.push("연결 요청 목록 일부만 표시".into()); }
     if let Some(subagents) = task["subagents"].as_str() { lines.push(format!("별도 서브 실행 관측: {subagents}")); }
+    if !expanded {
+        if let Some(record) = task["records"].as_array().into_iter().flatten().find(|record| record["id"].as_i64() == selected) {
+            let result = record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("기록된 결과 없음 · v로 근거 확인");
+            let brief = result.split_once(". ").map(|(sentence, _)| format!("{sentence}. · v 전체 근거"))
+                .unwrap_or_else(|| result.to_owned());
+            let next = if record["queue_status"] == "done" { "결과 확인 후 c로 목록에서 치우기" }
+                else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
+            lines = vec![format!("#{} · {} · {}", record["id"], string(record, "state"), string(record, "goal")),
+                format!("결과: {brief}"),
+                if let Some(wait) = record["wait"].as_str().filter(|v| !v.is_empty()) { format!("대기: {wait} · 재개: {next}") }
+                    else { format!("다음: {next}") }];
+        }
+    }
     let columns = usize::from(width).max(1);
     let mut wrapped = Vec::new();
     for line in lines {
+        if !expanded { wrapped.push(plain(&line, columns.saturating_sub(1))); continue; }
         let mut row = String::new();
         let mut used = 0;
         for c in line.chars().filter(|c| !c.is_control()) {
@@ -806,9 +821,9 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     if height > 0 {
         execute!(output, cursor::MoveTo(0, height - 1))?;
         if completed_selection(task, selected).is_some() {
-            write!(output, "\x1b[32m{}\x1b[0m", plain(&format!("{COMPLETION_BUTTON} · 열람만으로는 숨기지 않음 · t/Esc 복귀"), columns))?;
+            write!(output, "\x1b[32m{}\x1b[0m", plain(&format!("{COMPLETION_BUTTON} · v {} · ↑↓/jk/ㅓㅏ 스크롤 · t/Esc 복귀", if expanded { "요약" } else { "전체 근거" }), columns))?;
         } else {
-            write!(output, "{}", plain("작업 상세 · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
+            write!(output, "{}", plain(&format!("작업 상세 · v {} · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀", if expanded { "요약" } else { "전체 근거" }), columns))?;
         }
     }
     output.flush()?;
@@ -979,6 +994,7 @@ fn view(args: &[String]) -> Result<()> {
     let mut opted_in = options.is_some();
     let mut notification_offset = 0;
     let mut task_open = false;
+    let mut detail_expanded = false;
     let mut task_offset = 0;
     let mut selected_task = None;
     let mut show_subagents = false;
@@ -1012,6 +1028,8 @@ fn view(args: &[String]) -> Result<()> {
             }
         }
         let mut task = task_observation(scope.as_mut(), &style);
+        if !task_open { detail_expanded = false; }
+        task["expanded"] = json!(detail_expanded);
         if task["state"] == "observed" && !task["records"].as_array().is_some_and(|records|
             records.iter().any(|record| record["id"].as_i64() == selected_task)) {
             if selected_task.is_some() { task_open = false; task_offset = 0; }
@@ -1074,10 +1092,14 @@ fn view(args: &[String]) -> Result<()> {
                         } else { actions.message = "선택한 작업은 완료 확인 대상이 아닙니다 · 완료·확인대기 작업을 선택하세요".into(); }
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('s') => {
+                        detail_expanded = true; task["expanded"] = json!(true);
                         show_subagents = !show_subagents;
                         task["subagents"] = json!(if show_subagents {
                             if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) } else { "서브 TUI 연결 미확인".into() }
                         } else { "표시 안 함".into() });
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('v') => {
+                        detail_expanded = !detail_expanded; task["expanded"] = json!(detail_expanded); task_offset = 0;
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && task_open && matches!(key.code, KeyCode::Up | KeyCode::Down | KeyCode::Char('j' | 'k' | 'ㅓ' | 'ㅏ')) => {
                         task_offset = if matches!(key.code, KeyCode::Up | KeyCode::Char('k' | 'ㅏ')) { task_offset.saturating_sub(1) } else { task_offset.saturating_add(1) };
