@@ -368,41 +368,48 @@ def current_task(scope):
         return json.loads(result.stdout)
 
     scope["_phase"] = "queue_list"
-    listed = read("list")
+    queue_view = scope.get("queue_view") is True
+    listed = read("list", *(["--all"] if queue_view else []))
     if not isinstance(listed, list):
         raise ValueError("queue list contract unavailable")
     for item in listed:
-        if (not isinstance(item, dict) or item.get("owner_tool") != "codex"
-                or item.get("owner_conversation_id") != native or type(item.get("id")) is not int):
+        if (not isinstance(item, dict) or type(item.get("id")) is not int
+                or (not queue_view and (item.get("owner_tool") != "codex"
+                    or item.get("owner_conversation_id") != native))):
             raise ScopeError("other owner in scoped queue response")
-    listed = [item for item in listed if item.get("kind") == "request"
-              and not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
-    ordered = sorted(listed, key=lambda item: (item.get("status") == "running", item["id"]), reverse=True)
+    if not queue_view:
+        listed = [item for item in listed if item.get("kind") == "request"
+                  and not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
+    ordered = sorted(listed, key=lambda item: (2 if item.get("status") == "running"
+                     else 1 if queue_view and item.get("status") == "queued" else 0, item["id"]), reverse=True)
+    visible = ordered if queue_view else ordered[:12]
     records = []
-    for item in ordered[:12]:
+    for item in visible:
         scope["_phase"] = "queue_show"
-        full = read("show", item["id"])
-        if (full.get("id") != item["id"] or full.get("owner_tool") != "codex"
-                or full.get("owner_conversation_id") != native):
+        full = item if queue_view else read("show", item["id"])
+        if (full.get("id") != item["id"] or (not queue_view and (full.get("owner_tool") != "codex"
+                or full.get("owner_conversation_id") != native))):
             raise ScopeError("queue detail owner changed")
-        if full.get("status") == "done" and full.get("completion_confirmed") is True:
+        if not queue_view and full.get("status") == "done" and full.get("completion_confirmed") is True:
             continue
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
-        if isinstance(execution, dict):
+        if isinstance(execution, dict) and not queue_view:
             scope["_phase"] = "queue_execution"
             execution = read("execution-show", item["id"])
             if execution != metadata["execution"]:
                 raise ValueError("queue stage changed during read")
-        default_definition = read("definition-show", item["id"]) if not metadata.get("definition") else None
+        default_definition = read("definition-show", item["id"]) if not queue_view and not metadata.get("definition") else None
         record = task_record(full, execution, default_definition)
         records.append(record)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
+            "view": "queue" if queue_view else "current", "total": len(listed),
+            "queued_count": sum(item.get("status") == "queued" for item in listed),
             "observed_at": datetime.now().astimezone().isoformat(), "records": records,
             "requests": [{"id": item["id"], "status": item.get("status"),
                           "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
-                         for item in ordered[:12]], "limited": len(listed) > 12}
+                         for item in visible], "limited": not queue_view and len(listed) > 12}
 
 
 def task_record(item, execution, default_definition=None):
@@ -424,11 +431,13 @@ def task_record(item, execution, default_definition=None):
     if scope_wait.get("paused") == 1:
         wait = {"kind": "user", "reason": scope_wait.get("evidence"),
                 "resume_condition": "실제 사용자 답변 후 원담당 scope-resume 필요"}
-    state = "진척 미확인"
+    state = {"queued": "큐 대기", "done": "기록상 완료", "failed": "실패 기록"}.get(item.get("status"), "진척 미확인")
     if wait:
         state = "Question 대기" if wait.get("kind") == "user" else "의존 대기"
     elif result:
         state = {"done": "기록상 완료", "failed": "실패 기록", "running": "단계 결과 있음"}.get(item.get("status"), state)
+    if item.get("status") == "done" and item.get("completion_review") in ("deferred", "changes_requested"):
+        state = "검토 보류" if item["completion_review"] == "deferred" else "수정 요청"
     artifacts = []
     for artifact in execution.get("artifacts", []):
         if not isinstance(artifact, dict):
@@ -477,6 +486,9 @@ def task_record(item, execution, default_definition=None):
         flow = [{"id": key, "state": "waiting" if item.get("status") == "queued" else "unknown"}
                 for key in stage_ids]
     return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
+            "owner_tool": item.get("owner_tool"), "owner_thread": item.get("owner_conversation_id"),
+            "completion_confirmed": item.get("completion_confirmed") is True,
+            "review_decision": item.get("completion_review"), "kind": item.get("kind"),
             "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
             "completion_token": item.get("completion_token"),
             "wait": str(wait.get("reason") or "")[:512], "result": result,
