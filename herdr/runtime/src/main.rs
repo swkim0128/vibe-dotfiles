@@ -708,7 +708,7 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
 fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
-    let title = format!("작업 목록 · 스레드 {} · 확인 {} · ↑↓ 선택 / Enter·클릭 상세{}",
+    let title = format!("작업 목록 · 스레드 {} · 확인 {} · ↑↓/jk/ㅓㅏ 선택 / Enter·클릭 상세{}",
         task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
         task["observed_at"].as_str().unwrap_or("미확인"), if task["limited"] == true { " · 최근12건" } else { "" });
     write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
@@ -795,7 +795,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     }
     if height > 0 {
         execute!(output, cursor::MoveTo(0, height - 1))?;
-        write!(output, "{}", plain("작업 상세 · ↑↓ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
+        write!(output, "{}", plain("작업 상세 · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
     }
     output.flush()?;
     Ok(())
@@ -1040,8 +1040,8 @@ fn view(args: &[String]) -> Result<()> {
                             if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) } else { "서브 TUI 연결 미확인".into() }
                         } else { "표시 안 함".into() });
                     }
-                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && matches!(key.code, KeyCode::Up | KeyCode::Down) => {
-                        task_offset = if key.code == KeyCode::Up { task_offset.saturating_sub(1) } else { task_offset.saturating_add(1) };
+                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && matches!(key.code, KeyCode::Up | KeyCode::Down | KeyCode::Char('j' | 'k' | 'ㅓ' | 'ㅏ')) => {
+                        task_offset = if matches!(key.code, KeyCode::Up | KeyCode::Char('k' | 'ㅏ')) { task_offset.saturating_sub(1) } else { task_offset.saturating_add(1) };
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && actions.open => {
                         actions.close();
@@ -1063,10 +1063,10 @@ fn view(args: &[String]) -> Result<()> {
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('a') => { task_open = false; actions.toggle(); },
                     Event::Key(_) if task_open => (),
-                    Event::Key(key) if key.kind == KeyEventKind::Press && !actions.open && matches!(key.code, KeyCode::Up | KeyCode::Down) => {
+                    Event::Key(key) if key.kind == KeyEventKind::Press && !actions.open && matches!(key.code, KeyCode::Up | KeyCode::Down | KeyCode::Char('j' | 'k' | 'ㅓ' | 'ㅏ')) => {
                         if let Some(records) = task["records"].as_array().filter(|records| !records.is_empty()) {
                             let position = records.iter().position(|record| record["id"].as_i64() == selected_task).unwrap_or(0);
-                            let next = if key.code == KeyCode::Up { position.saturating_sub(1) } else { (position + 1).min(records.len() - 1) };
+                            let next = if matches!(key.code, KeyCode::Up | KeyCode::Char('k' | 'ㅏ')) { position.saturating_sub(1) } else { (position + 1).min(records.len() - 1) };
                             selected_task = records[next]["id"].as_i64();
                         }
                     }
