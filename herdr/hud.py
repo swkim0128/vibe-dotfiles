@@ -6,12 +6,13 @@ import os
 import re
 import shlex
 import socket
+import shutil
 import subprocess
 import time
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -208,8 +209,8 @@ class ScopeError(ValueError):
     pass
 
 
-def subagents(scope):
-    """Read lifecycle observations only for an explicitly bound TUI instance."""
+def bound_parent(scope):
+    """Verify the official parent and this exact TUI before reading private state."""
     scope["_phase"] = "herdr_scope"
     socket_path = Path(os.environ["HERDR_SOCKET_PATH"])
     generation = socket_path.stat().st_ino
@@ -242,6 +243,31 @@ def subagents(scope):
     binding = [native, pid, stamp]
     if scope.get("binding") is not None and scope["binding"] != binding:
         raise ScopeError("parent process recycled")
+    return socket_path, generation, view, parent, harness, native, pid, stamp, binding
+
+
+def recheck_parent(scope, context):
+    socket_path, generation, view, parent, harness, native, pid, stamp, _ = context
+    scope["_phase"] = "herdr_recheck"
+    current = rpc("pane.get", pane_id=scope["parent_pane"])["pane"]
+    current_view = rpc("pane.get", pane_id=scope["view_pane"])["pane"]
+    if (socket_path.stat().st_ino != generation
+            or current.get("agent_session") != parent.get("agent_session")
+            or current["terminal_id"] != parent["terminal_id"]
+            or current["tab_id"] != view["tab_id"]
+            or current["workspace_id"] != view["workspace_id"]
+            or current_view["terminal_id"] != view["terminal_id"]
+            or current_view["tab_id"] != view["tab_id"]
+            or identity(current) != (harness, native, pid, stamp)):
+        raise ScopeError("TUI occupant changed during read")
+
+
+def subagents(scope):
+    """Read lifecycle observations only for an explicitly bound TUI instance."""
+    context = bound_parent(scope)
+    if isinstance(context, dict):
+        return context
+    _, _, _, _, _, native, _, _, binding = context
     base = scope.get("api_url") or os.environ.get("VIBE_SUBAGENTS_API_URL", "")
     if not base:
         scope["_phase"] = "dashboard_config"
@@ -292,18 +318,7 @@ def subagents(scope):
             raise ValueError("native agent status mismatch")
     if current_provider and any(agent.get("state") != "active" for agent in data["running"]):
         raise ValueError("non-active agent in native running list")
-    scope["_phase"] = "herdr_recheck"
-    current = rpc("pane.get", pane_id=scope["parent_pane"])["pane"]
-    current_view = rpc("pane.get", pane_id=scope["view_pane"])["pane"]
-    if (socket_path.stat().st_ino != generation
-            or current.get("agent_session") != parent.get("agent_session")
-            or current["terminal_id"] != parent["terminal_id"]
-            or current["tab_id"] != view["tab_id"]
-            or current["workspace_id"] != view["workspace_id"]
-            or current_view["terminal_id"] != view["terminal_id"]
-            or current_view["tab_id"] != view["tab_id"]
-            or identity(current) != (harness, native, pid, stamp)):
-        raise ScopeError("TUI occupant changed during read")
+    recheck_parent(scope, context)
     observed = data["observation"]
     scope["_phase"] = "freshness"
     fresh_at = observed["observed_at"] if current_provider else observed["queried_at"]
@@ -319,6 +334,144 @@ def subagents(scope):
         raise ValueError("running observation has no lifecycle timestamp")
     return {"state": "observed", "binding": binding, "age": age,
             "event_age": event_age, "data": data}
+
+
+def current_task(scope):
+    """Project existing owner-scoped queue records; never read dashboard's other queue."""
+    context = bound_parent(scope)
+    if isinstance(context, dict):
+        return context
+    _, _, _, parent, _, native, pid, _, binding = context
+    info = rpc("pane.process_info", pane_id=scope["parent_pane"])["process_info"]
+    processes = [process for process in info["foreground_processes"] if process.get("pid") == pid]
+    cwd = parent.get("cwd")
+    if (len(processes) != 1 or processes[0].get("cwd") != cwd
+            or not isinstance(cwd, str) or not Path(cwd).is_absolute() or not Path(cwd).is_dir()):
+        raise ScopeError("parent pane and Codex cwd do not match")
+    cli = shutil.which("vibe") or str(Path.home() / ".local/bin/vibe")
+    if not os.access(cli, os.X_OK):
+        raise ValueError("public vibe queue CLI unavailable")
+    timeout = float(scope.get("queue_timeout_seconds", 4))
+    if not 0 < timeout <= 10:
+        raise ValueError("invalid queue observation deadline")
+    deadline = time.monotonic() + timeout
+
+    def read(action, *args):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError("queue observation deadline")
+        result = subprocess.run([cli, "queue", action, *map(str, args), "--tool", "codex",
+                                 "--conversation-id", native, "--json"], cwd=cwd,
+                                capture_output=True, check=True, timeout=remaining)
+        if len(result.stdout) > 1048576:
+            raise ValueError("queue response too large")
+        return json.loads(result.stdout)
+
+    scope["_phase"] = "queue_list"
+    listed = read("list")
+    if not isinstance(listed, list):
+        raise ValueError("queue list contract unavailable")
+    for item in listed:
+        if (not isinstance(item, dict) or item.get("owner_tool") != "codex"
+                or item.get("owner_conversation_id") != native or type(item.get("id")) is not int):
+            raise ScopeError("other owner in scoped queue response")
+    listed = [item for item in listed if item.get("kind") == "request"]
+    active = [item for item in listed if item.get("status") == "running"]
+    selected = active[0] if len(active) == 1 else listed[0] if len(listed) == 1 else None
+    if selected is None and not active:
+        finished = []
+        for item in listed:
+            stamp = item.get("finished_at")
+            if (item.get("status") not in ("done", "failed") or not isinstance(stamp, str)
+                    or not re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?", stamp)):
+                continue
+            try:
+                at = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+                if at.tzinfo is None:
+                    at = at.replace(tzinfo=timezone.utc)
+                finished.append((at.timestamp(), item))
+            except (ValueError, OverflowError, OSError):
+                continue
+        if finished:
+            latest = max(stamp for stamp, _ in finished)
+            candidates = [item for stamp, item in finished if stamp == latest]
+            if len(candidates) == 1:
+                selected = candidates[0]
+    records = []
+    for item in ([selected] if selected else []):
+        scope["_phase"] = "queue_show"
+        full = read("show", item["id"])
+        if (full.get("id") != item["id"] or full.get("owner_tool") != "codex"
+                or full.get("owner_conversation_id") != native):
+            raise ScopeError("queue detail owner changed")
+        metadata = full.get("request_data") or {}
+        execution = metadata.get("execution")
+        if isinstance(execution, dict):
+            scope["_phase"] = "queue_execution"
+            execution = read("execution-show", item["id"])
+            if execution != metadata["execution"]:
+                raise ValueError("queue stage changed during read")
+        record = task_record(full, execution)
+        if not active and full.get("status") in ("done", "failed"):
+            record["state"] = "최근 종료 · " + record["state"]
+        records.append(record)
+    recheck_parent(scope, context)
+    return {"state": "observed", "binding": binding, "thread": native,
+            "observed_at": datetime.now().astimezone().isoformat(), "records": records,
+            "requests": [{"id": item["id"], "status": item.get("status"),
+                          "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
+                         for item in listed[:20]], "limited": len(listed) > 20}
+
+
+def task_record(item, execution):
+    metadata = item.get("request_data") or {}
+    execution = execution if isinstance(execution, dict) else {}
+    control = metadata.get("control") or {}
+    stage = execution.get("current_stage", "request")
+    version, attempt = control.get("version"), control.get("attempt")
+    valid_run = isinstance(version, str) and bool(version.strip()) and type(attempt) is int and attempt > 0
+    events = control.get("events") or []
+    result = next((str(event.get("evidence") or "")[:1024] for event in reversed(events)
+        if valid_run and isinstance(event, dict) and event.get("kind") == "result"
+        and event.get("version") == version and event.get("attempt") == attempt
+        and event.get("stage") == stage and event.get("request_id") == item["id"]
+        and event.get("owner_tool") == item.get("owner_tool")
+        and event.get("owner_thread") == item.get("owner_conversation_id")), "")
+    wait = control.get("wait") or {}
+    scope_wait = item.get("control_scope") or {}
+    if scope_wait.get("paused") == 1:
+        wait = {"kind": "user", "reason": scope_wait.get("evidence"),
+                "resume_condition": "실제 사용자 답변 후 원담당 scope-resume 필요"}
+    state = "진척 미확인"
+    if wait:
+        state = "Question 대기" if wait.get("kind") == "user" else "의존 대기"
+    elif result:
+        state = {"done": "기록상 완료", "failed": "실패 기록", "running": "단계 결과 있음"}.get(item.get("status"), state)
+    artifacts = []
+    for artifact in execution.get("artifacts", []):
+        if not isinstance(artifact, dict):
+            continue
+        confirmations = [confirmation for confirmation in execution.get("confirmations", [])
+            if isinstance(artifact.get("stage"), str) and bool(artifact["stage"])
+            and confirmation.get("artifact_id") == artifact.get("id")
+            and confirmation.get("artifact_version") == artifact.get("version")
+            and confirmation.get("stage") == artifact.get("stage")]
+        decision = confirmations[-1] if confirmations else {}
+        artifacts.append({"id": artifact.get("id"), "stage": artifact.get("stage"), "version": artifact.get("version"),
+                          "reference": artifact.get("reference"), "decision": decision.get("decision", "미확인"),
+                          "confirmation_reference": decision.get("reference")})
+    updated_age = None
+    if item.get("updated_at"):
+        updated = datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
+        if updated.tzinfo is not None:
+            updated_age = time.time() - updated.timestamp()
+    return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
+            "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
+            "wait": str(wait.get("reason") or "")[:512], "result": result,
+            "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
+                               else metadata.get("next_action") or "")[:512],
+            "version": version, "attempt": attempt, "artifacts": artifacts,
+            "updated_at": item.get("updated_at"), "updated_age": updated_age}
 
 
 def observation_receipt(scope, result, error_type=None, error_module=None):
@@ -339,13 +492,13 @@ def observation_receipt(scope, result, error_type=None, error_module=None):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--subagents":
+    if len(sys.argv) == 3 and sys.argv[1] in ("--subagents", "--current-task"):
         scope = {}
         error_type = None
         error_module = None
         try:
             scope = json.loads(sys.argv[2])
-            result = subagents(scope)
+            result = current_task(scope) if sys.argv[1] == "--current-task" else subagents(scope)
         except ScopeError as error:
             result = {"state": "unconnected", "reason": str(error)}
             error_type = type(error).__name__
@@ -353,6 +506,8 @@ if __name__ == "__main__":
             result = {"state": "failed"}
             error_type = type(error).__name__
             error_module = getattr(error, "name", None)
+        result["phase"] = scope.get("_phase")
+        result["error_type"] = error_type
         observation_receipt(scope, result, error_type, error_module)
         print(json.dumps(result))
     else:

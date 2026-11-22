@@ -632,6 +632,110 @@ fn subagent_line(scope: &mut Value, style: &Value) -> String {
         if running.len() > limit { format!(" · +{}", running.len() - limit) } else { String::new() })
 }
 
+fn task_observation(scope: Option<&mut Value>, style: &Value) -> Value {
+    let Some(scope) = scope else { return json!({"state":"unconnected","reason":"공식 부모 연결 미확인"}); };
+    if scope["view_pid"].as_u64() != Some(u64::from(std::process::id())) {
+        return json!({"state":"unconnected","reason":"현재 TUI scope 아님"});
+    }
+    scope["queue_timeout_seconds"] = style["task"]["queue_timeout_seconds"].clone();
+    let script = env::var_os("VIBE_HERDR_HUD_ADAPTER").map(PathBuf::from)
+        .unwrap_or(home().join(".config/herdr/hud.py"));
+    let python = home().join(string(&style["subagents"], "python_relative_path"));
+    let result = (|| -> Result<Value> {
+        let raw = run(python.to_str().ok_or("invalid adapter Python path")?,
+            &["-B", script.to_str().ok_or("invalid adapter path")?, "--current-task", &scope.to_string()],
+            Duration::from_secs(style["task"]["adapter_timeout_seconds"].as_u64().unwrap_or(6)))?;
+        Ok(serde_json::from_str(&raw)?)
+    })();
+    let result = result.unwrap_or_else(|_| json!({"state":"failed"}));
+    if !result["binding"].is_null() && scope["binding"].is_null() {
+        scope["binding"] = result["binding"].clone();
+    }
+    result
+}
+
+fn task_line(task: &Value, style: &Value) -> String {
+    match task["state"].as_str() {
+        Some("parent_unbound") => return "작업 thread 부모 미연결 · t 상세".into(),
+        Some("unconnected") => return "작업 thread 연결 불일치/미확인 · t 상세".into(),
+        Some("observed") => {},
+        _ => return "작업 thread 조회 실패 · 현재 상태 미확인 · t 상세".into(),
+    }
+    let thread = task["thread"].as_str().unwrap_or("?").chars().take(8).collect::<String>();
+    let at = task["observed_at"].as_str().unwrap_or("미확인");
+    let at = at.get(11..19).unwrap_or(at);
+    let Some(record) = task["records"].as_array().and_then(|records| records.first()) else {
+        let count = task["requests"].as_array().map_or(0, Vec::len);
+        return format!("작업 thread {thread} · 요청 {count} · 선택/진척 미확인 · 확인 {at} · t 상세");
+    };
+    let stage = record["stage"].as_str().unwrap_or("세부단계 미기록");
+    let freshness = match record["updated_age"].as_f64() {
+        Some(age) if age < 0.0 || age > style["task"]["stale_seconds"].as_f64().unwrap_or(60.0) => " · 기록 오래됨",
+        None => " · 기록 갱신시각 미확인",
+        _ => "",
+    };
+    format!("작업 {thread}/#{} · 확인 {at} · {stage} · {}{freshness} · {} · t 상세",
+        record["id"], string(record, "state"), plain(&string(record, "goal"), 40))
+}
+
+fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize) -> Result<()> {
+    use crossterm::{cursor, execute};
+    let mut lines = vec![format!("스레드: {}", string(task, "thread")),
+        format!("관측: {} · 확인 {} · {} {}", string(task, "state"), string(task, "observed_at"), string(task, "phase"), string(task, "error_type")),
+        format!("연결: {}", task["reason"].as_str().unwrap_or(if task["state"] == "observed" {
+            "공식 부모 thread/PID/cwd 검증 · public vibe queue" } else { "검증/조회 미완료" })),
+        "에이전트·thread·pane은 별개 · 실행/접수/열람은 완료·승인 근거 아님".into()];
+    if task["state"] != "observed" {
+        lines.push(format!("연결 확인 후 Codex 패널에서 실행: {} bar ensure --current --parent-current --relaunch",
+            home().join(".config/herdr/vibe-herdr").display()));
+    }
+    for record in task["records"].as_array().into_iter().flatten() {
+        lines.extend([format!("요청 #{} 목표: {}", record["id"], string(record, "goal")),
+            format!("현재 단계: {} · 상태: {} · 큐 기록: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
+            format!("대기사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
+            format!("현재 단계/판본/시도의 실제 결과: {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인")),
+            format!("실행 판본: {} · 시도 {} · 기록 갱신 {}", record["version"], record["attempt"], record["updated_at"].as_str().unwrap_or("미확인")),
+            format!("다음 행동(저장된 재개조건/안내): {}", record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인"))]);
+        if record["artifacts"].as_array().is_none_or(Vec::is_empty) {
+            lines.push("확인 산출물/판본/원문 참조: 미기록 · 열람을 확인으로 추정하지 않음".into());
+        }
+        for artifact in record["artifacts"].as_array().into_iter().flatten() {
+            lines.extend([format!("산출물 {} / {} v{} · 확인 {}", artifact["stage"], artifact["id"], artifact["version"], string(artifact, "decision")),
+                format!("원문 참조: {}", artifact["reference"]),
+                format!("확인 근거: {}", artifact["confirmation_reference"])]);
+        }
+    }
+    for request in task["requests"].as_array().into_iter().flatten() {
+        lines.push(format!("연결 요청 #{} · 큐 {} · {}", request["id"], string(request, "status"), string(request, "goal")));
+    }
+    if task["limited"] == true { lines.push("연결 요청 목록 일부만 표시".into()); }
+    if let Some(subagents) = task["subagents"].as_str() { lines.push(format!("별도 서브 실행 관측: {subagents}")); }
+    let columns = usize::from(width).max(1);
+    let mut wrapped = Vec::new();
+    for line in lines {
+        let mut row = String::new();
+        let mut used = 0;
+        for c in line.chars().filter(|c| !c.is_control()) {
+            let size = c.width().unwrap_or(0);
+            if used + size > columns && !row.is_empty() { wrapped.push(row); row = String::new(); used = 0; }
+            row.push(c); used += size;
+        }
+        wrapped.push(row);
+    }
+    let visible = usize::from(height.saturating_sub(1));
+    *offset = (*offset).min(wrapped.len().saturating_sub(visible));
+    for (index, line) in wrapped.iter().skip(*offset).take(visible).enumerate() {
+        execute!(output, cursor::MoveTo(0, index as u16))?;
+        write!(output, "{}", plain(line, columns))?;
+    }
+    if height > 0 {
+        execute!(output, cursor::MoveTo(0, height - 1))?;
+        write!(output, "{}", plain("작업 상세 · ↑↓ 스크롤 · s 서브관측 · t/Esc 복귀 · /agents에서 기존 thread 선택", columns))?;
+    }
+    output.flush()?;
+    Ok(())
+}
+
 fn render_view(
     output: &mut impl Write,
     values: &Value,
@@ -639,16 +743,17 @@ fn render_view(
     date: &str,
     style: &Value,
     subagents: Option<&str>,
-    notification_offset: usize,
-    actions: &actions::Actions,
+    interaction: (&actions::Actions, usize, Option<(&Value, &mut usize)>),
 ) -> Result<Vec<actions::Hit>> {
     use crossterm::{cursor, execute, terminal};
+    let (actions, notification_offset, task_detail) = interaction;
     let (width, height) = terminal::size()?;
     execute!(
         output,
         cursor::MoveTo(0, 0),
         terminal::Clear(terminal::ClearType::All)
     )?;
+    if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset)?; return Ok(vec![]); }
     if actions.open { return actions.overlay(output, width, height); }
     let mut action_hits = Vec::new();
     if height <= 8 {
@@ -772,6 +877,9 @@ fn view(args: &[String]) -> Result<()> {
         own_pane.as_deref().and_then(|pane| subagent_scope(parent, pane, url).ok()));
     let mut opted_in = options.is_some();
     let mut notification_offset = 0;
+    let mut task_open = false;
+    let mut task_offset = 0;
+    let mut show_subagents = false;
     struct Screen;
     impl Drop for Screen {
         fn drop(&mut self) {
@@ -801,8 +909,13 @@ fn view(args: &[String]) -> Result<()> {
                 }
             }
         }
-        let subagents = if let Some(scope) = scope.as_mut() { Some(subagent_line(scope, &style)) }
-            else if opted_in { Some("서브 TUI 연결 미확인".into()) } else { None };
+        let mut task = task_observation(scope.as_mut(), &style);
+        if task_open && show_subagents {
+            task["subagents"] = json!(if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) }
+                else { "서브 TUI 연결 미확인".into() });
+        }
+        if opted_in && scope.is_none() { task["reason"] = json!("저장된 scope/현재 TUI 검증 실패"); }
+        let subagents = Some(task_line(&task, &style));
         let values = metrics();
         let notifications = dock(&cache);
         let notifications = if notifications.starts_with("알림") {
@@ -814,17 +927,32 @@ fn view(args: &[String]) -> Result<()> {
         let notices = if actions.message.is_empty() { notifications.clone() }
             else { format!("{} · {notifications}", actions.message) };
         notification_offset = notification_offset.min(notices.chars().count().saturating_sub(1));
-        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, subagents.as_deref(), (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
         let mut rendered_size = terminal::size()?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if actions.poll() {
-                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, subagents.as_deref(), (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
                 rendered_size = terminal::size()?;
             }
             let wait = deadline.saturating_duration_since(Instant::now());
             if event::poll(if actions.busy() { wait.min(Duration::from_millis(100)) } else { wait })? {
                 match event::read()? {
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && task_open => {
+                        task_open = false;
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('t') => {
+                        task_open = !task_open; task_offset = 0; actions.close();
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('s') => {
+                        show_subagents = !show_subagents;
+                        task["subagents"] = json!(if show_subagents {
+                            if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) } else { "서브 TUI 연결 미확인".into() }
+                        } else { "표시 안 함".into() });
+                    }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && matches!(key.code, KeyCode::Up | KeyCode::Down) => {
+                        task_offset = if key.code == KeyCode::Up { task_offset.saturating_sub(1) } else { task_offset.saturating_add(1) };
+                    }
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && actions.open => {
                         actions.close();
                     }
@@ -843,7 +971,8 @@ fn view(args: &[String]) -> Result<()> {
                     Event::Resize(_, _) => {
                         // Redraw before accepting any click at the new terminal size.
                     }
-                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('a') => actions.toggle(),
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('a') => { task_open = false; actions.toggle(); },
+                    Event::Key(_) if task_open => (),
                     Event::Key(key) if key.kind == KeyEventKind::Press && matches!(key.code, KeyCode::Tab | KeyCode::BackTab) =>
                         actions.select(key.code == KeyCode::Tab),
                     Event::Key(key) if key.kind == KeyEventKind::Press && actions.open && matches!(key.code, KeyCode::Left | KeyCode::Right) =>
@@ -875,7 +1004,7 @@ fn view(args: &[String]) -> Result<()> {
                 }
                 let notifications = if actions.message.is_empty() { notifications.clone() }
                     else { format!("{} · {notifications}", actions.message) };
-                action_hits = render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), notification_offset, &actions)?;
+                action_hits = render_view(&mut output, &values, &notifications, &date, &style, subagents.as_deref(), (&actions, notification_offset, task_open.then_some((&task, &mut task_offset))))?;
                 rendered_size = terminal::size()?;
             }
         }

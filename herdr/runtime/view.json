@@ -14,6 +14,11 @@
       {"label": "상황 저장", "prompt": "현재 확인된 작업 상황을 기존 정본에 저장하고 종료해 주세요. 새 조사·검증·동기화는 시작하지 마세요."}
     ]
   },
+  "task": {
+    "queue_timeout_seconds": 4,
+    "adapter_timeout_seconds": 6,
+    "stale_seconds": 60
+  },
   "subagents": {
     "before": "notifications",
     "color": "36",
