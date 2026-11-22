@@ -40,6 +40,7 @@ pub struct Actions {
     pub message: String,
     pending: Option<Pending>,
     submitted_at: Option<Instant>,
+    confirmed_completion: Option<(i64, String)>,
 }
 
 impl Actions {
@@ -55,7 +56,7 @@ impl Actions {
             }).collect::<Result<Vec<_>>>()?;
         if items.is_empty() { return Err("missing action buttons".into()); }
         Ok(Self { items, selected: 0, open: false, keyboard: false,
-            message: String::new(), pending: None, submitted_at: None })
+            message: String::new(), pending: None, submitted_at: None, confirmed_completion: None })
     }
 
     pub fn select(&mut self, forward: bool) {
@@ -193,7 +194,10 @@ impl Actions {
     }
 
     pub fn confirm_completion(&mut self, record: &Value, scope: Option<&Value>) {
-        if self.pending.is_some() { return; }
+        if self.pending.is_some() {
+            self.message = "이전 요청 처리 중 · 결과를 기다린 뒤 이 작업을 다시 확인하세요".into();
+            return;
+        }
         let request = (|| -> Result<Pending> {
             let id = record["id"].as_i64().ok_or("작업 ID 미확인")?;
             let version = record["completion_token"].as_str().filter(|v| !v.is_empty()).ok_or("완료 판본 미확인 · 목록을 새로 확인하세요")?;
@@ -228,8 +232,10 @@ impl Actions {
                     Ok(Ok(bytes)) => if let Some((id, version)) = &pending.completion {
                         match serde_json::from_slice::<Value>(&bytes) {
                             Ok(value) if value["id"].as_i64() == Some(*id) && value["completion_confirmed"] == true
-                                && value["completion_token"].as_str() == Some(version.as_str()) =>
-                                format!("완료 확인 저장됨 · #{id} · 목록 갱신 시 숨김 / 큐 이력 보존"),
+                                && value["completion_token"].as_str() == Some(version.as_str()) => {
+                                self.confirmed_completion = Some((*id, version.clone()));
+                                format!("완료 확인 저장됨 · #{id} 목록에서 치움 · 큐 이력 보존")
+                            },
                             _ => "완료 확인 결과 미확인 · 자동 재전송하지 않음".into(),
                         }
                     } else { format!("접수됨 · {} · 작업 완료는 별도 확인", pending.label) },
@@ -253,6 +259,10 @@ impl Actions {
             self.pending = None;
             true
         } else { false }
+    }
+
+    pub fn take_confirmed_completion(&mut self) -> Option<(i64, String)> {
+        self.confirmed_completion.take()
     }
 }
 

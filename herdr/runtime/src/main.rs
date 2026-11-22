@@ -1038,6 +1038,20 @@ fn view(args: &[String]) -> Result<()> {
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
             if actions.poll() {
+                if let Some((id, version)) = actions.take_confirmed_completion() {
+                    if let Some(records) = task["records"].as_array_mut() {
+                        let removed = records.iter().position(|record| record["id"].as_i64() == Some(id)
+                            && record["completion_token"].as_str() == Some(version.as_str()));
+                        if let Some(position) = removed {
+                            records.remove(position);
+                            if selected_task == Some(id) {
+                                selected_task = records.get(position.min(records.len().saturating_sub(1)))
+                                    .and_then(|record| record["id"].as_i64());
+                                task_open = false; task_offset = 0;
+                            }
+                        }
+                    }
+                }
                 action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
@@ -1050,8 +1064,14 @@ fn view(args: &[String]) -> Result<()> {
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('t') => {
                         task_open = !task_open; task_offset = 0; actions.close();
                     }
-                    Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('c') => {
-                        if let Some(record) = completed_selection(&task, selected_task) { actions.confirm_completion(record, scope.as_ref()); }
+                    Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('c') && !actions.open => {
+                        if let Some(record) = completed_selection(&task, selected_task) {
+                            if task_open { actions.confirm_completion(record, scope.as_ref()); }
+                            else {
+                                task_open = true; task_offset = 0;
+                                actions.message = format!("#{} 완료 결과를 읽은 뒤 c 또는 완료 확인 버튼을 선택하세요 · 아직 확인하지 않음", record["id"]);
+                            }
+                        } else { actions.message = "선택한 작업은 완료 확인 대상이 아닙니다 · 완료·확인대기 작업을 선택하세요".into(); }
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('s') => {
                         show_subagents = !show_subagents;
