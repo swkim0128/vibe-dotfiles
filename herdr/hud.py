@@ -453,7 +453,7 @@ def task_record(item, execution, default_definition=None):
     state = {"queued": "큐 대기", "running": "실행 기록", "done": "기록상 완료",
              "failed": "실패 기록"}.get(queue_status, "진척 미확인")
     if wait:
-        state = "Question 대기" if wait.get("kind") == "user" else "의존 대기"
+        state = {"user": "Question 대기", "external": "외부 대기"}.get(wait.get("kind"), "의존 대기")
     elif result:
         state = {"done": "기록상 완료", "failed": "실패 기록", "running": "단계 결과 있음"}.get(item.get("status"), state)
     if item.get("status") == "done" and item.get("completion_review") in ("deferred", "changes_requested"):

@@ -96,12 +96,17 @@ class QueueDisplayTests(unittest.TestCase):
         reason = "긴 의존 사유 " * 80 + "\n마지막 조건"
         self.item["request_data"]["control"] = {"wait": {"kind": "external", "reason": reason}}
         record = hud.task_record(self.item, self.execution)
-        self.assertEqual((record["state"], record["waiting"], record["wait"]), ("의존 대기", True, reason))
+        self.assertEqual((record["state"], record["waiting"], record["wait"]), ("외부 대기", True, reason))
         self.assertEqual(record["stages"][1], {"id": "verify", "state": "blocked"})
         self.assertEqual(record["priority"], 1)
         self.item["control_scope"] = {"paused": 1, "evidence": "사용자 선택 대기"}
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["state"], record["wait"]), ("Question 대기", "사용자 선택 대기"))
+
+    def test_verification_dependency_wait_keeps_its_label(self):
+        self.item["request_data"]["control"] = {"wait": {"kind": "verification", "reason": "검증 자료 대기"}}
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["state"], record["priority"]), ("의존 대기", 1))
 
     def test_scn_84_03_legacy_row_retains_unknown_stage_flow(self):
         self.item["request_data"] = {}
@@ -129,7 +134,7 @@ class QueueDisplayTests(unittest.TestCase):
                    "control": {"wait": {"kind": "external", "reason": "waiting"}}}
         rows = [
             {**self.item, "id": 6, "status": "queued", "request_data": {}},
-            {**self.item, "id": 7, "request_data": waiting},
+            {**self.item, "id": 83, "request_data": waiting},
             {**self.item, "id": 8, "request_data": {"definition": self.definition, "execution": self.execution}},
             {**self.item, "id": 4, "status": "done", "completion_token": "v1",
              "request_data": {"definition": self.definition, "execution": completed}},
@@ -144,7 +149,9 @@ class QueueDisplayTests(unittest.TestCase):
             first = hud.current_task({"parent_pane": "fixture"})
             second = hud.current_task({"parent_pane": "fixture",
                                        "queue_default_definition": first["queue_default_definition"]})
-        self.assertEqual([row["id"] for row in second["records"]], [4, 8, 7, 6])
+        self.assertEqual([row["id"] for row in second["records"]], [4, 8, 83, 6])
+        self.assertEqual((second["records"][2]["state"], second["records"][2]["queue_status"]),
+                         ("외부 대기", "running"))
         self.assertEqual(second["review_count"], 1)
         self.assertEqual([call.args[0][2] for call in read_cli.call_args_list],
                          ["list", "definition-default", "list"])
