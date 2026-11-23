@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use unicode_width::UnicodeWidthChar;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod bar;
@@ -757,15 +757,22 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
     let row = |id: &str, goal: &str, status: &str, diagram: &str| {
-        if columns < 64 { return plain(&format!("{id} {status} · {goal} · {diagram}"), columns); }
         let status_color = match status {
-            "완료·확인대기" | "완료·확인됨" => "32",
-            "실패 기록" | "수정 요청" => "31",
-            "실행 기록" | "검증 단계" | "단계 결과 있음" => "36",
+            "완료·확인대기" | "완료·확인됨" => "92",
+            "실패 기록" | "수정 요청" => "91",
+            "실행 기록" | "검증 단계" | "단계 결과 있음" => "96",
             "단계 진행" | "단계 기록" => "94",
-            "대기 기록" | "검토 보류" | "의존 대기" | "Question 대기" => "33",
-            _ => "90",
+            "대기 기록" | "의존 대기" | "Question 대기" => "93",
+            "검토 보류" => "95",
+            _ => "39",
         };
+        if columns < 64 {
+            let prefix = plain(&format!("{id} "), columns);
+            let remaining = columns.saturating_sub(prefix.width());
+            let state = plain(status, remaining);
+            let rest = plain(&format!(" · {goal} · {diagram}"), remaining.saturating_sub(state.width()));
+            return format!("{prefix}\x1b[{status_color}m{state}\x1b[39m{rest}");
+        }
         let diagram = cell(diagram, diagram_width)
             .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●").replace("[◇", "\x1b[94m[◇")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
