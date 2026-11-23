@@ -609,13 +609,14 @@ fn subagent_line(scope: &mut Value, style: &Value) -> String {
     let Some(running) = result["data"]["running"].as_array() else { return "서브 조회 실패".into(); };
     let limit = style["subagents"]["max_agents"].as_u64().unwrap_or(2) as usize;
     let id_chars = style["subagents"]["id_chars"].as_u64().unwrap_or(8) as usize;
-    let labels = running.iter().take(limit).map(|agent| {
+    let agent_label = |agent: &Value| {
         let role = agent["agent_name"].as_str().filter(|v| !v.is_empty())
             .or_else(|| agent["agent_type"].as_str().filter(|v| !v.is_empty())).unwrap_or("역할 미확인");
         let id = agent["agent_id"].as_str().unwrap_or("?");
         let suffix = id.chars().rev().take(id_chars).collect::<String>().chars().rev().collect::<String>();
         format!("{}#{}", plain(role, 20), suffix)
-    }).collect::<Vec<_>>().join(" · ");
+    };
+    let labels = running.iter().take(limit).map(agent_label).collect::<Vec<_>>().join(" · ");
     if age < 0.0 || age > ttl {
         return if labels.is_empty() { "서브 현재 관측 오래됨".into() }
             else { format!("서브 현재 관측 오래됨 · {labels}") };
@@ -625,19 +626,28 @@ fn subagent_line(scope: &mut Value, style: &Value) -> String {
         return if running.is_empty() { "서브 현재 관측 없음".into() }
             else { format!("서브 과거 실행 관측 {} · {labels}", running.len()) };
     }
-    if running.is_empty() {
-        let mut summary = "서브 실행 0".to_owned();
-        if let Some(recent) = result["data"]["recent"].as_array() {
-            let limited = result["data"]["counts"]["recent"].as_u64().unwrap_or(0) > recent.len() as u64;
-            for (state, label) in [("idle", "유휴"), ("notLoaded", "미적재"), ("systemError", "오류")] {
-                let count = recent.iter().filter(|agent| agent["state"] == state).count();
-                if count > 0 { summary.push_str(&format!(" · {label}{}{count}", if limited { "≥" } else { " " })); }
-            }
-        }
-        return summary;
+    let Some(recent) = result["data"]["recent"].as_array() else { return "서브 조회 실패".into(); };
+    let recent_status = |agent: &Value| match agent["state"].as_str() {
+        Some("idle") => "유휴",
+        Some("notLoaded") => "미적재",
+        Some("systemError") => "오류",
+        _ => "상태 미확인",
+    };
+    let mut summary = if running.is_empty() { "서브 실행 0".to_owned() }
+        else { format!("서브 실행 관측 {}", running.len()) };
+    let recent_count = result["data"]["counts"]["recent"].as_u64().unwrap_or(0).max(recent.len() as u64);
+    let limited = recent_count > recent.len() as u64;
+    for label in ["유휴", "미적재", "오류", "상태 미확인"] {
+        let count = recent.iter().filter(|agent| recent_status(agent) == label).count();
+        if count > 0 { summary.push_str(&format!(" · {label}{}{count}", if limited { "≥" } else { " " })); }
     }
-    format!("서브 실행 관측 {} · {labels}{}", running.len(),
-        if running.len() > limit { format!(" · +{}", running.len() - limit) } else { String::new() })
+    if !labels.is_empty() { summary.push_str(&format!(" · {labels}")); }
+    for agent in recent.iter().take(limit.saturating_sub(running.len())) {
+        summary.push_str(&format!(" · {} {}", recent_status(agent), agent_label(agent)));
+    }
+    let hidden = (running.len() as u64 + recent_count).saturating_sub(limit as u64);
+    if hidden > 0 { summary.push_str(&format!(" · +{hidden}")); }
+    summary
 }
 
 fn task_observation(scope: Option<&mut Value>, style: &Value) -> Value {
@@ -727,8 +737,8 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
 fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
-    let title = format!("전체 작업 큐 · 확인 완료 제외 · {}건(대기 {}) · 연결 {} · 조회 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
-        task["total"], task["queued_count"],
+    let title = format!("전체 작업 큐 · {} · {}건(대기 {}) · 확인 완료 제외 · 연결 {} · 조회 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
+        string(task, "subagent_summary"), task["total"], task["queued_count"],
         task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
         task["observed_at"].as_str().and_then(|at| at.get(11..19)).unwrap_or("미확인"),
         if task["limited"] == true { " · 최근12건" } else { "" });
@@ -888,7 +898,7 @@ fn render_view(
         terminal::Clear(terminal::ClearType::All)
     )?;
     let summary = task_line(task, style);
-    let subagents = Some(summary.as_str());
+    let subagents = task["subagent_summary"].as_str().unwrap_or(summary.as_str());
     let mut action_hits = Vec::new();
     if height >= 3 {
         let columns = usize::from(width);
@@ -918,7 +928,7 @@ fn render_view(
         execute!(output, cursor::MoveTo(0, row))?;
         write!(output, "\x1b[36m{}\x1b[0m", plain(TASK_DETAIL_BUTTON, columns))?;
         let action_start = (unicode_width::UnicodeWidthStr::width(TASK_DETAIL_BUTTON) + 1) as u16;
-        let (_, buttons, hits) = actions.bar(width, row, action_start);
+        let (_, buttons, hits) = actions.bar(width, row, Some(action_start));
         if !buttons.is_empty() {
             execute!(output, cursor::MoveTo(hits.first().map(|hit| hit.start).unwrap_or(0), row))?;
             write!(output, "{buttons}")?;
@@ -931,7 +941,7 @@ fn render_view(
         let mut rows = style["compact"]["rows"]
             .as_array()
             .ok_or("missing compact rows")?.clone();
-        if subagents.is_some() && usize::from(height) > rows.len() {
+        if usize::from(height) > rows.len() {
             let before = style["subagents"]["before"].as_str().unwrap_or("notifications");
             let position = rows.iter().position(|row| row.as_str() == Some(before)).unwrap_or(0);
             rows.insert(position, json!("subagents"));
@@ -946,10 +956,10 @@ fn render_view(
                 index as u16
             };
             let (notification_width, buttons, hits) = if row == "notifications" {
-                actions.bar(width as u16, y)
+                actions.bar(width as u16, y, None)
             } else { (width as u16, String::new(), Vec::new()) };
             let (text, color) = match row.as_str() {
-                Some("subagents") => (subagents.unwrap_or_default().to_owned(), string(&style["subagents"], "color")),
+                Some("subagents") => (subagents.to_owned(), string(&style["subagents"], "color")),
                 Some("notifications") => {
                     let notification_width = usize::from(notification_width);
                     let text = if unicode_width::UnicodeWidthStr::width(notifications) > notification_width {
@@ -1076,10 +1086,10 @@ fn view(args: &[String]) -> Result<()> {
             if selected_task.is_some() { task_open = false; task_offset = 0; }
             selected_task = task["records"].as_array().and_then(|records| records.first()).and_then(|record| record["id"].as_i64());
         }
-        if task_open && show_subagents {
-            task["subagents"] = json!(if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) }
-                else { "서브 TUI 연결 미확인".into() });
-        }
+        let subagents = scope.as_mut().map_or_else(|| "서브 TUI 연결 미확인".into(),
+            |scope| subagent_line(scope, &style));
+        task["subagent_summary"] = json!(subagents);
+        if show_subagents { task["subagents"] = task["subagent_summary"].clone(); }
         if opted_in && scope.is_none() { task["reason"] = json!("저장된 scope/현재 TUI 검증 실패"); }
         let values = metrics();
         let notifications = dock(&cache);
@@ -1140,8 +1150,8 @@ fn view(args: &[String]) -> Result<()> {
                         detail_expanded = true; task["expanded"] = json!(true);
                         show_subagents = !show_subagents;
                         task["subagents"] = json!(if show_subagents {
-                            if let Some(scope) = scope.as_mut() { subagent_line(scope, &style) } else { "서브 TUI 연결 미확인".into() }
-                        } else { "표시 안 함".into() });
+                            task["subagent_summary"].as_str().unwrap_or("서브 TUI 연결 미확인")
+                        } else { "표시 안 함" });
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && task_open && key.code == KeyCode::Char('v') => {
                         detail_expanded = !detail_expanded; task["expanded"] = json!(detail_expanded); task_offset = 0;
