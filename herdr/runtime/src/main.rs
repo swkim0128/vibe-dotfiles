@@ -751,22 +751,22 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         return Ok(());
     }
     let goal_width = (columns / 4).min(50);
-    let diagram_width = columns.saturating_sub(goal_width + 53);
+    let diagram_width = columns.saturating_sub(goal_width + 32);
     let cell = |value: &str, size: usize| {
         let text = plain(value, size);
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
-    let row = |id: &str, goal: &str, status: &str, owner: &str, diagram: &str| {
-        if columns < 64 { return plain(&format!("{id} {status} {owner} · {goal} · {diagram}"), columns); }
+    let row = |id: &str, goal: &str, status: &str, diagram: &str| {
+        if columns < 64 { return plain(&format!("{id} {status} · {goal} · {diagram}"), columns); }
         let status_color = match status { "완료·확인대기" | "완료·확인됨" => "32", "실패 기록" | "수정 요청" => "31", "실행 기록" | "검증 단계" | "단계 결과 있음" => "36", "대기 기록" | "검토 보류" | "의존 대기" | "Question 대기" => "33", _ => "90" };
         let diagram = cell(diagram, diagram_width)
             .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
             .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
-        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ {} │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14), cell(owner, 18))
+        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14))
     };
-    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "배정 도구/대화", "단계 흐름"))?; }
+    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "단계 흐름"))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
         execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
@@ -779,11 +779,9 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             Some("queued") if record["state"] == "큐 대기" => "대기 기록",
             Some("running" | "queued") => record["state"].as_str().unwrap_or("미확인"),
             _ => "미확인" };
-        let owner = format!("{}/{}", record["owner_tool"].as_str().unwrap_or("미배정"),
-            record["owner_thread"].as_str().unwrap_or("미배정").chars().take(8).collect::<String>());
         let detail = stage_diagram(record, true);
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
-        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &owner, &detail))?;
+        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &detail))?;
     }
     Ok(())
 }
