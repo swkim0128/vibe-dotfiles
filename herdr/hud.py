@@ -437,6 +437,13 @@ def queue_category(item, metadata):
         return "개인"
     if key.startswith("work-") or re.fullmatch(r"DWDEV-\d+", key):
         return "회사"
+    if item.get("kind") == "request":
+        slack_key = re.fullmatch(r"slack-([A-Z0-9]+)-([0-9]{16})", key)
+        if slack_key:
+            channel, timestamp = slack_key.groups()
+            permalink = re.escape(f"https://cowavecc.slack.com/archives/{channel}/p{timestamp}")
+            if re.search(rf"(?:^|[\s<(\[]){permalink}(?=$|[\s>)\]?#])", item.get("text") or ""):
+                return "회사"
     return "미분류"
 
 

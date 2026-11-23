@@ -115,6 +115,31 @@ class QueueDisplayTests(unittest.TestCase):
         self.assertTrue(record["goal"].startswith("[개인]"))
         self.assertEqual([stage["state"] for stage in record["stages"]], ["unknown", "unknown"])
 
+    def test_company_slack_origin_requires_request_key_and_matching_permalink(self):
+        item = {"kind": "request", "key": "slack-C123ABC-1794460950000000"}
+        origin = "https://cowavecc.slack.com/archives/C123ABC/p1794460950000000"
+        item["text"] = f"Slack 요청 <{origin}?thread_ts=1794460000.000000>"
+        self.assertEqual(hud.queue_category(item, {}), "회사")
+        for unexpected in (
+            origin.replace("cowavecc.slack.com", "other.slack.com"),
+            origin.replace("cowavecc.slack.com", "cowavecc.slack.com.example.org"),
+            origin.replace("C123ABC", "C123XYZ"),
+            origin[:-1] + "1",
+            origin + "1",
+        ):
+            with self.subTest(origin=unexpected):
+                self.assertEqual(hud.queue_category({**item, "text": unexpected}, {}), "미분류")
+        self.assertEqual(hud.queue_category({**item, "kind": "command"}, {}), "미분류")
+
+    def test_vault_and_explicit_key_classification_still_take_precedence(self):
+        item = {"kind": "request", "key": "slack-C123ABC-1794460950000000",
+                "text": "https://cowavecc.slack.com/archives/C123ABC/p1794460950000000"}
+        personal = Path.home() / "Project" / "personal" / "PARA"
+        with patch.dict(os.environ, {"PERSONAL_PARA_ROOT": str(personal)}):
+            self.assertEqual(hud.queue_category(item, {"note_path": str(personal / "note.md")}), "개인")
+        self.assertEqual(hud.queue_category({**item, "key": "personal-example"}, {}), "개인")
+        self.assertEqual(hud.queue_category({**item, "key": "DWDEV-1000"}, {}), "회사")
+
     def test_verify_requires_current_completion_evidence_before_review_priority(self):
         self.item.update(status="done", completion_token="v1", completion_confirmed=False)
         self.assertFalse(hud.task_record(self.item, self.execution)["needs_review"])
