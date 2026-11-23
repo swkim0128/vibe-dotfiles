@@ -758,9 +758,16 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
     };
     let row = |id: &str, goal: &str, status: &str, diagram: &str| {
         if columns < 64 { return plain(&format!("{id} {status} · {goal} · {diagram}"), columns); }
-        let status_color = match status { "완료·확인대기" | "완료·확인됨" => "32", "실패 기록" | "수정 요청" => "31", "실행 기록" | "검증 단계" | "단계 결과 있음" => "36", "대기 기록" | "검토 보류" | "의존 대기" | "Question 대기" => "33", _ => "90" };
+        let status_color = match status {
+            "완료·확인대기" | "완료·확인됨" => "32",
+            "실패 기록" | "수정 요청" => "31",
+            "실행 기록" | "검증 단계" | "단계 결과 있음" => "36",
+            "단계 진행" | "단계 기록" => "94",
+            "대기 기록" | "검토 보류" | "의존 대기" | "Question 대기" => "33",
+            _ => "90",
+        };
         let diagram = cell(diagram, diagram_width)
-            .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
+            .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●").replace("[◇", "\x1b[94m[◇")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
             .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
