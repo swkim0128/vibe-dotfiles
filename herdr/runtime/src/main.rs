@@ -694,12 +694,15 @@ impl QueueRefresh {
         match received {
             Some(Ok(snapshot)) => {
                 self.pending = None;
-                if snapshot["state"] == "observed"
+                if matches!(snapshot["state"].as_str(), Some("observed" | "transient_failure"))
                     && !scope["binding"].is_null() && snapshot["binding"] != scope["binding"]
                 {
                     *task = json!({"state":"unconnected","reason":"큐 조회 중 부모 연결 변경"});
                     self.default_definition = Value::Null;
-                } else if snapshot["state"] == "failed" && task["state"] == "observed" {
+                } else if snapshot["state"] == "transient_failure" && task["state"] == "observed"
+                    && !snapshot["binding"].is_null() && snapshot["binding"] == task["binding"]
+                    && snapshot["binding"] == scope["binding"]
+                {
                     changed = task["stale"] != true;
                     task["stale"] = json!(true);
                     return changed;
@@ -716,11 +719,8 @@ impl QueueRefresh {
             }
             Some(Err(TryRecvError::Disconnected)) => {
                 self.pending = None;
-                if task["state"] == "observed" {
-                    task["stale"] = json!(true);
-                } else {
-                    *task = json!({"state":"failed"});
-                }
+                self.default_definition = Value::Null;
+                *task = json!({"state":"failed"});
                 changed = true;
             }
             _ => {}
@@ -741,7 +741,7 @@ impl QueueRefresh {
 }
 
 fn refresh_selection(task: &Value, top: bool, selected: &mut Option<i64>) -> bool {
-    if task["state"] != "observed" { return false; }
+    if task["state"] != "observed" { return selected.take().is_some(); }
     let Some(records) = task["records"].as_array() else { return false; };
     let missing = !records.iter().any(|row| row["id"].as_i64() == *selected);
     if top || missing {
@@ -773,6 +773,9 @@ fn task_line(task: &Value, style: &Value) -> String {
     let thread = task["thread"].as_str().unwrap_or("?").chars().take(8).collect::<String>();
     let at = task["observed_at"].as_str().unwrap_or("미확인");
     let at = at.get(11..19).unwrap_or(at);
+    if task["stale"] == true {
+        return format!("큐 갱신 실패 · 마지막 조회 {at} · t 상세");
+    }
     let Some(record) = task["records"].as_array().and_then(|records| records.first()) else {
         let count = task["requests"].as_array().map_or(0, Vec::len);
         return format!("작업 thread {thread} · 요청 {count} · 선택/진척 미확인 · 확인 {at} · t 상세");
@@ -829,7 +832,7 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
     let title = format!("전체 작업 큐{} · 확인 대기 {} · {}건(대기 {}) · 조회 {} · {} · 연결 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
-        if task["stale"] == true { " · 갱신 지연" } else { "" },
+        if task["stale"] == true { " · 갱신 실패" } else { "" },
         task["review_count"].as_u64().unwrap_or(0), task["total"], task["queued_count"],
         task["observed_at"].as_str().and_then(|at| at.get(11..19)).unwrap_or("미확인"),
         string(task, "subagent_summary"),
@@ -920,7 +923,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
             "공식 부모 thread/PID/cwd 검증 · public vibe queue" } else { "검증/조회 미완료" })),
         "에이전트·thread·pane은 별개 · 실행/접수/열람은 완료·승인 근거 아님".into()];
     if task["stale"] == true {
-        lines.push(format!("갱신 지연 · 마지막 조회 {}", string(task, "observed_at")));
+        lines.push(format!("갱신 실패 · 마지막 조회 {}", string(task, "observed_at")));
     }
     if task["state"] != "observed" {
         connection_lines.push(format!("연결 확인 후 Codex 패널에서 실행: {} bar ensure --current --parent-current --relaunch",
@@ -957,7 +960,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
                 else if record["queue_status"] == "done" { "결과 확인 후 대화 또는 c로 완료 확인" }
                 else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
             lines = vec![format!("#{} · 큐 상태 {} · {}{}", record["id"], string(record, "state"), string(record, "goal"),
-                    if task["stale"] == true { " · 갱신 지연" } else { "" }),
+                    if task["stale"] == true { " · 갱신 실패" } else { "" }),
                 format!("결과: {brief}"),
                 format!("배정: {} / {} · {} · 다음: {next}", record["owner_tool"].as_str().unwrap_or("미배정"),
                     record["owner_thread"].as_str().unwrap_or("미배정"),

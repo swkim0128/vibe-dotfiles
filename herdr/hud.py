@@ -253,6 +253,7 @@ def recheck_parent(scope, context):
     current_view = rpc("pane.get", pane_id=scope["view_pane"])["pane"]
     if (socket_path.stat().st_ino != generation
             or current.get("agent_session") != parent.get("agent_session")
+            or current.get("cwd") != parent.get("cwd")
             or current["terminal_id"] != parent["terminal_id"]
             or current["tab_id"] != view["tab_id"]
             or current["workspace_id"] != view["workspace_id"]
@@ -359,7 +360,7 @@ def current_task(scope):
     def read(action, *args):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise ValueError("queue observation deadline")
+            raise TimeoutError("queue observation deadline")
         result = subprocess.run([cli, "queue", action, *map(str, args), "--tool", "codex",
                                  "--conversation-id", native, "--json"], cwd=cwd,
                                 capture_output=True, check=True, timeout=remaining)
@@ -368,7 +369,16 @@ def current_task(scope):
         return json.loads(result.stdout)
 
     scope["_phase"] = "queue_list"
-    listed = read("list", "--all")
+    try:
+        listed = read("list", "--all")
+    except (TimeoutError, subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.CalledProcessError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and not re.search(
+                r"\bdatabase (?:table )?is (?:locked|busy)\b", error.stderr or "", re.IGNORECASE):
+            raise
+        recheck_parent(scope, context)
+        scope["_phase"] = "queue_list"
+        return {"state": "transient_failure", "binding": binding,
+                "error_type": type(error).__name__}
     if not isinstance(listed, list):
         raise ValueError("queue list contract unavailable")
     for item in listed:
@@ -574,8 +584,8 @@ if __name__ == "__main__":
             error_type = type(error).__name__
             error_module = getattr(error, "name", None)
         result["phase"] = scope.get("_phase")
-        result["error_type"] = error_type
-        observation_receipt(scope, result, error_type, error_module)
+        result["error_type"] = error_type or result.get("error_type")
+        observation_receipt(scope, result, result["error_type"], error_module)
         print(json.dumps(result))
     else:
         refresh()

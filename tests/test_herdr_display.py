@@ -156,6 +156,37 @@ class QueueDisplayTests(unittest.TestCase):
         self.assertEqual([call.args[0][2] for call in read_cli.call_args_list],
                          ["list", "definition-default", "list"])
 
+    def test_transient_queue_errors_recheck_parent_before_returning_binding(self):
+        binding = ["thread", 1, "stamp"]
+        context = (None, None, None, {"cwd": str(HERDR)}, None, "thread", 1, "stamp", binding)
+        rpc = {"process_info": {"foreground_processes": [{"pid": 1, "cwd": str(HERDR)}]}}
+        errors = [
+            subprocess.TimeoutExpired("vibe", 4),
+            subprocess.CalledProcessError(2, "vibe", stderr='{"error":"database is locked"}'),
+        ]
+        with patch.object(hud, "bound_parent", return_value=context), patch.object(hud, "rpc", return_value=rpc), \
+                patch.object(hud.os, "access", return_value=True), patch.object(hud, "recheck_parent") as recheck, \
+                patch.object(hud.subprocess, "run") as read:
+            for error in errors:
+                with self.subTest(error=type(error).__name__):
+                    recheck.reset_mock()
+                    read.side_effect = error
+                    outcome = hud.current_task({"parent_pane": "fixture"})
+                    self.assertEqual((outcome["state"], outcome["binding"]), ("transient_failure", binding))
+                    recheck.assert_called_once()
+            read.side_effect = None
+            read.return_value = SimpleNamespace(stdout="{")
+            self.assertEqual(hud.current_task({"parent_pane": "fixture"})["error_type"], "JSONDecodeError")
+            read.side_effect = subprocess.CalledProcessError(2, "vibe", stderr="authorization failed")
+            recheck.reset_mock()
+            with self.assertRaises(subprocess.CalledProcessError):
+                hud.current_task({"parent_pane": "fixture"})
+            recheck.assert_not_called()
+            read.side_effect = subprocess.TimeoutExpired("vibe", 4)
+            recheck.side_effect = hud.ScopeError("parent conversation changed")
+            with self.assertRaises(hud.ScopeError):
+                hud.current_task({"parent_pane": "fixture"})
+
 
 class IdentityTests(unittest.TestCase):
     def setUp(self):
