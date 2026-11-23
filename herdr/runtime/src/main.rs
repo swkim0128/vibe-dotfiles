@@ -717,6 +717,7 @@ fn stage_diagram(record: &Value, compact: bool) -> String {
             "implement" => "실행", "verify" => "검증", "report" => "보고", "publish" => "저장·배포", _ => &id };
         let (mark, state) = match stage["state"].as_str() {
             Some("completed") => ("✓", "완료"), Some("current") => ("●", "진행"),
+            Some("recorded") => ("◇", "현재 단계"),
             Some("blocked") => ("Ⅱ", "대기"), Some("failed") => ("!", "실패"),
             Some("not_applicable") => ("—", "해당 없음"),
             Some("waiting") => ("○", "예정"), _ => ("?", "미확인"),
@@ -756,8 +757,8 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
     let row = |id: &str, goal: &str, status: &str, owner: &str, diagram: &str| {
-        if columns < 64 { return plain(&format!("{id} {goal} · {diagram}"), columns); }
-        let status_color = match status { "완료·확인대기" | "완료·확인됨" => "32", "실패 기록" | "수정 요청" => "31", "실행 기록" => "36", "대기 기록" | "검토 보류" => "33", _ => "90" };
+        if columns < 64 { return plain(&format!("{id} {status} {owner} · {goal} · {diagram}"), columns); }
+        let status_color = match status { "완료·확인대기" | "완료·확인됨" => "32", "실패 기록" | "수정 요청" => "31", "실행 기록" | "검증 단계" | "단계 결과 있음" => "36", "대기 기록" | "검토 보류" | "의존 대기" | "Question 대기" => "33", _ => "90" };
         let diagram = cell(diagram, diagram_width)
             .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●")
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
@@ -773,7 +774,11 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             Some("done") if record["completion_confirmed"] == true => "완료·확인됨",
             Some("done") if record["review_decision"] == "deferred" => "검토 보류",
             Some("done") if record["review_decision"] == "changes_requested" => "수정 요청",
-            Some("done") => "완료·확인대기", Some("failed") => "실패 기록", Some("running") => "실행 기록", Some("queued") => "대기 기록", _ => "미확인" };
+            Some("done") => "완료·확인대기",
+            Some("failed") => "실패 기록",
+            Some("queued") if record["state"] == "큐 대기" => "대기 기록",
+            Some("running" | "queued") => record["state"].as_str().unwrap_or("미확인"),
+            _ => "미확인" };
         let owner = format!("{}/{}", record["owner_tool"].as_str().unwrap_or("미배정"),
             record["owner_thread"].as_str().unwrap_or("미배정").chars().take(8).collect::<String>());
         let detail = stage_diagram(record, true);
@@ -817,7 +822,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
             format!("요청 배정: {} / {}", record["owner_tool"].as_str().unwrap_or("미배정"), record["owner_thread"].as_str().unwrap_or("미배정")),
             format!("단계 흐름: {}", stage_diagram(record, false)),
             format!("현재 단계: {} · 상태: {} · 큐 기록: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
-            format!("대기사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
+            format!("대기 사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
             format!("현재 단계/판본/시도의 실제 결과: {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인")),
             format!("실행 판본: {} · 시도 {} · 기록 갱신 {}", record["version"], record["attempt"], record["updated_at"].as_str().unwrap_or("미확인")),
             format!("다음 행동(저장된 재개조건/안내): {}", record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인"))]);
@@ -847,20 +852,25 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
                 format!("배정: {} / {} · {} · 다음: {next}", record["owner_tool"].as_str().unwrap_or("미배정"),
                     record["owner_thread"].as_str().unwrap_or("미배정"),
                     if selection_owned(task, selected) { "연결 대화 일치" } else { "조회 전용" })];
+            if record["waiting"] == true {
+                lines.insert(1, format!("대기 사유: {} · v 전체 근거", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")));
+            }
         }
     }
     let columns = usize::from(width).max(1);
     let mut wrapped = Vec::new();
     for line in lines {
         if !expanded { wrapped.push(plain(&line, columns.saturating_sub(1))); continue; }
-        let mut row = String::new();
-        let mut used = 0;
-        for c in line.chars().filter(|c| !c.is_control()) {
-            let size = c.width().unwrap_or(0);
-            if used + size > columns && !row.is_empty() { wrapped.push(row); row = String::new(); used = 0; }
-            row.push(c); used += size;
+        for line in line.lines() {
+            let mut row = String::new();
+            let mut used = 0;
+            for c in line.chars().filter(|c| !c.is_control()) {
+                let size = c.width().unwrap_or(0);
+                if used + size > columns && !row.is_empty() { wrapped.push(row); row = String::new(); used = 0; }
+                row.push(c); used += size;
+            }
+            wrapped.push(row);
         }
-        wrapped.push(row);
     }
     let visible = usize::from(height.saturating_sub(1));
     *offset = (*offset).min(wrapped.len().saturating_sub(visible));

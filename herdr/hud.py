@@ -449,7 +449,9 @@ def task_record(item, execution, default_definition=None):
     if scope_wait.get("paused") == 1:
         wait = {"kind": "user", "reason": scope_wait.get("evidence"),
                 "resume_condition": "실제 사용자 답변 후 원담당 scope-resume 필요"}
-    state = {"queued": "큐 대기", "done": "기록상 완료", "failed": "실패 기록"}.get(item.get("status"), "진척 미확인")
+    queue_status = item.get("status")
+    state = {"queued": "큐 대기", "running": "실행 기록", "done": "기록상 완료",
+             "failed": "실패 기록"}.get(queue_status, "진척 미확인")
     if wait:
         state = "Question 대기" if wait.get("kind") == "user" else "의존 대기"
     elif result:
@@ -484,6 +486,12 @@ def task_record(item, execution, default_definition=None):
                         and execution.get("definition_id") == definition.get("definition_id")
                         and execution.get("definition_version") == definition.get("version")
                         and stage in stage_ids and all(key in stage_ids for key in completed))
+    stage_recorded = valid_definition and bool(completed or artifacts)
+    if valid_definition and not wait:
+        if queue_status == "queued" and stage_recorded:
+            state = "단계 기록"
+        elif queue_status == "running" and stage == "verify":
+            state = "검증 단계"
     flow = []
     if valid_definition:
         for key in stage_ids:
@@ -498,7 +506,8 @@ def task_record(item, execution, default_definition=None):
                     status = "not_applicable"
             elif key == stage:
                 status = ("blocked" if wait else "failed" if item.get("status") == "failed"
-                          else "current" if item.get("status") == "running" else "unknown")
+                          else "current" if queue_status == "running"
+                          else "recorded" if queue_status == "queued" and stage_recorded else "unknown")
             flow.append({"id": key, "state": status})
     elif stage_ids and not execution:
         # Reading old records never fabricates historical stage completion.
@@ -509,9 +518,10 @@ def task_record(item, execution, default_definition=None):
             "owner_tool": item.get("owner_tool"), "owner_thread": item.get("owner_conversation_id"),
             "completion_confirmed": item.get("completion_confirmed") is True,
             "review_decision": item.get("completion_review"), "kind": item.get("kind"),
-            "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
+            "stage": execution.get("current_stage"), "state": state, "queue_status": queue_status,
+            "waiting": bool(wait),
             "completion_token": item.get("completion_token"),
-            "wait": str(wait.get("reason") or "")[:512], "result": result,
+            "wait": str(wait.get("reason") or ""), "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
                                else metadata.get("next_action") or "")[:512],
             "version": version, "attempt": attempt, "artifacts": artifacts, "stages": flow,

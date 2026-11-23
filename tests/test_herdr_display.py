@@ -70,6 +70,44 @@ class DisplayTests(unittest.TestCase):
                     self.assertEqual(status.usage(cache, now), expected)
 
 
+class QueueDisplayTests(unittest.TestCase):
+    def setUp(self):
+        self.definition = {"definition_id": "common-workflow", "version": 1,
+                           "stages": [{"id": "plan"}, {"id": "verify"}]}
+        self.execution = {"definition_id": "common-workflow", "definition_version": 1,
+                          "current_stage": "verify", "completed_stages": ["plan"]}
+        self.item = {"id": 84, "kind": "request", "key": "personal-test", "status": "running",
+                     "owner_tool": "codex", "owner_conversation_id": "recorded-owner",
+                     "request_data": {"definition": self.definition}}
+
+    def test_scn_84_01_assignment_and_verify_follow_queue_record(self):
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["owner_tool"], record["owner_thread"]), ("codex", "recorded-owner"))
+        self.assertEqual((record["stage"], record["state"]), ("verify", "검증 단계"))
+        self.assertEqual(record["stages"][1], {"id": "verify", "state": "current"})
+        self.item["status"] = "queued"
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["queue_status"], record["state"]), ("queued", "단계 기록"))
+        self.assertEqual(record["stages"][1], {"id": "verify", "state": "recorded"})
+
+    def test_scn_84_02_wait_preserves_entire_reason(self):
+        reason = "긴 의존 사유 " * 80 + "\n마지막 조건"
+        self.item["request_data"]["control"] = {"wait": {"kind": "external", "reason": reason}}
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["state"], record["waiting"], record["wait"]), ("의존 대기", True, reason))
+        self.assertEqual(record["stages"][1], {"id": "verify", "state": "blocked"})
+        self.item["control_scope"] = {"paused": 1, "evidence": "사용자 선택 대기"}
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["state"], record["wait"]), ("Question 대기", "사용자 선택 대기"))
+
+    def test_scn_84_03_legacy_row_retains_unknown_stage_flow(self):
+        self.item["request_data"] = {}
+        self.item["status"] = "queued"
+        record = hud.task_record(self.item, None, self.definition)
+        self.assertTrue(record["goal"].startswith("[개인]"))
+        self.assertEqual([stage["state"] for stage in record["stages"]], ["unknown", "unknown"])
+
+
 class IdentityTests(unittest.TestCase):
     def setUp(self):
         self.pane = {"pane_id": "w1:p2", "terminal_id": "terminal-a", "agent": "codex",
