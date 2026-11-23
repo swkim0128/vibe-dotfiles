@@ -412,6 +412,24 @@ def current_task(scope):
                          for item in visible], "limited": False}
 
 
+def queue_category(item, metadata):
+    note = metadata.get("note_path")
+    if isinstance(note, str) and note:
+        path = Path(os.path.normpath(os.path.expanduser(note)))
+        project = Path.home() / "Project"
+        personal_vault = Path(os.environ.get("PERSONAL_PARA_ROOT") or project / "personal" / "PARA").expanduser()
+        if path.is_absolute() and path.is_relative_to(personal_vault):
+            return "개인"
+        if path.is_relative_to(project / "para"):
+            return "회사"
+    key = item.get("key") or ""
+    if key.startswith("personal-"):
+        return "개인"
+    if key.startswith("work-") or re.fullmatch(r"DWDEV-\d+", key):
+        return "회사"
+    return "미분류"
+
+
 def task_record(item, execution, default_definition=None):
     metadata = item.get("request_data") or {}
     execution = execution if isinstance(execution, dict) else {}
@@ -486,7 +504,8 @@ def task_record(item, execution, default_definition=None):
         # Reading old records never fabricates historical stage completion.
         flow = [{"id": key, "state": "waiting" if metadata.get("definition") and item.get("status") == "queued" else "unknown"}
                 for key in stage_ids]
-    return {"id": item["id"], "goal": str(metadata.get("goal") or item.get("text") or "")[:512],
+    goal = str(metadata.get("goal") or item.get("text") or "")
+    return {"id": item["id"], "goal": f"[{queue_category(item, metadata)}] {goal}"[:512],
             "owner_tool": item.get("owner_tool"), "owner_thread": item.get("owner_conversation_id"),
             "completion_confirmed": item.get("completion_confirmed") is True,
             "review_decision": item.get("completion_review"), "kind": item.get("kind"),
