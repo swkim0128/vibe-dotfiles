@@ -381,9 +381,18 @@ def current_task(scope):
                      and item.get("completion_review") not in ("deferred", "changes_requested")
                      else 2 if item.get("status") == "running"
                      else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
-    common_definition = next(((item.get("request_data") or {}).get("definition") for item in listed
-                              if ((item.get("request_data") or {}).get("definition") or {}).get("definition_id")
-                              == "common-workflow"), None)
+    common_definition = None
+    if any(item.get("kind") == "request" and not (item.get("request_data") or {}).get("definition")
+           for item in listed):
+        try:
+            default = read("definition-default")
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            # Older queue binaries lack the public default definition command.
+            default = next((definition for item in listed
+                            if (definition := (item.get("request_data") or {}).get("definition"))
+                            and definition.get("definition_id") == "common-workflow"), None)
+        if isinstance(default, dict) and default.get("definition_id") == "common-workflow":
+            common_definition = default
     visible = ordered
     records = []
     for item in visible:
