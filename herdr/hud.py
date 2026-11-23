@@ -376,13 +376,11 @@ def current_task(scope):
             raise ValueError("queue record identity unavailable")
     listed = [item for item in listed
               if not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
-    ordered = sorted(listed, key=lambda item: (3 if item.get("status") == "done"
-                     and item.get("completion_confirmed") is False
-                     and item.get("completion_review") not in ("deferred", "changes_requested")
-                     else 2 if item.get("status") == "running"
-                     else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
-    common_definition = None
-    if any(item.get("kind") == "request" and not (item.get("request_data") or {}).get("definition")
+    common_definition = scope.get("queue_default_definition")
+    if not isinstance(common_definition, dict) or common_definition.get("definition_id") != "common-workflow":
+        common_definition = None
+    if common_definition is None and any(
+           item.get("kind") == "request" and not (item.get("request_data") or {}).get("definition")
            for item in listed):
         try:
             default = read("definition-default")
@@ -393,23 +391,25 @@ def current_task(scope):
                             and definition.get("definition_id") == "common-workflow"), None)
         if isinstance(default, dict) and default.get("definition_id") == "common-workflow":
             common_definition = default
-    visible = ordered
     records = []
-    for item in visible:
+    for item in listed:
         scope["_phase"] = "queue_projection"
         full = item
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
         record = task_record(full, execution, common_definition if full.get("kind") == "request" else None)
         records.append(record)
+    records.sort(key=lambda record: (record["priority"], record["id"]), reverse=True)
     recheck_parent(scope, context)
     return {"state": "observed", "binding": binding, "thread": native,
             "view": "queue", "total": len(listed),
-            "queued_count": sum(item.get("status") == "queued" for item in listed),
+            "queued_count": sum(record["queue_status"] == "queued" for record in records),
+            "review_count": sum(record["needs_review"] for record in records),
+            "queue_default_definition": common_definition,
             "observed_at": datetime.now().astimezone().isoformat(), "records": records,
             "requests": [{"id": item["id"], "status": item.get("status"),
                           "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
-                         for item in visible], "limited": False}
+                         for item in listed], "limited": False}
 
 
 def queue_category(item, metadata):
@@ -487,11 +487,22 @@ def task_record(item, execution, default_definition=None):
                         and execution.get("definition_version") == definition.get("version")
                         and stage in stage_ids and all(key in stage_ids for key in completed))
     stage_recorded = valid_definition and bool(completed or artifacts)
+    verify_complete = valid_definition and "verify" in completed
+    verify_review = (stage == "verify" and (control.get("wait") or {}).get("kind") == "user")
+    final_review = (queue_status == "done" and bool(item.get("completion_token"))
+                    and item.get("completion_review") not in ("deferred", "changes_requested"))
+    needs_review = verify_complete and item.get("completion_confirmed") is not True and (verify_review or final_review)
+    active = queue_status == "running" and not wait
+    priority = (4 if needs_review else 3 if active
+                else 2 if queue_status == "queued" and stage_recorded and not wait
+                else 1 if wait or queue_status in ("queued", "done") else 0)
     if valid_definition and not wait:
         if queue_status == "queued" and stage_recorded:
             state = "단계 기록"
-        elif queue_status == "running" and stage == "verify":
-            state = "검증 단계"
+        elif active and stage == "verify":
+            state = "검증 완료" if verify_complete else "검증 중"
+    if needs_review:
+        state = "검증완료·확인대기"
     flow = []
     if valid_definition:
         for key in stage_ids:
@@ -520,6 +531,7 @@ def task_record(item, execution, default_definition=None):
             "review_decision": item.get("completion_review"), "kind": item.get("kind"),
             "stage": execution.get("current_stage"), "state": state, "queue_status": queue_status,
             "waiting": bool(wait),
+            "needs_review": needs_review, "verify_complete": verify_complete, "priority": priority,
             "completion_token": item.get("completion_token"),
             "wait": str(wait.get("reason") or ""), "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait

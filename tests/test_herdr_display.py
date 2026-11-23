@@ -83,12 +83,14 @@ class QueueDisplayTests(unittest.TestCase):
     def test_scn_84_01_assignment_and_verify_follow_queue_record(self):
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["owner_tool"], record["owner_thread"]), ("codex", "recorded-owner"))
-        self.assertEqual((record["stage"], record["state"]), ("verify", "검증 단계"))
+        self.assertEqual((record["stage"], record["state"]), ("verify", "검증 중"))
+        self.assertEqual((record["needs_review"], record["priority"]), (False, 3))
         self.assertEqual(record["stages"][1], {"id": "verify", "state": "current"})
         self.item["status"] = "queued"
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["queue_status"], record["state"]), ("queued", "단계 기록"))
         self.assertEqual(record["stages"][1], {"id": "verify", "state": "recorded"})
+        self.assertEqual(record["priority"], 2)
 
     def test_scn_84_02_wait_preserves_entire_reason(self):
         reason = "긴 의존 사유 " * 80 + "\n마지막 조건"
@@ -96,6 +98,7 @@ class QueueDisplayTests(unittest.TestCase):
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["state"], record["waiting"], record["wait"]), ("의존 대기", True, reason))
         self.assertEqual(record["stages"][1], {"id": "verify", "state": "blocked"})
+        self.assertEqual(record["priority"], 1)
         self.item["control_scope"] = {"paused": 1, "evidence": "사용자 선택 대기"}
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["state"], record["wait"]), ("Question 대기", "사용자 선택 대기"))
@@ -106,6 +109,45 @@ class QueueDisplayTests(unittest.TestCase):
         record = hud.task_record(self.item, None, self.definition)
         self.assertTrue(record["goal"].startswith("[개인]"))
         self.assertEqual([stage["state"] for stage in record["stages"]], ["unknown", "unknown"])
+
+    def test_verify_requires_current_completion_evidence_before_review_priority(self):
+        self.item.update(status="done", completion_token="v1", completion_confirmed=False)
+        self.assertFalse(hud.task_record(self.item, self.execution)["needs_review"])
+        self.execution["completed_stages"].append("verify")
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["priority"], record["state"]), (4, "검증완료·확인대기"))
+        self.item["completion_review"] = "deferred"
+        self.assertEqual(hud.task_record(self.item, self.execution)["priority"], 1)
+        self.item["completion_review"] = None
+        self.execution["definition_version"] = 2
+        self.assertFalse(hud.task_record(self.item, self.execution)["needs_review"])
+
+    def test_projection_hides_confirmed_and_reuses_definition(self):
+        context = (None, None, None, {"cwd": str(HERDR)}, None, "thread", 1, None, ["thread"])
+        completed = {**self.execution, "completed_stages": ["plan", "verify"]}
+        waiting = {"definition": self.definition, "execution": self.execution,
+                   "control": {"wait": {"kind": "external", "reason": "waiting"}}}
+        rows = [
+            {**self.item, "id": 6, "status": "queued", "request_data": {}},
+            {**self.item, "id": 7, "request_data": waiting},
+            {**self.item, "id": 8, "request_data": {"definition": self.definition, "execution": self.execution}},
+            {**self.item, "id": 4, "status": "done", "completion_token": "v1",
+             "request_data": {"definition": self.definition, "execution": completed}},
+            {**self.item, "id": 9, "status": "done", "completion_confirmed": True},
+        ]
+        def read(args, **kwargs):
+            return SimpleNamespace(stdout=json.dumps(rows if args[2] == "list" else self.definition))
+        with patch.object(hud, "bound_parent", return_value=context), patch.object(hud, "recheck_parent"), \
+                patch.object(hud, "rpc", return_value={"process_info": {"foreground_processes": [
+                    {"pid": 1, "cwd": str(HERDR)}]}}), patch.object(hud.os, "access", return_value=True), \
+                patch.object(hud.subprocess, "run", side_effect=read) as read_cli:
+            first = hud.current_task({"parent_pane": "fixture"})
+            second = hud.current_task({"parent_pane": "fixture",
+                                       "queue_default_definition": first["queue_default_definition"]})
+        self.assertEqual([row["id"] for row in second["records"]], [4, 8, 7, 6])
+        self.assertEqual(second["review_count"], 1)
+        self.assertEqual([call.args[0][2] for call in read_cli.call_args_list],
+                         ["list", "definition-default", "list"])
 
 
 class IdentityTests(unittest.TestCase):

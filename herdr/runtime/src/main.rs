@@ -9,6 +9,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -673,6 +674,95 @@ fn task_observation(scope: Option<&mut Value>, style: &Value) -> Value {
     result
 }
 
+const QUEUE_REFRESH_INTERVAL: Duration = Duration::from_secs(1);
+
+struct QueueRefresh {
+    pending: Option<Receiver<Value>>,
+    next: Instant,
+    default_definition: Value,
+}
+
+impl QueueRefresh {
+    fn new() -> Self {
+        Self { pending: None, next: Instant::now(), default_definition: Value::Null }
+    }
+
+    fn poll(&mut self, scope: Option<&mut Value>, style: &Value, task: &mut Value) -> bool {
+        let Some(scope) = scope else { return false };
+        let received = self.pending.as_ref().map(Receiver::try_recv);
+        let mut changed = false;
+        match received {
+            Some(Ok(snapshot)) => {
+                self.pending = None;
+                if snapshot["state"] == "observed"
+                    && !scope["binding"].is_null() && snapshot["binding"] != scope["binding"]
+                {
+                    *task = json!({"state":"unconnected","reason":"큐 조회 중 부모 연결 변경"});
+                    self.default_definition = Value::Null;
+                } else if snapshot["state"] == "failed" && task["state"] == "observed" {
+                    changed = task["stale"] != true;
+                    task["stale"] = json!(true);
+                    return changed;
+                } else {
+                    if snapshot["state"] == "observed" {
+                        scope["binding"] = snapshot["binding"].clone();
+                        self.default_definition = snapshot["queue_default_definition"].clone();
+                    } else {
+                        self.default_definition = Value::Null;
+                    }
+                    *task = snapshot;
+                }
+                changed = true;
+            }
+            Some(Err(TryRecvError::Disconnected)) => {
+                self.pending = None;
+                if task["state"] == "observed" {
+                    task["stale"] = json!(true);
+                } else {
+                    *task = json!({"state":"failed"});
+                }
+                changed = true;
+            }
+            _ => {}
+        }
+        if self.pending.is_none() && Instant::now() >= self.next {
+            let (send, receive) = mpsc::channel();
+            let mut scope = scope.clone();
+            scope["queue_default_definition"] = self.default_definition.clone();
+            let style = style.clone();
+            self.pending = Some(receive);
+            self.next = Instant::now() + QUEUE_REFRESH_INTERVAL;
+            thread::spawn(move || {
+                let _ = send.send(task_observation(Some(&mut scope), &style));
+            });
+        }
+        changed
+    }
+}
+
+fn refresh_selection(task: &Value, top: bool, selected: &mut Option<i64>) -> bool {
+    if task["state"] != "observed" { return false; }
+    let Some(records) = task["records"].as_array() else { return false; };
+    let missing = !records.iter().any(|row| row["id"].as_i64() == *selected);
+    if top || missing {
+        *selected = records.first().and_then(|row| row["id"].as_i64());
+    }
+    missing
+}
+
+fn hide_confirmed(task: &mut Value, confirmed: &[(i64, String)]) {
+    let Some(records) = task["records"].as_array_mut() else { return; };
+    let count = records.len();
+    records.retain(|row| !confirmed.iter().any(|(id, token)|
+        row["id"].as_i64() == Some(*id) && row["completion_token"].as_str() == Some(token)));
+    if count != records.len() {
+        let total = records.len();
+        let pending = records.iter().filter(|row| row["needs_review"] == true).count();
+        task["total"] = json!(total);
+        task["review_count"] = json!(pending);
+    }
+}
+
 fn task_line(task: &Value, style: &Value) -> String {
     match task["state"].as_str() {
         Some("parent_unbound") => return "작업 thread 부모 미연결 · t 상세".into(),
@@ -738,10 +828,12 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
 fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
-    let title = format!("전체 작업 큐 · {} · {}건(대기 {}) · 확인 완료 제외 · 연결 {} · 조회 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
-        string(task, "subagent_summary"), task["total"], task["queued_count"],
-        task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
+    let title = format!("전체 작업 큐{} · 확인 대기 {} · {}건(대기 {}) · 조회 {} · {} · 연결 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
+        if task["stale"] == true { " · 갱신 지연" } else { "" },
+        task["review_count"].as_u64().unwrap_or(0), task["total"], task["queued_count"],
         task["observed_at"].as_str().and_then(|at| at.get(11..19)).unwrap_or("미확인"),
+        string(task, "subagent_summary"),
+        task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
         if task["limited"] == true { " · 최근12건" } else { "" });
     write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
     if task["state"] != "observed" || task["records"].as_array().is_none_or(Vec::is_empty) {
@@ -751,16 +843,16 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         return Ok(());
     }
     let goal_width = (columns / 4).min(50);
-    let diagram_width = columns.saturating_sub(goal_width + 32);
+    let diagram_width = columns.saturating_sub(goal_width + 37);
     let cell = |value: &str, size: usize| {
         let text = plain(value, size);
         format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
     };
     let row = |id: &str, goal: &str, status: &str, diagram: &str| {
         let status_color = match status {
-            "완료·확인대기" | "완료·확인됨" => "92",
+            "검증완료·확인대기" | "완료·확인됨" => "92",
             "실패 기록" | "수정 요청" => "91",
-            "실행 기록" | "검증 단계" | "단계 결과 있음" => "96",
+            "실행 기록" | "검증 중" | "검증 완료" | "단계 결과 있음" => "96",
             "단계 진행" | "단계 기록" => "94",
             "대기 기록" | "의존 대기" | "Question 대기" => "93",
             "검토 보류" => "95",
@@ -778,9 +870,9 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
             .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
             .replace(']', "]\x1b[39m");
-        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 14))
+        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 19))
     };
-    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 기록", "단계 흐름"))?; }
+    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 상태", "단계 흐름"))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
         execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
@@ -788,10 +880,11 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             Some("done") if record["completion_confirmed"] == true => "완료·확인됨",
             Some("done") if record["review_decision"] == "deferred" => "검토 보류",
             Some("done") if record["review_decision"] == "changes_requested" => "수정 요청",
-            Some("done") => "완료·확인대기",
+            Some("done") if record["verify_complete"] == true && record["needs_review"] != true => "완료·검증됨",
+            Some("done") if record["needs_review"] != true => "완료·검증 미확인",
             Some("failed") => "실패 기록",
             Some("queued") if record["state"] == "큐 대기" => "대기 기록",
-            Some("running" | "queued") => record["state"].as_str().unwrap_or("미확인"),
+            Some("running" | "queued" | "done") => record["state"].as_str().unwrap_or("미확인"),
             _ => "미확인" };
         let detail = stage_diagram(record, true);
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
@@ -803,7 +896,7 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
 const COMPLETION_BUTTON: &str = "[c 완료 확인·목록에서 치우기]";
 
 fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
-    if task["state"] != "observed" { return None; }
+    if task["state"] != "observed" || task["stale"] == true { return None; }
     task["records"].as_array()?.iter().find(|record| record["id"].as_i64() == selected
         && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]
         && record["queue_status"] == "done" && record["completion_confirmed"] != true
@@ -811,6 +904,7 @@ fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
 }
 
 fn selection_owned(task: &Value, selected: Option<i64>) -> bool {
+    if task["stale"] == true { return false; }
     task["state"] == "observed" && task["records"].as_array().is_some_and(|records|
         records.iter().any(|record| record["id"].as_i64() == selected
             && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]))
@@ -825,6 +919,9 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
         format!("연결: {}", task["reason"].as_str().unwrap_or(if task["state"] == "observed" {
             "공식 부모 thread/PID/cwd 검증 · public vibe queue" } else { "검증/조회 미완료" })),
         "에이전트·thread·pane은 별개 · 실행/접수/열람은 완료·승인 근거 아님".into()];
+    if task["stale"] == true {
+        lines.push(format!("갱신 지연 · 마지막 조회 {}", string(task, "observed_at")));
+    }
     if task["state"] != "observed" {
         connection_lines.push(format!("연결 확인 후 Codex 패널에서 실행: {} bar ensure --current --parent-current --relaunch",
             home().join(".config/herdr/vibe-herdr").display()));
@@ -833,7 +930,7 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
         lines.extend([format!("요청 #{} 목표: {}", record["id"], string(record, "goal")),
             format!("요청 배정: {} / {}", record["owner_tool"].as_str().unwrap_or("미배정"), record["owner_thread"].as_str().unwrap_or("미배정")),
             format!("단계 흐름: {}", stage_diagram(record, false)),
-            format!("현재 단계: {} · 상태: {} · 큐 기록: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
+            format!("현재 단계: {} · 큐 상태: {} · 저장 상태: {}", record["stage"].as_str().unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
             format!("대기 사유: {}", record["wait"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록")),
             format!("현재 단계/판본/시도의 실제 결과: {}", record["result"].as_str().filter(|v| !v.is_empty()).unwrap_or("미확인")),
             format!("실행 판본: {} · 시도 {} · 기록 갱신 {}", record["version"], record["attempt"], record["updated_at"].as_str().unwrap_or("미확인")),
@@ -859,7 +956,8 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
                 else if record["review_decision"] == "changes_requested" { "수정 요청 보완 후 다시 결과 확인" }
                 else if record["queue_status"] == "done" { "결과 확인 후 대화 또는 c로 완료 확인" }
                 else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
-            lines = vec![format!("#{} · {} · {}", record["id"], string(record, "state"), string(record, "goal")),
+            lines = vec![format!("#{} · 큐 상태 {} · {}{}", record["id"], string(record, "state"), string(record, "goal"),
+                    if task["stale"] == true { " · 갱신 지연" } else { "" }),
                 format!("결과: {brief}"),
                 format!("배정: {} / {} · {} · 다음: {next}", record["owner_tool"].as_str().unwrap_or("미배정"),
                     record["owner_thread"].as_str().unwrap_or("미배정"),
@@ -1070,6 +1168,12 @@ fn view(args: &[String]) -> Result<()> {
     let mut detail_expanded = false;
     let mut task_offset = 0;
     let mut selected_task = None;
+    let mut follow_queue_top = true;
+    let mut queue = QueueRefresh::new();
+    let mut task = json!({"state":"unconnected","reason":"공식 부모 연결 미확인"});
+    let mut confirmed = Vec::<(i64, String)>::new();
+    let mut subagent_pending: Option<Receiver<String>> = None;
+    let mut subagents = "서브 TUI 연결 미확인".to_owned();
     let mut show_subagents = false;
     struct Screen;
     impl Drop for Screen {
@@ -1100,16 +1204,20 @@ fn view(args: &[String]) -> Result<()> {
                 }
             }
         }
-        let mut task = task_observation(scope.as_mut(), &style);
+        queue.poll(scope.as_mut(), &style, &mut task);
+        hide_confirmed(&mut task, &confirmed);
         if !task_open { detail_expanded = false; }
         task["expanded"] = json!(detail_expanded);
-        if task["state"] == "observed" && !task["records"].as_array().is_some_and(|records|
-            records.iter().any(|record| record["id"].as_i64() == selected_task)) {
-            if selected_task.is_some() { task_open = false; task_offset = 0; }
-            selected_task = task["records"].as_array().and_then(|records| records.first()).and_then(|record| record["id"].as_i64());
+        if refresh_selection(&task, follow_queue_top && !task_open, &mut selected_task) {
+            task_open = false;
+            task_offset = 0;
         }
-        let subagents = scope.as_mut().map_or_else(|| "서브 TUI 연결 미확인".into(),
-            |scope| subagent_line(scope, &style));
+        if let (None, Some(mut scope)) = (&subagent_pending, scope.clone()) {
+            let style = style.clone();
+            let (send, receive) = mpsc::channel();
+            subagent_pending = Some(receive);
+            thread::spawn(move || { let _ = send.send(subagent_line(&mut scope, &style)); });
+        }
         task["subagent_summary"] = json!(subagents);
         if show_subagents { task["subagents"] = task["subagent_summary"].clone(); }
         if opted_in && scope.is_none() { task["reason"] = json!("저장된 scope/현재 TUI 검증 실패"); }
@@ -1130,27 +1238,40 @@ fn view(args: &[String]) -> Result<()> {
         let mut rendered_size = terminal::size()?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
-            if actions.poll() {
-                if let Some((id, version)) = actions.take_confirmed_completion() {
-                    if let Some(records) = task["records"].as_array_mut() {
-                        let removed = records.iter().position(|record| record["id"].as_i64() == Some(id)
-                            && record["completion_token"].as_str() == Some(version.as_str()));
-                        if let Some(position) = removed {
-                            records.remove(position);
-                            if selected_task == Some(id) {
-                                selected_task = records.get(position.min(records.len().saturating_sub(1)))
-                                    .and_then(|record| record["id"].as_i64());
-                                task_open = false; task_offset = 0;
-                            }
-                        }
-                    }
-                    task["total"] = json!(task["records"].as_array().map_or(0, Vec::len));
+            let updated = queue.poll(scope.as_mut(), &style, &mut task);
+            let action_updated = actions.poll();
+            let subagent_updated = match subagent_pending.as_ref().map(Receiver::try_recv) {
+                Some(Ok(summary)) => {
+                    subagents = summary;
+                    subagent_pending = None;
+                    true
                 }
+                Some(Err(TryRecvError::Disconnected)) => {
+                    subagents = "서브 조회 실패".into();
+                    subagent_pending = None;
+                    true
+                }
+                _ => false,
+            };
+            if updated || action_updated || subagent_updated {
+                if let Some((id, version)) = actions.take_confirmed_completion() {
+                    confirmed.push((id, version));
+                }
+                hide_confirmed(&mut task, &confirmed);
+                if refresh_selection(&task, follow_queue_top && !task_open, &mut selected_task) {
+                    task_open = false;
+                    task_offset = 0;
+                    detail_expanded = false;
+                }
+                task["expanded"] = json!(detail_expanded);
+                task["subagent_summary"] = json!(subagents);
+                if show_subagents { task["subagents"] = json!(subagents); }
                 action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
             let wait = deadline.saturating_duration_since(Instant::now());
-            if event::poll(if actions.busy() { wait.min(Duration::from_millis(100)) } else { wait })? {
+            if event::poll(if scope.is_some() || actions.busy() { wait.min(Duration::from_millis(75)) } else { wait })? {
+                let was_open = task_open;
                 match event::read()? {
                     Event::Key(key) if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc && task_open => {
                         task_open = false;
@@ -1206,6 +1327,7 @@ fn view(args: &[String]) -> Result<()> {
                             let position = records.iter().position(|record| record["id"].as_i64() == selected_task).unwrap_or(0);
                             let next = if matches!(key.code, KeyCode::Up | KeyCode::Char('k' | 'ㅏ')) { position.saturating_sub(1) } else { (position + 1).min(records.len() - 1) };
                             selected_task = records[next]["id"].as_i64();
+                            follow_queue_top = next == 0;
                         }
                     }
                     Event::Key(key) if key.kind == KeyEventKind::Press && matches!(key.code, KeyCode::Tab | KeyCode::BackTab) =>
@@ -1253,6 +1375,10 @@ fn view(args: &[String]) -> Result<()> {
                         };
                     }
                     _ => (),
+                }
+                if was_open && !task_open {
+                    follow_queue_top = true;
+                    refresh_selection(&task, true, &mut selected_task);
                 }
                 let notifications = if actions.message.is_empty() { notifications.clone() }
                     else { format!("{} · {notifications}", actions.message) };
