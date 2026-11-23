@@ -87,17 +87,16 @@ impl Actions {
 
     pub fn busy(&self) -> bool { self.pending.is_some() }
 
-    pub fn bar(&self, width: u16, row: u16) -> (u16, String, Vec<Hit>) {
+    pub fn bar(&self, width: u16, row: u16, start: u16) -> (u16, String, Vec<Hit>) {
+        let available = width.saturating_sub(start);
         let total = self.items.iter().map(|item| UnicodeWidthStr::width(item.label.as_str()) + 2)
             .sum::<usize>() + self.items.len().saturating_sub(1);
-        if total + 20 > usize::from(width) {
+        if total > usize::from(available) {
             let label = "[a 더보기]";
             let size = UnicodeWidthStr::width(label) as u16;
-            if width < size + 16 { return (width, String::new(), vec![]); }
-            let start = width - size;
-            return (start.saturating_sub(1), label.into(), vec![Hit { start, end: width, row, action: None }]);
+            if available < size { return (width, String::new(), vec![]); }
+            return (start.saturating_sub(1), label.into(), vec![Hit { start, end: start + size, row, action: None }]);
         }
-        let start = width - total as u16;
         let (text, hits) = self.buttons(start, row, 0, self.items.len());
         (start.saturating_sub(1), text, hits)
     }

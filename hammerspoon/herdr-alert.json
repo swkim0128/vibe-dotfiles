@@ -13,6 +13,7 @@
   },
   "states": {
     "done": {"label": "완료", "color": "#a6e3a1", "seconds": 4},
-    "blocked": {"label": "응답 필요", "color": "#f9e2af", "seconds": 8}
+    "blocked": {"label": "응답 필요", "color": "#f9e2af", "seconds": 8},
+    "mention": {"label": "Slack 멘션", "color": "#89b4fa", "seconds": 10}
   }
 }

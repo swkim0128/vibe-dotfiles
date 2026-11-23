@@ -17,6 +17,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod bar;
 mod dock;
 mod actions;
+mod slack_mentions;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -382,7 +383,11 @@ fn notify(test: Option<&str>) -> Result<()> {
             .join(" ");
         json!({"status":status,"text":format!("{location}\n{title}").chars().take(300).collect::<String>()})
     };
-    let encoded = serde_json::to_vec(&payload)?
+    show_alert(&payload)
+}
+
+fn show_alert(payload: &Value) -> Result<()> {
+    let encoded = serde_json::to_vec(payload)?
         .iter()
         .map(|byte| format!("\\{byte:03}"))
         .collect::<String>();
@@ -912,7 +917,8 @@ fn render_view(
         let row = height - 1;
         execute!(output, cursor::MoveTo(0, row))?;
         write!(output, "\x1b[36m{}\x1b[0m", plain(TASK_DETAIL_BUTTON, columns))?;
-        let (_, buttons, hits) = actions.bar(width, row);
+        let action_start = (unicode_width::UnicodeWidthStr::width(TASK_DETAIL_BUTTON) + 1) as u16;
+        let (_, buttons, hits) = actions.bar(width, row, action_start);
         if !buttons.is_empty() {
             execute!(output, cursor::MoveTo(hits.first().map(|hit| hit.start).unwrap_or(0), row))?;
             write!(output, "{buttons}")?;
@@ -1077,7 +1083,9 @@ fn view(args: &[String]) -> Result<()> {
         if opted_in && scope.is_none() { task["reason"] = json!("저장된 scope/현재 TUI 검증 실패"); }
         let values = metrics();
         let notifications = dock(&cache);
-        let notifications = if notifications.starts_with("알림") {
+        let notifications = if let Some(latest) = slack_mentions::latest_notice() {
+            format!("{latest} · {notifications}")
+        } else if notifications.starts_with("알림") {
             notifications
         } else {
             format!("알림 {notifications}")
@@ -1232,11 +1240,12 @@ fn main() {
         }
         Some("notify") if args.len() == 1 => notify(None),
         Some("notify") if args.len() == 3 && args[1] == "--test" => notify(Some(&args[2])),
+        Some("slack-mentions") => slack_mentions::poll(&args[1..]),
         Some("usage") => usage(),
         Some("view") => view(&args[1..]),
         Some("bar") => bar::entry(&args[1..]),
         _ => Err(
-            "usage: vibe-herdr status [--sidebar-only] | notify [--test done|blocked] | usage | view"
+            "usage: vibe-herdr status [--sidebar-only] | notify [--test done|blocked] | slack-mentions <aside> <profile> <team> <user> <state> | usage | view"
                 .into(),
         ),
     };
