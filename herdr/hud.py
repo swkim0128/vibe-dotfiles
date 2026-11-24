@@ -503,15 +503,17 @@ def subagents(scope):
 def current_task(scope):
     """Project the public queue snapshot without changing any request's owner."""
     context = bound_parent(scope)
-    if isinstance(context, dict):
-        return context
-    socket_path, generation, _, parent, harness, native, pid, _, binding = context
-    info = rpc("pane.process_info", pane_id=scope["parent_pane"])["process_info"]
-    processes = [process for process in info["foreground_processes"] if process.get("pid") == pid]
-    cwd = parent.get("cwd")
-    if (len(processes) != 1 or processes[0].get("cwd") != cwd
-            or not isinstance(cwd, str) or not Path(cwd).is_absolute() or not Path(cwd).is_dir()):
-        raise ScopeError("parent pane and Codex cwd do not match")
+    read_only = isinstance(context, dict) and context.get("state") == "parent_unbound"
+    if read_only:
+        native, binding, cwd = None, None, str(Path.cwd())
+    else:
+        socket_path, generation, _, parent, harness, native, pid, _, binding = context
+        info = rpc("pane.process_info", pane_id=scope["parent_pane"])["process_info"]
+        processes = [process for process in info["foreground_processes"] if process.get("pid") == pid]
+        cwd = parent.get("cwd")
+        if (len(processes) != 1 or processes[0].get("cwd") != cwd
+                or not isinstance(cwd, str) or not Path(cwd).is_absolute() or not Path(cwd).is_dir()):
+            raise ScopeError("parent pane and Codex cwd do not match")
     cli = shutil.which("vibe") or str(Path.home() / ".local/bin/vibe")
     if not os.access(cli, os.X_OK):
         raise ValueError("public vibe queue CLI unavailable")
@@ -524,8 +526,8 @@ def current_task(scope):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("queue observation deadline")
-        result = subprocess.run([cli, "queue", action, *map(str, args), "--tool", "codex",
-                                 "--conversation-id", native, "--json"], cwd=cwd,
+        identity_args = [] if read_only else ["--tool", "codex", "--conversation-id", native]
+        result = subprocess.run([cli, "queue", action, *map(str, args), *identity_args, "--json"], cwd=cwd,
                                 capture_output=True, check=True, timeout=remaining)
         if len(result.stdout) > 1048576:
             raise ValueError("queue response too large")
@@ -538,7 +540,8 @@ def current_task(scope):
         if isinstance(error, subprocess.CalledProcessError) and not re.search(
                 r"\bdatabase (?:table )?is (?:locked|busy)\b", error.stderr or "", re.IGNORECASE):
             raise
-        recheck_parent(scope, context)
+        if not read_only:
+            recheck_parent(scope, context)
         scope["_phase"] = "queue_list"
         return {"state": "transient_failure", "binding": binding,
                 "error_type": type(error).__name__}
@@ -573,12 +576,18 @@ def current_task(scope):
         record = task_record(full, execution, common_definition if full.get("kind") == "request" else None)
         records.append(record)
     records.sort(key=lambda record: (record["priority"], record["id"]), reverse=True)
-    recheck_parent(scope, context)
-    try:
-        publish_sidebar_queue(socket_path, generation, parent, harness, native, listed)
-    except (OSError, ValueError, TypeError, KeyError):
-        pass  # A display cache failure must not change the queue result.
+    if read_only:
+        if bound_parent(scope) != context:
+            raise ScopeError("TUI parent changed during public queue read")
+    else:
+        recheck_parent(scope, context)
+        try:
+            publish_sidebar_queue(socket_path, generation, parent, harness, native, listed)
+        except (OSError, ValueError, TypeError, KeyError):
+            pass  # A display cache failure must not change the queue result.
     return {"state": "observed", "binding": binding, "thread": native,
+            "read_only": read_only,
+            "reason": "부모 공식 대화 미연결 · 공개 큐 조회 전용" if read_only else None,
             "view": "queue", "total": len(listed),
             "queued_count": sum(record["queue_status"] == "queued" for record in records),
             "review_count": sum(record["needs_review"] for record in records),

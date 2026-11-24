@@ -700,6 +700,7 @@ impl QueueRefresh {
             Some(Ok(snapshot)) => {
                 self.pending = None;
                 if matches!(snapshot["state"].as_str(), Some("observed" | "transient_failure"))
+                    && snapshot["read_only"] != true
                     && !scope["binding"].is_null() && snapshot["binding"] != scope["binding"]
                 {
                     *task = json!({"state":"unconnected","reason":"큐 조회 중 부모 연결 변경"});
@@ -713,7 +714,9 @@ impl QueueRefresh {
                     return changed;
                 } else {
                     if snapshot["state"] == "observed" {
-                        scope["binding"] = snapshot["binding"].clone();
+                        if snapshot["read_only"] != true {
+                            scope["binding"] = snapshot["binding"].clone();
+                        }
                         self.default_definition = snapshot["queue_default_definition"].clone();
                     } else {
                         self.default_definition = Value::Null;
@@ -775,7 +778,8 @@ fn task_line(task: &Value, style: &Value) -> String {
         Some("observed") => {},
         _ => return "작업 thread 조회 실패 · 현재 상태 미확인 · t 상세".into(),
     }
-    let thread = task["thread"].as_str().unwrap_or("?").chars().take(8).collect::<String>();
+    let thread = if task["read_only"] == true { "공개 큐 조회 전용".into() }
+        else { task["thread"].as_str().unwrap_or("?").chars().take(8).collect::<String>() };
     let at = task["observed_at"].as_str().unwrap_or("미확인");
     let at = at.get(11..19).unwrap_or(at);
     if task["stale"] == true {
@@ -883,7 +887,8 @@ fn task_list(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, sele
     if height == 0 { return Ok(()); }
     let columns = usize::from(width);
     let title = format!("전체 작업 큐{} · 확인 대기 {} · {}건(대기 {}) · 조회 {} · {} · 연결 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
-        if task["stale"] == true { " · 갱신 실패" } else { "" },
+        if task["read_only"] == true { " · 조회 전용(부모 미연결)" }
+            else if task["stale"] == true { " · 갱신 실패" } else { "" },
         task["review_count"].as_u64().unwrap_or(0), task["total"], task["queued_count"],
         task["observed_at"].as_str().and_then(|at| at.get(11..19)).unwrap_or("미확인"),
         string(task, "subagent_summary"),
@@ -950,7 +955,8 @@ fn task_list(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, sele
 const COMPLETION_BUTTON: &str = "[c 완료 확인·목록에서 치우기]";
 
 fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
-    if task["state"] != "observed" || task["stale"] == true { return None; }
+    if task["state"] != "observed" || task["stale"] == true || task["read_only"] == true
+        || task["binding"].is_null() || task["thread"].as_str().is_none_or(str::is_empty) { return None; }
     task["records"].as_array()?.iter().find(|record| record["id"].as_i64() == selected
         && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]
         && record["queue_status"] == "done" && record["completion_confirmed"] != true
@@ -958,7 +964,8 @@ fn completed_selection(task: &Value, selected: Option<i64>) -> Option<&Value> {
 }
 
 fn selection_owned(task: &Value, selected: Option<i64>) -> bool {
-    if task["stale"] == true { return false; }
+    if task["stale"] == true || task["read_only"] == true || task["binding"].is_null()
+        || task["thread"].as_str().is_none_or(str::is_empty) { return false; }
     task["state"] == "observed" && task["records"].as_array().is_some_and(|records|
         records.iter().any(|record| record["id"].as_i64() == selected
             && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]))
