@@ -20,6 +20,7 @@ mod dock;
 mod actions;
 mod slack_mentions;
 mod ace_inbox;
+mod completion_alert;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -174,7 +175,11 @@ fn rpc(method: &str, params: Value) -> Result<Value> {
 }
 
 fn rpc_timeout(method: &str, params: Value, timeout: Duration) -> Result<Value> {
-    let mut client = UnixStream::connect(env::var("HERDR_SOCKET_PATH")?)?;
+    rpc_on_socket(Path::new(&env::var("HERDR_SOCKET_PATH")?), method, params, timeout)
+}
+
+fn rpc_on_socket(socket: &Path, method: &str, params: Value, timeout: Duration) -> Result<Value> {
+    let mut client = UnixStream::connect(socket)?;
     client.set_read_timeout(Some(timeout))?;
     client.set_write_timeout(Some(timeout))?;
     writeln!(
@@ -361,6 +366,9 @@ fn notify(test: Option<&str>) -> Result<()> {
         }
         let context: Value =
             serde_json::from_str(&env::var("HERDR_PLUGIN_CONTEXT_JSON").unwrap_or("{}".into()))?;
+        if status == "done" {
+            return show_alert(&completion_alert::payload(data, &context));
+        }
         let choose = |a: &Value, b: &Value| {
             a.as_str()
                 .filter(|s| !s.is_empty())
@@ -1503,6 +1511,7 @@ fn main() {
         }
         Some("notify") if args.len() == 1 => notify(None),
         Some("notify") if args.len() == 3 && args[1] == "--test" => notify(Some(&args[2])),
+        Some("focus-alert") if args.len() == 2 => completion_alert::focus(&args[1]),
         Some("slack-mentions") => slack_mentions::poll(&args[1..]),
         Some("usage") => usage(),
         Some("view") => view(&args[1..]),

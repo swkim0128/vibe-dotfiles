@@ -89,8 +89,8 @@ Hammerspoon과 로컬 Herdr 플러그인 `vibe.top-alert`로 완료·응답 필�
 
 - 정적 정의: `hammerspoon/herdr-alert.json`의 위치·글꼴·색상·표시 시간과 `herdr/plugins/top-alert/herdr-plugin.toml`의 이벤트·명령 매핑.
 - 실행: `vibe-herdr notify`가 `pane.agent_status_changed` 이벤트의 `done`·`blocked`만 Hammerspoon 로컬 IPC에 전달하고, `hammerspoon/herdr-alert.lua`가 canvas로 알림을 그린다. 이벤트 문자열은 Lua의 십진 byte escape로 전달하며 stdin을 닫고 5초 제한과 UUID 응답 검사를 적용한다. `hs`는 PATH 또는 사용자·공용 Applications에서 찾는다. 가로 중앙을 유지하고 메뉴 막대 아래 작업 영역에서 JSON의 `position.topMargin`(기본 16px)만큼 내려 표시한다. 완료는 초록 4초, 응답 필요는 노랑 8초다. 새 알림은 이전 알림을 대체한다.
-- 표시 내용: 스페이스, pane ID, 에이전트, 보고된 작업 제목. 셸에서 문구를 실행하거나 에이전트 입력을 전송하지 않는다. `blocked`는 Herdr가 보고한 응답 필요 상태이며 질문·실행 승인 유형을 별도로 판독하지 않는다.
-- 카드 구성은 Herdr 기본 toast의 중립 테두리와 상태 표시·보조 본문을 따른다. 글씨 13pt·여백 8px·테두리 1px로 줄이고 `● 상태`만 상태색으로 표시한다. 본문은 중립색·왼쪽 정렬이며 최대 너비 520px 안에서 한 줄로 줄인다. 상단 여백 16px와 기존 표시 시간은 유지한다. 2026-11-11 Herdr 알림 모듈만 다시 로드해 반영했고 로컬 미리보기를 한 번 호출했다. 별도 화면 캡처나 육안 품질 확인은 하지 않았다.
+- 완료 알림은 `ashop 작업 완료`처럼 실제 작업탭 이름을 표시한다. 탭 이름이 숫자 기본값이거나 비어 있으면 프로젝트명, AI 대화 제목 순으로 사용한다. 이름이 겹치면 작업공간이나 대화 정보를 한 줄 덧붙인다. 클릭하면 알림에 기록된 Herdr 세션의 에이전트 패널로 이동한다. 세션이나 패널의 대상이 바뀌면 클릭을 거부한다. `blocked`는 기존 응답 필요 알림을 표시한다.
+- 카드는 상태색 제목과 중립색 보조 본문을 표시한다. 글씨 13pt, 여백 8px, 테두리 1px, 최대 너비 520px을 사용한다. 제목이 길면 이름을 줄이고 `작업 완료`는 남긴다. 상단 여백은 16px이다.
 - 설치: `Brewfile`에 Hammerspoon을 선언하고 `hammerspoon_config` 단계로 `~/.hammerspoon/`에 파일별 링크를 만든다. `herdr_config`는 현재 Herdr 문맥이 있을 때 플러그인 경로를 등록한다. 첫 설치 후 Hammerspoon을 실행해 초기 질문에 답한다. 설정을 읽으면 로그인 시 자동 실행이 활성화된다. 기존 설정 파일은 설치기의 백업 규칙을 따른다. 설치기는 파일 배포와 실행 중 반영을 구분하고 Hammerspoon 실행·메뉴 Reload Config 안내를 출력한다. 기존 자동 재로드 수단이 없어 실행 중 반영은 미확인으로 남긴다.
 - 설정 변경: JSON 또는 Lua 변경 후 Hammerspoon 메뉴의 Reload Config를 사용한다. 수동 시험은 `herdr plugin action invoke test --plugin vibe.top-alert`, 실행 결과는 `herdr plugin log list --plugin vibe.top-alert`로 확인한다. Hammerspoon이 종료되거나 IPC 설정 로드에 실패하면 알림은 전달되지 않으며 실패가 플러그인 로그에 남는다.
 
