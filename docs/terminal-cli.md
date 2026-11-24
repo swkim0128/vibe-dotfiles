@@ -23,7 +23,7 @@ dotfiles 설치기는 `~/.local/bin/vibe-terminal`을 같은 진입점으로 연
 | `vibe-terminal select-project` | 검색 경로 목록으로 fzf 선택. 취소는 빈 stdout·종료코드 0 |
 | `vibe-terminal commands common\|main\|sub` | 해당 사용자 명령 목록 원문 반환 |
 | `vibe-terminal start NAME PATH` | 작업공간 생성·재사용. AI는 자동 시작하지 않음 |
-| `vibe-terminal peek PATH [run COMMAND]` | 별도 실행 셸 준비. run 응답은 제출 결과이며 명령 완료 증명이 아님 |
+| `vibe-terminal peek PATH [run COMMAND]` | 일반 peek는 열람용 셸을 준비. Herdr의 run은 현재 실행세션의 `CLI 실행` 작업공간에서 프로젝트별 `exec·<프로젝트명>` 탭을 사용. 응답은 제출 결과 |
 | `vibe-terminal fzf [--window]` | 프로젝트 선택. Herdr는 `--window`만 지원 |
 | `vibe-terminal helper project\|issue ...` | dotfiles가 소유한 기존 cmux 런처 호출 |
 | `vibe-terminal native OP --params JSON [--timeout N]` | 정의된 일반 provider 동작만 실행. AI agent 동작은 포함하지 않음 |

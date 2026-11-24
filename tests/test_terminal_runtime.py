@@ -192,7 +192,7 @@ class RuntimeTests(unittest.TestCase):
 
 
     def shell_fixture(self, **changes):
-        pane = {"pane_id": "w2:p3", "tab_id": "w2:t3", "workspace_id": "w2", "cwd": str(self.home), "foreground_cwd": str(self.home), "agent": None}
+        pane = {"pane_id": "w2:p3", "tab_id": "w2:t3", "workspace_id": "w2", "terminal_id": "term_exec", "cwd": str(self.home), "foreground_cwd": str(self.home), "agent": None}
         pane.update(changes)
         info = {"pane_id": pane["pane_id"], "shell_pid": 123, "foreground_process_group_id": 123, "foreground_processes": [{"pid": 123, "name": "zsh", "argv0": "zsh", "argv": ["-zsh"], "cwd": str(self.home)}]}
         tab = {"tab_id": pane["tab_id"], "wspace_id": "w2", "number": 3, "pane_count": 1, "label": "exec·" + self.home.name}
@@ -218,22 +218,21 @@ class RuntimeTests(unittest.TestCase):
                 return {"process_info": info}
             self.assertEqual((operation, params), ("pane_run", {"pane": "w2:p3", "command": command}))
             return {}
-        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "native", side_effect=api), contextlib.redirect_stdout(io.StringIO()) as out:
+        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "execution_project", return_value=(self.home.name, self.home)), patch.object(runtime, "ensure_workspace", return_value=("w2", False)) as ensure, patch.object(runtime, "native", side_effect=api), contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(runtime.peek_run(cfg, self.home, command), 0)
+        ensure.assert_called_once_with(cfg, "CLI 실행", Path.home().resolve(), reuse_verified_anchor=True)
         self.assertIn(("workspace_panes", {"workspace": "w2"}), calls)
         self.assertIn(("pane_process_info", {"pane": "w2:p3"}), calls)
-        self.assertEqual(json.loads(out.getvalue()), {"pane_id": "w2:p3", "tab_id": "w2:t3", "created": False, "cwd": str(self.home), "command": command, "submitted": True, "completion": "unknown"})
+        self.assertEqual(json.loads(out.getvalue()), {"workspace_id": "w2", "pane_id": "w2:p3", "tab_id": "w2:t3", "created": False, "cwd": str(self.home), "command": command, "submitted": True, "completion": "unknown"})
 
 
     # [CLI-07] Preserve the general terminal safety contract.
-    def test_run_protects_first_tab_caller_agents_busy_and_changed_cwd(self):
-        for change in ("first", "agent", "busy", "cwd", "caller", "label", "split"):
+    def test_run_blocks_unsafe_or_ambiguous_project_tabs_without_creating(self):
+        for change in ("agent", "busy", "cwd", "caller", "duplicate", "split"):
             with self.subTest(change=change):
                 cfg = self.configured()
                 cfg["herdr_context"] = True
                 pane, info, tab = self.shell_fixture()
-                if change == "first":
-                    tab["number"] = 1
                 if change == "agent":
                     pane["agent"] = "codex"
                 if change == "busy":
@@ -242,8 +241,6 @@ class RuntimeTests(unittest.TestCase):
                     pane["foreground_cwd"] = "/other"
                 if change == "caller":
                     pane["pane_id"] = "w2:p1"
-                if change == "label":
-                    tab["label"] = "user tab"
                 if change == "split":
                     tab["pane_count"] = 2
                 calls = []
@@ -252,17 +249,15 @@ class RuntimeTests(unittest.TestCase):
                     if operation == "pane_current":
                         return {"pane": {"pane_id": "w2:p1", "workspace_id": "w2"}}
                     if operation == "tab_list":
-                        return {"tabs": [tab]}
+                        return {"tabs": [tab, {**tab, "tab_id": "w2:t4"}] if change == "duplicate" else [tab]}
                     if operation == "workspace_panes":
                         return {"panes": [pane]}
                     if operation == "pane_process_info":
                         return {"process_info": info}
-                    self.assertEqual((operation, params), ("tab_create", {"workspace": "w2", "cwd": str(self.home), "label": "exec·" + self.home.name}))
-                    return {}  # Uncertain create: never type or repeat creation.
-                with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "native", side_effect=api), self.assertRaises(ValueError):
+                    self.fail(f"Unexpected mutation: {operation} {params}")
+                with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "execution_project", return_value=(self.home.name, self.home)), patch.object(runtime, "ensure_workspace", return_value=("w2", False)), patch.object(runtime, "native", side_effect=api), self.assertRaises(ValueError):
                     runtime.peek_run(cfg, self.home, "test command")
-                self.assertEqual(sum(c[0] == "tab_create" for c in calls), 1)
-                self.assertFalse(any(c[0] == "pane_run" for c in calls))
+                self.assertFalse(any(c[0] in ("tab_create", "pane_run") for c in calls))
 
 
     # [CLI-07] Preserve the general terminal safety contract.
@@ -284,12 +279,12 @@ class RuntimeTests(unittest.TestCase):
             if operation == "pane_process_info":
                 return {"process_info": info}
             return {}
-        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "native", side_effect=api), contextlib.redirect_stdout(io.StringIO()) as out:
+        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "execution_project", return_value=(self.home.name, self.home)), patch.object(runtime, "ensure_workspace", return_value=("w2", False)), patch.object(runtime, "native", side_effect=api), contextlib.redirect_stdout(io.StringIO()) as out:
             runtime.peek_run(cfg, self.home, "pwd")
         self.assertTrue(json.loads(out.getvalue())["created"])
         self.assertEqual(calls[-1], ("pane_run", {"pane": "w2:p3", "command": "pwd"}))
         info["foreground_processes"] = []
-        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "native", side_effect=api), self.assertRaises(ValueError):
+        with patch.dict(os.environ, {"HERDR_PANE_ID": "w2:p1"}), patch.object(runtime, "execution_project", return_value=(self.home.name, self.home)), patch.object(runtime, "ensure_workspace", return_value=("w2", False)), patch.object(runtime, "native", side_effect=api), patch.object(runtime.time, "monotonic", side_effect=[0, 4]), self.assertRaises(ValueError):
             runtime.peek_run(cfg, self.home, "pwd")
 
 

@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -237,7 +238,7 @@ def workspace_panes(cfg, identity):
 
 
 
-def ensure_workspace(cfg, name, path):
+def ensure_workspace(cfg, name, path, reuse_verified_anchor=False):
     # Per-session mapping prevents duplicate creation and detects an uncertain prior create.
     state = Path(runtime_paths()["state_dir"])
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -251,6 +252,9 @@ def ensure_workspace(cfg, name, path):
         if not isinstance(saved, dict):
             raise ValueError("Herdr 로컬 연결 기록의 형식이 다릅니다. 파일을 보존하고 workspace list로 확인하세요")
         live = workspaces(cfg)
+        labeled = [workspace for workspace in live if workspace.get("label") == name]
+        if reuse_verified_anchor and len(labeled) > 1:
+            raise unsupported(cfg, "CLI 실행 workspace 이름이 중복됩니다")
         record = saved.get(key, {})
         existing = next((w for w in live if isinstance(record, dict) and w["workspace_id"] == record.get("workspace_id")), None)
         if existing:
@@ -262,8 +266,17 @@ def ensure_workspace(cfg, name, path):
                 return existing["workspace_id"], False
             if anchor:
                 raise unsupported(cfg, "기존 workspace의 이름 또는 cwd가 바뀌어 재사용하지 않았습니다")
-        collision = next((w for w in live if w.get("label") == name), None)
+        collision = labeled[0] if labeled else None
         if collision:
+            if reuse_verified_anchor:
+                # Named-session and in-pane selectors can identify the same live server.
+                anchors = {pane.get("terminal_id") for pane in workspace_panes(cfg, collision["workspace_id"])
+                           if pane.get("cwd") == str(path) and pane.get("terminal_id")}
+                for entry_key, entry in saved.items():
+                    if (isinstance(entry, dict) and json.loads(entry_key)[1:] == [name, str(path)]
+                            and entry.get("workspace_id") == collision["workspace_id"]
+                            and entry.get("terminal_id") in anchors):
+                        return collision["workspace_id"], False
             raise unsupported(cfg, "같은 이름의 관리되지 않은 workspace가 있어 중복 생성하지 않았습니다")
         result = native(cfg, "workspace_create", cwd=str(path), label=name)
         workspace = result.get("workspace", {})
@@ -334,7 +347,7 @@ def idle_shell(cfg, pane, path):
 
 
 
-def peek_context(cfg, path, command=None):
+def peek_context(cfg, path, command=None, execution=False):
     provider = definitions()["providers"][cfg["multiplexer"]]
     context_keys = provider["context_keys"]
     invocation = ["vibe-terminal", "peek", str(path)] + (["run", command] if command is not None else [])
@@ -356,6 +369,8 @@ def peek_context(cfg, path, command=None):
         cfg["provider_context"] = True  # 이후 탭 생성도 확인한 팝업 소켓을 사용한다.
     else:
         if not cfg["herdr_context"]:
+            if execution:
+                return None, None
             result = native(cfg, "pane_list")
             panes = result.get("panes") if isinstance(result, dict) else None
             if not isinstance(panes, list) or any(not isinstance(pane, dict) for pane in panes):
@@ -384,36 +399,75 @@ def peek_context(cfg, path, command=None):
 
 
 
+def execution_project(path):
+    result = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        capture_output=True, text=True, timeout=5, env={**os.environ, "LC_ALL": "C"},
+    )
+    if result.returncode:
+        if "not a git repository" not in result.stderr:
+            raise ValueError("실행 경로의 Git 저장소를 확인하지 못했습니다")
+        return path.name, path
+    common = Path(result.stdout.rstrip("\n")).resolve(strict=True)
+    name = common.parent.name if common.name == ".git" else common.name.removesuffix(".git")
+    return name, common
+
+
+def await_execution_shell(cfg, workspace, expected, path):
+    deadline = time.monotonic() + 3
+    while True:
+        current = next((pane for pane in workspace_panes(cfg, workspace)
+                        if all(pane.get(key) == expected.get(key)
+                               for key in ("pane_id", "tab_id", "workspace_id", "terminal_id"))), None)
+        if current is None:
+            raise unsupported(cfg, "실행 셸의 탭·패널·터미널이 바뀌었습니다")
+        if idle_shell(cfg, current, path):
+            return
+        if time.monotonic() >= deadline:
+            raise unsupported(cfg, "실행 셸의 유휴 상태 또는 목표 cwd를 확인하지 못했습니다")
+        time.sleep(0.1)
+
+
 def peek_run(cfg, path, command):
-    workspace, caller = peek_context(cfg, path, command)
-    label = "exec·" + path.name
-    live_tabs = tabs(cfg, workspace)
-    panes = workspace_panes(cfg, workspace)
-    selected = None
-    for tab in live_tabs:
-        if (tab.get("label") != label or type(tab.get("number")) is not int or tab["number"] <= 1
-                or tab.get("pane_count") != 1 or tab.get("wspace_id", tab.get("workspace_id")) != workspace):
-            continue
-        candidates = [p for p in panes if p.get("tab_id") == tab.get("tab_id")]
-        if len(candidates) != 1:
-            continue
-        pane = candidates[0]
-        if pane.get("pane_id") != caller and pane.get("workspace_id") == workspace and idle_shell(cfg, pane, path):
-            selected = pane
-            break
-    created = selected is None
-    if created:
-        result = native(cfg, "tab_create", workspace=workspace, cwd=str(path), label=label)
-        tab_id = result.get("tab", {}).get("tab_id")
-        pane_id = result.get("root_pane", {}).get("pane_id")
-        if not tab_id or not pane_id:
-            raise unsupported(cfg, "새 실행 탭 ID가 미확인입니다. 자동 재생성하지 마세요")
-        selected = next((p for p in workspace_panes(cfg, workspace) if p.get("pane_id") == pane_id and p.get("tab_id") == tab_id and p.get("workspace_id") == workspace), None)
-        if not selected or selected["pane_id"] == caller or not idle_shell(cfg, selected, path):
-            raise unsupported(cfg, "실행 탭 셸 준비가 미확인입니다. 자동 재생성하지 마세요")
-    # Native run admits literal text and Enter; it does not report command completion.
-    native(cfg, "pane_run", pane=selected["pane_id"], command=command)
-    print(json.dumps({"pane_id": selected["pane_id"], "tab_id": selected["tab_id"], "created": created, "cwd": str(path), "command": command, "submitted": True, "completion": "unknown"}, ensure_ascii=False))
+    _, caller = peek_context(cfg, path, command, execution=True)
+    project, identity = execution_project(path)
+    label = "exec·" + project
+    state = Path(runtime_paths()["state_dir"])
+    state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (state / "herdr-exec.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        workspace, _ = ensure_workspace(cfg, "CLI 실행", Path.home().resolve(), reuse_verified_anchor=True)
+        matches = [tab for tab in tabs(cfg, workspace) if tab.get("label") == label]
+        if len(matches) > 1:
+            raise unsupported(cfg, f"{label} 실행 탭이 여러 개입니다. 중복 생성하지 않습니다")
+        created = not matches
+        if created:
+            result = native(cfg, "tab_create", workspace=workspace, cwd=str(path), label=label)
+            selected = result.get("root_pane", {})
+            tab = result.get("tab", {})
+        else:
+            tab = matches[0]
+            panes = [pane for pane in workspace_panes(cfg, workspace)
+                     if pane.get("tab_id") == tab.get("tab_id")]
+            selected = panes[0] if len(panes) == 1 else {}
+        pane_id, tab_id = selected.get("pane_id"), tab.get("tab_id")
+        if (not pane_id or not tab_id or not selected.get("terminal_id") or pane_id == caller
+                or tab.get("wspace_id", tab.get("workspace_id")) != workspace
+                or tab.get("pane_count") != 1 or selected.get("workspace_id") != workspace
+                or selected.get("tab_id") != tab_id):
+            raise unsupported(cfg, "실행 탭·패널 연결을 확인하지 못했습니다")
+        if not created:
+            cwd = Path(str(selected.get("foreground_cwd") or ""))
+            if not cwd.is_absolute() or not cwd.is_dir() or not idle_shell(cfg, selected, cwd):
+                raise unsupported(cfg, f"{label} 실행 탭에 유휴 셸이 없습니다")
+            if execution_project(cwd)[1] != identity:
+                raise unsupported(cfg, f"{label}의 실제 cwd가 다른 프로젝트입니다")
+            if cwd != path:
+                native(cfg, "pane_run", pane=pane_id, command="cd -- " + shlex.quote(str(path)))
+        await_execution_shell(cfg, workspace, selected, path)
+        # Native run acknowledges submission only.
+        native(cfg, "pane_run", pane=pane_id, command=command)
+    print(json.dumps({"workspace_id": workspace, "pane_id": pane_id, "tab_id": tab_id, "created": created, "cwd": str(path), "command": command, "submitted": True, "completion": "unknown"}, ensure_ascii=False))
     return 0
 
 
