@@ -7,7 +7,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn call(method: &str, params: Value) -> Result<Value> {
     rpc_timeout(method, params, Duration::from_secs(5))
@@ -81,6 +81,19 @@ fn process(pane: &Value) -> Result<(bool, Value)> {
         is_bar,
         json!({"terminal_id":pane["terminal_id"],"shell_pid":info["shell_pid"],"cli_pids":cli_pids}),
     ))
+}
+
+fn wait_for_bar(pane: &Value) -> Result<Value> {
+    let deadline = Instant::now() + Duration::from_millis(900);
+    loop {
+        if let Ok((true, identity)) = process(pane) {
+            return Ok(identity);
+        }
+        if Instant::now() >= deadline {
+            return Err("새 상태 TUI의 실행을 확인하지 못했습니다".into());
+        }
+        std::thread::sleep(Duration::from_millis(40));
+    }
 }
 
 fn export(tab: &str) -> Result<Value> {
@@ -171,11 +184,10 @@ fn relaunch(tab: &str, old: &str, work: &[(Value, Value)], tree: &Value,
     let mut old_closed = false;
     let outcome = (|| -> Result<Value> {
         let pane = call("pane.get", json!({"pane_id":new}))?["pane"].clone();
-        let (is_bar, identity) = process(&pane)?;
-        if !is_bar || pane["tab_id"] != tab || pane["workspace_id"] != old_pane["workspace_id"] {
+        if pane["tab_id"] != tab || pane["workspace_id"] != old_pane["workspace_id"] {
             return Err("새 상태 TUI의 실행·위치를 확인하지 못했습니다. 기존 TUI는 유지합니다".into());
         }
-        new_identity = Some(identity);
+        new_identity = Some(wait_for_bar(&pane)?);
         let binding = subagent_scope(&scope.0, &new, &scope.1)?;
         let mut file = OpenOptions::new().write(true).create_new(true).mode(0o600).open(scope_path(&new)?)?;
         write!(file, "{binding}")?;
@@ -405,6 +417,8 @@ fn ensure(tab: &str, config: &Value, scope: Option<&(String, String)>, replace: 
             }
         }
         if let Some((parent, url)) = scope {
+            let pane = call("pane.get", json!({"pane_id":bar}))?["pane"].clone();
+            wait_for_bar(&pane)?;
             let binding = subagent_scope(parent, &bar, url)?;
             let mut file = OpenOptions::new().write(true).create_new(true).mode(0o600)
                 .open(scope_path(&bar)?)?;

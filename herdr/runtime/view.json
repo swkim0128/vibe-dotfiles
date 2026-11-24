@@ -16,7 +16,7 @@
   },
   "task": {
     "queue_timeout_seconds": 4,
-    "adapter_timeout_seconds": 6,
+    "adapter_timeout_seconds": 8,
     "stale_seconds": 60
   },
   "subagents": {

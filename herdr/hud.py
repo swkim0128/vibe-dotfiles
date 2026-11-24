@@ -200,12 +200,13 @@ def project_names():
             continue
         for line in file.read_text().splitlines():
             alias, separator, fields = line.partition("|")
-            if not separator or not alias.strip() or alias.lstrip().startswith("#"):
+            alias = alias.strip()
+            if not separator or not alias or alias.startswith("#") or re.fullmatch(r"[A-Z][A-Z0-9]+-\d+", alias):
                 continue
             root = fields.partition("|")[0].strip().replace("${HOME}", home).replace("$HOME", home)
             path = Path(root).expanduser()
             if path.is_absolute():
-                mapped.setdefault(path.resolve(), alias.strip())
+                mapped.setdefault(path.resolve(), alias)
     return sorted(mapped.items(), key=lambda entry: len(entry[0].parts), reverse=True)
 
 
@@ -415,6 +416,7 @@ def recheck_parent(scope, context):
     current_view = rpc("pane.get", pane_id=scope["view_pane"])["pane"]
     if (socket_path.stat().st_ino != generation
             or current.get("agent_session") != parent.get("agent_session")
+            or current.get("cwd") != parent.get("cwd")
             or current["terminal_id"] != parent["terminal_id"]
             or current["tab_id"] != view["tab_id"]
             or current["workspace_id"] != view["workspace_id"]
@@ -521,7 +523,7 @@ def current_task(scope):
     def read(action, *args):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise ValueError("queue observation deadline")
+            raise TimeoutError("queue observation deadline")
         result = subprocess.run([cli, "queue", action, *map(str, args), "--tool", "codex",
                                  "--conversation-id", native, "--json"], cwd=cwd,
                                 capture_output=True, check=True, timeout=remaining)
@@ -530,7 +532,16 @@ def current_task(scope):
         return json.loads(result.stdout)
 
     scope["_phase"] = "queue_list"
-    listed = read("list", "--all")
+    try:
+        listed = read("list", "--all")
+    except (TimeoutError, subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.CalledProcessError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and not re.search(
+                r"\bdatabase (?:table )?is (?:locked|busy)\b", error.stderr or "", re.IGNORECASE):
+            raise
+        recheck_parent(scope, context)
+        scope["_phase"] = "queue_list"
+        return {"state": "transient_failure", "binding": binding,
+                "error_type": type(error).__name__}
     if not isinstance(listed, list):
         raise ValueError("queue list contract unavailable")
     for item in listed:
@@ -538,13 +549,11 @@ def current_task(scope):
             raise ValueError("queue record identity unavailable")
     listed = [item for item in listed
               if not (item.get("status") == "done" and item.get("completion_confirmed") is True)]
-    ordered = sorted(listed, key=lambda item: (3 if item.get("status") == "done"
-                     and item.get("completion_confirmed") is False
-                     and item.get("completion_review") not in ("deferred", "changes_requested")
-                     else 2 if item.get("status") == "running"
-                     else 1 if item.get("status") == "queued" else 0, item["id"]), reverse=True)
-    common_definition = None
-    if any(item.get("kind") == "request" and not (item.get("request_data") or {}).get("definition")
+    common_definition = scope.get("queue_default_definition")
+    if not isinstance(common_definition, dict) or common_definition.get("definition_id") != "common-workflow":
+        common_definition = None
+    if common_definition is None and any(
+           item.get("kind") == "request" and not (item.get("request_data") or {}).get("definition")
            for item in listed):
         try:
             default = read("definition-default")
@@ -555,15 +564,15 @@ def current_task(scope):
                             and definition.get("definition_id") == "common-workflow"), None)
         if isinstance(default, dict) and default.get("definition_id") == "common-workflow":
             common_definition = default
-    visible = ordered
     records = []
-    for item in visible:
+    for item in listed:
         scope["_phase"] = "queue_projection"
         full = item
         metadata = full.get("request_data") or {}
         execution = metadata.get("execution")
         record = task_record(full, execution, common_definition if full.get("kind") == "request" else None)
         records.append(record)
+    records.sort(key=lambda record: (record["priority"], record["id"]), reverse=True)
     recheck_parent(scope, context)
     try:
         publish_sidebar_queue(socket_path, generation, parent, harness, native, listed)
@@ -571,11 +580,13 @@ def current_task(scope):
         pass  # A display cache failure must not change the queue result.
     return {"state": "observed", "binding": binding, "thread": native,
             "view": "queue", "total": len(listed),
-            "queued_count": sum(item.get("status") == "queued" for item in listed),
+            "queued_count": sum(record["queue_status"] == "queued" for record in records),
+            "review_count": sum(record["needs_review"] for record in records),
+            "queue_default_definition": common_definition,
             "observed_at": datetime.now().astimezone().isoformat(), "records": records,
             "requests": [{"id": item["id"], "status": item.get("status"),
                           "goal": str((item.get("request_data") or {}).get("goal") or item.get("text") or "")[:240]}
-                         for item in visible], "limited": False}
+                         for item in listed], "limited": False}
 
 
 def queue_category(item, metadata):
@@ -593,6 +604,13 @@ def queue_category(item, metadata):
         return "개인"
     if key.startswith("work-") or re.fullmatch(r"DWDEV-\d+", key):
         return "회사"
+    if item.get("kind") == "request":
+        slack_key = re.fullmatch(r"slack-([A-Z0-9]+)-([0-9]{16})", key)
+        if slack_key:
+            channel, timestamp = slack_key.groups()
+            permalink = re.escape(f"https://cowavecc.slack.com/archives/{channel}/p{timestamp}")
+            if re.search(rf"(?:^|[\s<(\[]){permalink}(?=$|[\s>)\]?#])", item.get("text") or ""):
+                return "회사"
     return "미분류"
 
 
@@ -615,9 +633,11 @@ def task_record(item, execution, default_definition=None):
     if scope_wait.get("paused") == 1:
         wait = {"kind": "user", "reason": scope_wait.get("evidence"),
                 "resume_condition": "실제 사용자 답변 후 원담당 scope-resume 필요"}
-    state = {"queued": "큐 대기", "done": "기록상 완료", "failed": "실패 기록"}.get(item.get("status"), "진척 미확인")
+    queue_status = item.get("status")
+    state = {"queued": "큐 대기", "running": "실행 기록", "done": "기록상 완료",
+             "failed": "실패 기록"}.get(queue_status, "진척 미확인")
     if wait:
-        state = "Question 대기" if wait.get("kind") == "user" else "의존 대기"
+        state = {"user": "Question 대기", "external": "외부 대기"}.get(wait.get("kind"), "의존 대기")
     elif result:
         state = {"done": "기록상 완료", "failed": "실패 기록", "running": "단계 결과 있음"}.get(item.get("status"), state)
     if item.get("status") == "done" and item.get("completion_review") in ("deferred", "changes_requested"):
@@ -650,6 +670,23 @@ def task_record(item, execution, default_definition=None):
                         and execution.get("definition_id") == definition.get("definition_id")
                         and execution.get("definition_version") == definition.get("version")
                         and stage in stage_ids and all(key in stage_ids for key in completed))
+    stage_recorded = valid_definition and bool(completed or artifacts)
+    verify_complete = valid_definition and "verify" in completed
+    verify_review = (stage == "verify" and (control.get("wait") or {}).get("kind") == "user")
+    final_review = (queue_status == "done" and bool(item.get("completion_token"))
+                    and item.get("completion_review") not in ("deferred", "changes_requested"))
+    needs_review = verify_complete and item.get("completion_confirmed") is not True and (verify_review or final_review)
+    active = queue_status == "running" and not wait
+    priority = (4 if needs_review else 3 if active
+                else 2 if queue_status == "queued" and stage_recorded and not wait
+                else 1 if wait or queue_status in ("queued", "done") else 0)
+    if valid_definition and not wait:
+        if queue_status == "queued" and stage_recorded:
+            state = "단계 기록"
+        elif active and stage == "verify":
+            state = "검증 완료" if verify_complete else "검증 중"
+    if needs_review:
+        state = "검증완료·확인대기"
     flow = []
     if valid_definition:
         for key in stage_ids:
@@ -664,7 +701,8 @@ def task_record(item, execution, default_definition=None):
                     status = "not_applicable"
             elif key == stage:
                 status = ("blocked" if wait else "failed" if item.get("status") == "failed"
-                          else "current" if item.get("status") == "running" else "unknown")
+                          else "current" if queue_status == "running"
+                          else "recorded" if queue_status == "queued" and stage_recorded else "unknown")
             flow.append({"id": key, "state": status})
     elif stage_ids and not execution:
         # Reading old records never fabricates historical stage completion.
@@ -675,9 +713,11 @@ def task_record(item, execution, default_definition=None):
             "owner_tool": item.get("owner_tool"), "owner_thread": item.get("owner_conversation_id"),
             "completion_confirmed": item.get("completion_confirmed") is True,
             "review_decision": item.get("completion_review"), "kind": item.get("kind"),
-            "stage": execution.get("current_stage"), "state": state, "queue_status": item.get("status"),
+            "stage": execution.get("current_stage"), "state": state, "queue_status": queue_status,
+            "waiting": bool(wait),
+            "needs_review": needs_review, "verify_complete": verify_complete, "priority": priority,
             "completion_token": item.get("completion_token"),
-            "wait": str(wait.get("reason") or "")[:512], "result": result,
+            "wait": str(wait.get("reason") or ""), "result": result,
             "next_action": str((wait.get("resume_condition") or "대기 해소 조건 미기록") if wait
                                else metadata.get("next_action") or "")[:512],
             "version": version, "attempt": attempt, "artifacts": artifacts, "stages": flow,
@@ -723,8 +763,8 @@ if __name__ == "__main__":
             error_type = type(error).__name__
             error_module = getattr(error, "name", None)
         result["phase"] = scope.get("_phase")
-        result["error_type"] = error_type
-        observation_receipt(scope, result, error_type, error_module)
+        result["error_type"] = error_type or result.get("error_type")
+        observation_receipt(scope, result, result["error_type"], error_module)
         print(json.dumps(result))
     else:
         refresh()
