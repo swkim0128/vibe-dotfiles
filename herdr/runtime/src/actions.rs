@@ -122,19 +122,16 @@ impl Actions {
         (text, hits)
     }
 
-    pub fn overlay(&self, output: &mut impl Write, width: u16, height: u16) -> Result<Vec<Hit>> {
-        use crossterm::{cursor, execute};
+    pub fn overlay(&self, output: &mut [Vec<u8>], width: u16, height: u16) -> Result<Vec<Hit>> {
         if height == 0 || width == 0 { return Ok(vec![]); }
         let row = if height > 1 { 1 } else { 0 };
         if height > 1 {
-            write!(output, "{}", plain("Codex 동작 · Tab/←/→ 선택 · Enter 접수 · Esc 복귀", usize::from(width)))?;
+            write!(output[0], "{}", plain("Codex 동작 · Tab/←/→ 선택 · Enter 접수 · Esc 복귀", usize::from(width)))?;
         }
         let mut first = self.selected;
         let selected_width = UnicodeWidthStr::width(self.items[first].label.as_str()) + 2;
         if selected_width > usize::from(width) {
-            execute!(output, cursor::MoveTo(0, row))?;
-            write!(output, "{}", plain("버튼 표시 공간 부족 · 창을 넓히세요", usize::from(width)))?;
-            output.flush()?;
+            write!(output[usize::from(row)], "{}", plain("버튼 표시 공간 부족 · 창을 넓히세요", usize::from(width)))?;
             return Ok(vec![]);
         }
         let mut used = selected_width;
@@ -152,14 +149,11 @@ impl Actions {
             end += 1;
         }
         let (text, hits) = self.buttons(0, row, first, end);
-        execute!(output, cursor::MoveTo(0, row))?;
-        write!(output, "{text}")?;
+        write!(output[usize::from(row)], "{text}")?;
         if height > 2 {
-            execute!(output, cursor::MoveTo(0, height - 1))?;
             let message = if self.message.is_empty() { "클릭하면 연결된 대화에 요청 1건을 접수합니다" } else { &self.message };
-            write!(output, "{}", plain(message, usize::from(width)))?;
+            write!(output[usize::from(height - 1)], "{}", plain(message, usize::from(width)))?;
         }
-        output.flush()?;
         Ok(hits)
     }
 

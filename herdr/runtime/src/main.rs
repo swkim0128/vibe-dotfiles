@@ -870,8 +870,8 @@ mod queue_display_tests {
     }
 }
 
-fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
-    use crossterm::{cursor, execute};
+fn task_list(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
+    if height == 0 { return Ok(()); }
     let columns = usize::from(width);
     let title = format!("전체 작업 큐{} · 확인 대기 {} · {}건(대기 {}) · 조회 {} · {} · 연결 {} · ↑↓/jk/ㅓㅏ 선택 / Enter 상세{}",
         if task["stale"] == true { " · 갱신 실패" } else { "" },
@@ -880,11 +880,11 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
         string(task, "subagent_summary"),
         task["thread"].as_str().unwrap_or("미확인").chars().take(8).collect::<String>(),
         if task["limited"] == true { " · 최근12건" } else { "" });
-    write!(output, "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
+    write!(output[0], "\x1b[1;36m{}\x1b[0m", plain(&title, columns))?;
     if task["state"] != "observed" || task["records"].as_array().is_none_or(Vec::is_empty) {
         let empty = if task["state"] == "observed" { "진행 중·대기·완료 확인 대기 작업 없음 · 확인된 결과는 큐 이력에 보존" }
             else { "연결/작업 기록 미확인 · t 상세에서 확인" };
-        if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", plain(empty, columns))?; }
+        if height > 1 { write!(output[1], "{}", plain(empty, columns))?; }
         return Ok(());
     }
     let goal_width = (columns / 4).min(50);
@@ -917,10 +917,10 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             .replace(']', "]\x1b[39m");
         format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 19))
     };
-    if height > 1 { execute!(output, cursor::MoveTo(0, 1))?; write!(output, "{}", row("요청", "작업 목표", "큐 상태", "단계 흐름"))?; }
+    if height > 1 { write!(output[1], "{}", row("요청", "작업 목표", "큐 상태", "단계 흐름"))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
-        execute!(output, cursor::MoveTo(0, index as u16 + 2))?;
+        let output = &mut output[index + 2];
         let status = match record["queue_status"].as_str() {
             Some("done") if record["completion_confirmed"] == true => "완료·확인됨",
             Some("done") if record["review_decision"] == "deferred" => "검토 보류",
@@ -955,8 +955,7 @@ fn selection_owned(task: &Value, selected: Option<i64>) -> bool {
             && record["owner_tool"] == "codex" && record["owner_thread"] == task["thread"]))
 }
 
-fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
-    use crossterm::{cursor, execute};
+fn task_overlay(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, offset: &mut usize, selected: Option<i64>) -> Result<()> {
     let expanded = task["expanded"] == true || task["state"] != "observed";
     let mut lines = Vec::new();
     let mut connection_lines = vec![format!("스레드: {}", string(task, "thread")),
@@ -1030,23 +1029,81 @@ fn task_overlay(output: &mut impl Write, width: u16, height: u16, task: &Value, 
     let visible = usize::from(height.saturating_sub(1));
     *offset = (*offset).min(wrapped.len().saturating_sub(visible));
     for (index, line) in wrapped.iter().skip(*offset).take(visible).enumerate() {
-        execute!(output, cursor::MoveTo(0, index as u16))?;
-        write!(output, "{}", plain(line, columns))?;
+        write!(output[index], "{}", plain(line, columns))?;
     }
     if height > 0 {
-        execute!(output, cursor::MoveTo(0, height - 1))?;
+        let output = &mut output[usize::from(height - 1)];
         if completed_selection(task, selected).is_some() {
             write!(output, "\x1b[32m{}\x1b[0m", plain(&format!("{COMPLETION_BUTTON} · v {} · ↑↓/jk/ㅓㅏ 스크롤 · t/Esc 복귀", if expanded { "요약" } else { "전체 근거" }), columns))?;
         } else {
             write!(output, "{}", plain(&format!("작업 상세 · v {} · ↑↓/jk/ㅓㅏ 스크롤 · s 서브관측 · t/Esc 복귀", if expanded { "요약" } else { "전체 근거" }), columns))?;
         }
     }
-    output.flush()?;
     Ok(())
+}
+
+#[derive(Default)]
+struct ViewFrame {
+    width: u16,
+    rows: Vec<Vec<u8>>,
+}
+
+impl ViewFrame {
+    fn paint(&mut self, output: &mut impl Write, width: u16, rows: Vec<Vec<u8>>) -> Result<()> {
+        use crossterm::{cursor, queue, terminal};
+        let resized = self.width != width || self.rows.len() != rows.len();
+        let mut update = Vec::new();
+        queue!(update, terminal::BeginSynchronizedUpdate)?;
+        let prefix_len = update.len();
+        for (line, row) in rows.iter().enumerate() {
+            if resized || self.rows.get(line) != Some(row) {
+                queue!(update, cursor::MoveTo(0, line as u16), terminal::Clear(terminal::ClearType::CurrentLine))?;
+                update.extend_from_slice(row);
+            }
+        }
+        if update.len() > prefix_len {
+            queue!(update, terminal::EndSynchronizedUpdate)?;
+            output.write_all(&update)?;
+            output.flush()?;
+        }
+        self.width = width;
+        self.rows = rows;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod frame_tests {
+    use super::*;
+
+    #[test]
+    fn refresh_only_paints_changed_rows_and_clears_removed_text() -> Result<()> {
+        let mut screen = ViewFrame::default();
+        let mut output = Vec::new();
+        let first = [b"queue".to_vec(), b"task row".to_vec(), b"buttons".to_vec()];
+        screen.paint(&mut output, 40, first.to_vec())?;
+        assert_eq!(output.windows(4).filter(|bytes| *bytes == b"\x1b[2K").count(), 3);
+        assert!(!output.windows(4).any(|bytes| bytes == b"\x1b[2J"));
+
+        output.clear();
+        screen.paint(&mut output, 40, first.to_vec())?;
+        assert!(output.is_empty());
+
+        let mut refreshed = first;
+        refreshed[1].clear();
+        screen.paint(&mut output, 40, refreshed.to_vec())?;
+        assert_eq!(output, b"\x1b[?2026h\x1b[2;1H\x1b[2K\x1b[?2026l");
+
+        output.clear();
+        screen.paint(&mut output, 29, refreshed.to_vec())?;
+        assert_eq!(output.windows(4).filter(|bytes| *bytes == b"\x1b[2K").count(), 3);
+        Ok(())
+    }
 }
 
 fn render_view(
     output: &mut impl Write,
+    frame: &mut ViewFrame,
     values: &Value,
     notifications: &str,
     date: &str,
@@ -1054,14 +1111,10 @@ fn render_view(
     task: &Value,
     interaction: (&actions::Actions, usize, Option<(&Value, &mut usize)>, Option<i64>),
 ) -> Result<Vec<actions::Hit>> {
-    use crossterm::{cursor, execute, terminal};
+    use crossterm::{cursor, queue, terminal};
     let (actions, notification_offset, task_detail, selected) = interaction;
     let (width, height) = terminal::size()?;
-    execute!(
-        output,
-        cursor::MoveTo(0, 0),
-        terminal::Clear(terminal::ClearType::All)
-    )?;
+    let mut rows = vec![Vec::new(); usize::from(height)];
     let summary = task_line(task, style);
     let subagents = task["subagent_summary"].as_str().unwrap_or(summary.as_str());
     let mut action_hits = Vec::new();
@@ -1069,19 +1122,19 @@ fn render_view(
         let columns = usize::from(width);
         let body_height = height - 2;
         if let Some((task, offset)) = task_detail {
-            task_overlay(output, width, body_height, task, offset, selected)?;
+            task_overlay(&mut rows, width, body_height, task, offset, selected)?;
         } else if actions.open {
-            action_hits.extend(actions.overlay(output, width, body_height)?);
+            action_hits.extend(actions.overlay(&mut rows, width, body_height)?);
         } else {
-            task_list(output, width, body_height, task, selected)?;
+            task_list(&mut rows, width, body_height, task, selected)?;
         }
         let system = format!("{} {} {} · {date}", string(values, "sys_cpu"), string(values, "sys_ram"), string(values, "sys_battery"));
         let system_width = unicode_width::UnicodeWidthStr::width(system.as_str());
         let notice_width = columns.saturating_sub(system_width + 3);
-        execute!(output, cursor::MoveTo(0, height - 2))?;
+        let output = &mut rows[usize::from(height - 2)];
         if notice_width >= 20 {
             write!(output, "\x1b[{}m{}\x1b[0m", string(style, "notifications"), plain(notifications, notice_width))?;
-            execute!(output, cursor::MoveTo((columns - system_width) as u16, height - 2))?;
+            queue!(output, cursor::MoveToColumn((columns - system_width) as u16))?;
             let mut system = plain(&system, system_width);
             for (key, style_key) in [("sys_cpu", "cpu"), ("sys_ram", "ram"), ("sys_battery", "battery")] {
                 let value = string(values, key);
@@ -1090,29 +1143,31 @@ fn render_view(
             write!(output, "{system}")?;
         } else { write!(output, "\x1b[{}m{}\x1b[0m", string(style, "notifications"), plain(notifications, columns))?; }
         let row = height - 1;
-        execute!(output, cursor::MoveTo(0, row))?;
+        let output = &mut rows[usize::from(row)];
         write!(output, "\x1b[36m{}\x1b[0m", plain(TASK_DETAIL_BUTTON, columns))?;
         let action_start = (unicode_width::UnicodeWidthStr::width(TASK_DETAIL_BUTTON) + 1) as u16;
         let (_, buttons, hits) = actions.bar(width, row, Some(action_start));
         if !buttons.is_empty() {
-            execute!(output, cursor::MoveTo(hits.first().map(|hit| hit.start).unwrap_or(0), row))?;
+            queue!(output, cursor::MoveToColumn(hits.first().map(|hit| hit.start).unwrap_or(0)))?;
             write!(output, "{buttons}")?;
             action_hits.extend(hits);
         }
+    } else if let Some((task, offset)) = task_detail {
+        task_overlay(&mut rows, width, height, task, offset, selected)?;
+    } else if actions.open {
+        action_hits.extend(actions.overlay(&mut rows, width, height)?);
     } else {
-        if let Some((task, offset)) = task_detail { task_overlay(output, width, height, task, offset, selected)?; return Ok(vec![]); }
-        if actions.open { return actions.overlay(output, width, height); }
         let width = usize::from(width).saturating_sub(2);
-        let mut rows = style["compact"]["rows"]
+        let mut compact_rows = style["compact"]["rows"]
             .as_array()
             .ok_or("missing compact rows")?.clone();
-        if usize::from(height) > rows.len() {
+        if usize::from(height) > compact_rows.len() {
             let before = style["subagents"]["before"].as_str().unwrap_or("notifications");
-            let position = rows.iter().position(|row| row.as_str() == Some(before)).unwrap_or(0);
-            rows.insert(position, json!("subagents"));
+            let position = compact_rows.iter().position(|row| row.as_str() == Some(before)).unwrap_or(0);
+            compact_rows.insert(position, json!("subagents"));
         }
-        let visible = rows.len().min(usize::from(height));
-        for (index, row) in rows.iter().skip(rows.len() - visible).enumerate() {
+        let visible = compact_rows.len().min(usize::from(height));
+        for (index, row) in compact_rows.iter().skip(compact_rows.len() - visible).enumerate() {
             let y = if style["compact"]["align"] == "bottom" {
                 height - visible as u16 + index as u16
             } else if style["compact"]["align"] == "edges" && index + 1 == visible {
@@ -1167,7 +1222,7 @@ fn render_view(
                 }
                 _ => return Err("unknown compact row".into()),
             };
-            execute!(output, cursor::MoveTo(0, y))?;
+            let output = &mut rows[usize::from(y)];
             let mut text = plain(&text, if row == "notifications" { usize::from(notification_width) } else { width });
             if row == "metrics_datetime" {
                 for (key, style_key) in [
@@ -1187,13 +1242,13 @@ fn render_view(
             write!(output, "\x1b[{color}m{text}\x1b[0m")?;
             if !buttons.is_empty() {
                 let x = hits.first().map(|hit| hit.start).unwrap_or(0);
-                execute!(output, cursor::MoveTo(x, y))?;
+                queue!(output, cursor::MoveToColumn(x))?;
                 write!(output, "{buttons}")?;
                 action_hits.extend(hits);
             }
         }
     }
-    output.flush()?;
+    frame.paint(output, width, rows)?;
     Ok(action_hits)
 }
 
@@ -1230,6 +1285,7 @@ fn view(args: &[String]) -> Result<()> {
     terminal::enable_raw_mode()?;
     let _screen = Screen;
     let mut output = io::stdout();
+    let mut frame = ViewFrame::default();
     execute!(output, terminal::EnterAlternateScreen, cursor::Hide, EnableMouseCapture)?;
     let cache = env::var_os("VIBE_CACHE_DIR")
         .map(PathBuf::from)
@@ -1279,7 +1335,7 @@ fn view(args: &[String]) -> Result<()> {
         let notices = if actions.message.is_empty() { notifications.clone() }
             else { format!("{} · {notifications}", actions.message) };
         notification_offset = notification_offset.min(notices.chars().count().saturating_sub(1));
-        let mut action_hits = render_view(&mut output, &values, &notices, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
+        let mut action_hits = render_view(&mut output, &mut frame, &values, &notices, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
         let mut rendered_size = terminal::size()?;
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
@@ -1311,7 +1367,9 @@ fn view(args: &[String]) -> Result<()> {
                 task["expanded"] = json!(detail_expanded);
                 task["subagent_summary"] = json!(subagents);
                 if show_subagents { task["subagents"] = json!(subagents); }
-                action_hits = render_view(&mut output, &values, &format!("{} · {notifications}", actions.message), &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
+                let notice = if actions.message.is_empty() { notifications.clone() }
+                    else { format!("{} · {notifications}", actions.message) };
+                action_hits = render_view(&mut output, &mut frame, &values, &notice, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
             let wait = deadline.saturating_duration_since(Instant::now());
@@ -1427,7 +1485,7 @@ fn view(args: &[String]) -> Result<()> {
                 }
                 let notifications = if actions.message.is_empty() { notifications.clone() }
                     else { format!("{} · {notifications}", actions.message) };
-                action_hits = render_view(&mut output, &values, &notifications, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
+                action_hits = render_view(&mut output, &mut frame, &values, &notifications, &date, &style, &task, (&actions, notification_offset, task_open.then_some((&task, &mut task_offset)), selected_task))?;
                 rendered_size = terminal::size()?;
             }
         }
