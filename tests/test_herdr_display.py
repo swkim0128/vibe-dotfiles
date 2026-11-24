@@ -37,9 +37,9 @@ class SidebarTests(unittest.TestCase):
 
     def test_current_task_matches_official_session_and_rejects_stale_or_ambiguous_state(self):
         for age, watching, count, expected in ((0, True, 1, "T-A · 첫째 작업"),
-                                               (45, True, 1, "유휴"),
-                                               (0, False, 1, "유휴"),
-                                               (0, True, 2, "유휴")):
+                                               (45, True, 1, "작업 미확인"),
+                                               (0, False, 1, "작업 미확인"),
+                                               (0, True, 2, "작업 미확인")):
             with self.subTest(age=age, watching=watching, count=count):
                 native = "11000000-0000-0000-0000-000000000000"
                 pane = {"agent": "codex", "agent_status": "idle", "cwd": "/repo",

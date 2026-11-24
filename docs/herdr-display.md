@@ -20,7 +20,7 @@ Ace가 기존 Codex MCP에 등록돼 있으면 하단 알림에 미읽음 여부
 - Dock은 기존 5초 갱신에서 원샷 수집기를 필요할 때만 호출한다. Herdr 전용 캐시는 `~/.cache/vibe/herdr/`이며 같은 Herdr의 여러 TUI·상태 갱신은 잠금과 5초 TTL을 공유한다. 상주 수집기나 tmux 명령을 실행하지 않는다. 상태 JSON의 `ok`·수집 시각·마지막 성공 시각으로 성공한 빈 결과(`알림 0건`), 수집 실패, 미수집, 30초 이상 오래된 성공 값을 구분한다. 실패할 때 이전 성공 데이터를 보존하되 현재 성공처럼 표시하지 않는다.
 - CodexBar는 `vibe-herdr usage`를 명시적으로 실행할 때 공식 앱의 `Contents/Helpers/CodexBarCLI usage --provider codex --source cli`를 사용한다. 60초 캐시와 최대 8초 제한을 적용하며 중복 조회는 파일 잠금으로 막는다. 캐시는 표시 문자열과 시각만 저장한다. 조회 실패 시 최근 성공 값을 최대 5분 동안 `~나이s`와 함께 표시하고, 이후 `CB 오래됨`으로 바꾼다. 성공 이력이 없으면 미설치·시간초과·조회실패를 표시한다. `CODEXBAR_CLI`로 설치 경로를 지정할 수 있다. 5초 주기 명령에서는 조회하지 않는다.
 - 긴 cwd와 뱃지는 셀 폭으로 줄이고 tmux 서식·제어 문자는 제거한다. 좁은 화면에서는 Herdr가 하단 우측 영역을 숨길 수 있으며 sidebar의 compact 상태 표시는 유지된다.
-- 에이전트 카드 첫 줄은 프로젝트 경로 매핑의 대표명, 둘째 줄은 확인된 작업명과 ID다. 전체 cwd는 패널 제목 또는 `herdr pane get <패널 ID>`의 `foreground_cwd`에서 확인한다. 여러 패널의 대표명이 같아도 둘째 줄의 작업 ID로 구분한다.
+- 에이전트 카드 첫 줄은 명시한 pane label이며, 없으면 같은 pane·terminal의 공식 agent name을 사용한다. 둘 다 없으면 `역할 미지정`이다. 역할은 cwd·대화 제목으로 추정하지 않는다. 둘째 줄은 기존 프로젝트 매핑의 대표명, 셋째 줄은 확인된 작업명과 ID다. 큐·요청 관측을 연결할 수 없으면 Codex가 직접 보고한 작업 제목을 표시하고, 그것도 없으면 `작업 미확인`이다. 실제 `agent_status`는 별도 상태 행에서 확인한다. 전체 cwd는 패널 제목 또는 `herdr pane get <패널 ID>`의 `foreground_cwd`에서 확인한다.
 - 작업명은 이미 발행된 요청 관측 또는 하단 TUI가 성공적으로 읽은 큐의 짧은 중계값을 사용한다. 신원이 다르거나 관측이 만료·모호하면 Herdr에서 확인된 상태나 `작업 미확인`을 표시한다. 사이드바를 위한 별도 큐 조회는 없다.
 
 HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane 셸의 프로세스 계보, 시작 시각, terminal ID와 socket inode를 확인한 뒤 읽는다. 제목·cwd·최근 대화로 연결을 추정하지 않는다. 현재 등록된 dashboard 훅 경로 또는 `VIBE_DASHBOARD_HUD_SCRIPT`에서 기존 HUD 모듈을 찾아 `configure(load())`와 기존 Docker 저장소 어댑터를 사용한다. 호스트의 과거 원장으로 우회하지 않는다. 60초가 지난 HUD는 미확인으로 처리한다.
@@ -30,6 +30,24 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 표시 metadata는 의미 상태를 변경하지 않고 15초 후 만료된다. native ID가 없으면 `HUD 미연결`, 연결·PID·저장소 검증이 실패하면 `HUD 연결 미확인`을 표시한다. 실제 관측이 없는 서브·요청 수를 0으로 만들지 않는다. 대화 연결에는 하네스 저장소의 Herdr SessionStart 배포와 사용자 훅 신뢰가 필요하다. 기존 대화에 새 SessionStart가 없으면 연결 여부는 미확인으로 남는다.
 
 검증: `cargo clippy --locked --manifest-path herdr/runtime/Cargo.toml -- -D warnings`, `python3 -B tests/test_herdr_display.py`. 기존 Python 검사는 HUD 검증 계약과 이관 전 동작을 확인한다. 실제 Rust 실행·설정 검사·reload는 Herdr 안의 기존 제어 셸에서 수행한다.
+
+### work/personal 사이드바 반영 확인
+
+두 프로필은 `manifests/common.conf`의 같은 `herdr_config` 단계와 설정 링크를 사용한다. 프로젝트명은 각 기기의 프로젝트 매핑에서 읽으며 역할명은 그 기기의 명시 label/name을 그대로 사용한다. 기기별 경로·pane·PID·thread를 공용 코드에 저장하지 않는다. 다른 기기에 Git 소스가 도착한 것만으로 설정 배포·실행 반영·실기 검증을 완료한 것으로 보지 않는다.
+
+각 기기의 실제 dotfiles 경로에서, Herdr의 보이는 실행 셸로 다음 명령을 각각 실행한다. `<mode>`는 `~/.config/vibe-ai-config/profile`의 `work` 또는 `personal`이다.
+
+```bash
+herdr status
+git rev-parse HEAD
+ls -l ~/.config/herdr/config.toml ~/.config/herdr/hud.py ~/.config/herdr/vibe-herdr
+bash install.sh <mode>
+herdr config check
+herdr pane list
+herdr agent list
+```
+
+설치기는 release 빌드와 파일별 링크 뒤 현재 세션의 설정을 reload한다. 이미 링크된 소스의 변경만 선택 반영할 때는 `mise exec -- cargo build --locked --release --manifest-path herdr/runtime/Cargo.toml` → `herdr config check` → `herdr server reload-config`를 각각 실행한다. 5초 주기 갱신 전후의 `pane.list`에서 `tokens.sidebar_role`·`project_name`·`sidebar_task`와 원래 label·terminal ID·실제 agent 상태를 비교한다. 역할 미지정은 해당 기기의 기존 `herdr pane rename` 또는 `herdr agent rename` 명령으로 명시하며 다른 기기의 ID를 복사하지 않는다. API가 `agent.list`를 지원하지 않으면 pane label만 사용한다. 화면 표시와 업무컴 실기 확인은 각 기기에서 별도로 기록한다.
 
 ## 개인용 빠른 실행 버튼
 

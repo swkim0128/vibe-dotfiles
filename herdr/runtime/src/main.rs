@@ -222,12 +222,18 @@ fn refresh_status(tokens: &Value) -> Result<()> {
 
 fn refresh_paths() -> Result<Value> {
     let mut result = rpc("pane.list", json!({}))?;
+    let named = rpc("agent.list", json!({})).unwrap_or_default();
     let home = home().to_string_lossy().into_owned();
     for pane in result["panes"].as_array_mut().ok_or("missing panes")? {
         let agent = string(pane, "agent");
         if agent.is_empty() {
             continue;
         }
+        let role = pane["label"].as_str().filter(|value| !value.trim().is_empty())
+            .or_else(|| named["agents"].as_array()?.iter().find(|entry|
+                entry["pane_id"] == pane["pane_id"] && entry["terminal_id"] == pane["terminal_id"]
+                && entry["agent"] == pane["agent"])?["name"].as_str())
+            .filter(|value| !value.trim().is_empty()).unwrap_or("역할 미지정").to_owned();
         let cwd = pane["foreground_cwd"]
             .as_str()
             .filter(|s| !s.is_empty())
@@ -283,7 +289,7 @@ fn refresh_paths() -> Result<Value> {
         metadata(
             "pane.report_metadata",
             json!({"pane_id":pane["pane_id"],"source":"vibe:project",
-            "agent":agent,"title":title,"tokens":{"project_path":path}}),
+            "agent":agent,"title":title,"tokens":{"project_path":path,"sidebar_role":role}}),
         )?;
     }
     Ok(result)
@@ -295,6 +301,7 @@ fn hud(panes: Option<&Value>, generation: Option<u64>) {
         .map(|pane| json!({"pane_id":pane["pane_id"], "workspace_id":pane["workspace_id"],
             "terminal_id":pane["terminal_id"], "agent":pane["agent"], "agent_session":pane["agent_session"],
             "agent_status":pane["agent_status"], "cwd":pane["cwd"], "foreground_cwd":pane["foreground_cwd"],
+            "terminal_title_stripped":pane["terminal_title_stripped"], "terminal_title":pane["terminal_title"],
             "project_root":pane["project_root"]})).collect();
     if agents.is_empty() { return; }
     // The dashboard exposes its configured storage contract as a Python API.

@@ -256,8 +256,11 @@ def publish_sidebar_queue(socket_path, generation, parent, harness, native, reco
 
 
 def sidebar_task(pane, module, monitors, socket_path=None, generation=None):
-    fallback = {"idle": "유휴", "blocked": "대기", "done": "응답 완료"}.get(
-        pane.get("agent_status"), "작업 미확인")
+    fallback = "작업 미확인"
+    # A native title is display text only; it never supplies a role or identity.
+    title = pane.get("terminal_title_stripped") or pane.get("terminal_title") or ""
+    if pane.get("agent") == "codex" and len(title.split(" | ")) == 4:
+        fallback = short_title(title.rsplit(" | ", 1)[1]) or fallback
     if not pane.get("foreground_cwd") or pane["foreground_cwd"] != pane["cwd"]:
         return fallback
     try:
