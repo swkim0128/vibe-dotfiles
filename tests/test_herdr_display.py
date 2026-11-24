@@ -147,6 +147,19 @@ class QueueDisplayTests(unittest.TestCase):
                      "owner_tool": "codex", "owner_conversation_id": "recorded-owner",
                      "request_data": {"definition": self.definition}}
 
+    def test_deployment_wait_is_distinct_from_execution_and_final_review(self):
+        steps = ["local_verify", "deploy_prepare", "deploy", "request_review", "requester_confirm"]
+        self.definition.update(definition_id="deployment-workflow", stages=[{"id": step} for step in steps])
+        self.execution.update(definition_id="deployment-workflow", current_stage=steps[-1], completed_stages=steps[:-1])
+        record = hud.task_record(self.item, self.execution)
+        self.assertEqual((record["state"], record["priority"], record["waiting"]), ("요청자 확인 대기", 1, True))
+        self.assertEqual(record["stages"][-1], {"id": "requester_confirm", "state": "blocked"})
+        self.item.update(status="done", completion_confirmed=True, completion_token="final-token")
+        self.execution["completed_stages"] = steps
+        record = hud.task_record(self.item, self.execution)
+        self.assertTrue(record["completion_confirmed"])
+        self.assertFalse(record["needs_review"])
+
     def test_scn_84_01_assignment_and_verify_follow_queue_record(self):
         record = hud.task_record(self.item, self.execution)
         self.assertEqual((record["owner_tool"], record["owner_thread"]), ("codex", "recorded-owner"))

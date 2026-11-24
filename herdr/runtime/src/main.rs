@@ -791,7 +791,9 @@ const TASK_DETAIL_BUTTON: &str = "[t 작업 상세]";
 fn stage_label(id: &str) -> &str {
     match id {
         "intake" => "접수", "requirements" => "요구", "plan" => "계획", "test_design" => "테스트",
-        "implement" => "실행", "verify" => "검증", "report" => "보고", "publish" => "저장·배포", _ => id,
+        "implement" => "실행", "verify" => "검증", "report" => "보고", "publish" => "저장·배포",
+        "local_verify" => "로컬 검증", "deploy_prepare" => "배포 준비", "deploy" => "배포",
+        "request_review" => "운영 확인 요청", "requester_confirm" => "요청자 확인", _ => id,
     }
 }
 
@@ -849,6 +851,25 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
     position / page_size * page_size
 }
 
+#[cfg(test)]
+mod queue_display_tests {
+    use super::*;
+
+    #[test]
+    fn deployment_confirmation_stays_visible_in_narrow_queue() {
+        let record = json!({"stage_definition":"observed","stage":"requester_confirm","stages":[
+            {"id":"local_verify","state":"completed"},
+            {"id":"deploy_prepare","state":"completed"},
+            {"id":"deploy","state":"completed"},
+            {"id":"request_review","state":"completed"},
+            {"id":"requester_confirm","state":"blocked"}
+        ]});
+        assert!(list_stage_diagram(&record, 18).starts_with("[Ⅱ 요청자 확인]"));
+        assert!(stage_diagram(&record, false).contains("[✓ 배포 완료]"));
+        assert!(stage_diagram(&record, false).contains("[Ⅱ 요청자 확인 대기]"));
+    }
+}
+
 fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, selected: Option<i64>) -> Result<()> {
     use crossterm::{cursor, execute};
     let columns = usize::from(width);
@@ -878,7 +899,7 @@ fn task_list(output: &mut impl Write, width: u16, height: u16, task: &Value, sel
             "실패 기록" | "수정 요청" => "91",
             "실행 기록" | "검증 중" | "검증 완료" | "단계 결과 있음" => "96",
             "단계 진행" | "단계 기록" => "94",
-            "대기 기록" | "외부 대기" | "의존 대기" | "Question 대기" => "93",
+            "대기 기록" | "외부 대기" | "의존 대기" | "Question 대기" | "요청자 확인 대기" => "93",
             "검토 보류" => "95",
             _ => "39",
         };

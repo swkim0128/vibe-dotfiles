@@ -676,10 +676,15 @@ def task_record(item, execution, default_definition=None):
     final_review = (queue_status == "done" and bool(item.get("completion_token"))
                     and item.get("completion_review") not in ("deferred", "changes_requested"))
     needs_review = verify_complete and item.get("completion_confirmed") is not True and (verify_review or final_review)
-    active = queue_status == "running" and not wait
+    requester_waiting = (valid_definition and definition.get("definition_id") == "deployment-workflow"
+                         and queue_status == "running" and stage == "requester_confirm"
+                         and stage not in completed and not wait)
+    if requester_waiting:
+        state = "요청자 확인 대기"
+    active = queue_status == "running" and not wait and not requester_waiting
     priority = (4 if needs_review else 3 if active
                 else 2 if queue_status == "queued" and stage_recorded and not wait
-                else 1 if wait or queue_status in ("queued", "done") else 0)
+                else 1 if wait or requester_waiting or queue_status in ("queued", "done") else 0)
     if valid_definition and not wait:
         if queue_status == "queued" and stage_recorded:
             state = "단계 기록"
@@ -700,7 +705,7 @@ def task_record(item, execution, default_definition=None):
                         and str(latest.get("reference", "")).startswith("not-applicable:")):
                     status = "not_applicable"
             elif key == stage:
-                status = ("blocked" if wait else "failed" if item.get("status") == "failed"
+                status = ("blocked" if wait or requester_waiting else "failed" if item.get("status") == "failed"
                           else "current" if queue_status == "running"
                           else "recorded" if queue_status == "queued" and stage_recorded else "unknown")
             flow.append({"id": key, "state": status})
@@ -714,7 +719,7 @@ def task_record(item, execution, default_definition=None):
             "completion_confirmed": item.get("completion_confirmed") is True,
             "review_decision": item.get("completion_review"), "kind": item.get("kind"),
             "stage": execution.get("current_stage"), "state": state, "queue_status": queue_status,
-            "waiting": bool(wait),
+            "waiting": bool(wait) or requester_waiting,
             "needs_review": needs_review, "verify_complete": verify_complete, "priority": priority,
             "completion_token": item.get("completion_token"),
             "wait": str(wait.get("reason") or ""), "result": result,
