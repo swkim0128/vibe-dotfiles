@@ -1,6 +1,7 @@
 """Display-only bridge from Herdr's native identity to the existing dashboard HUD."""
 
 import importlib.util
+import hashlib
 import json
 import os
 import re
@@ -8,8 +9,10 @@ import shlex
 import socket
 import shutil
 import subprocess
+import tempfile
 import time
 import sys
+import unicodedata
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -77,7 +80,7 @@ def process_stamp(pid):
     return result.stdout.strip()
 
 
-def identity(pane, call=rpc):
+def official_ref(pane):
     ref = pane.get("agent_session") or {}
     harness = pane.get("agent")
     native = ref.get("value", "")
@@ -85,6 +88,11 @@ def identity(pane, call=rpc):
             or ref.get("kind") != "id" or not re.fullmatch(r"[0-9a-fA-F-]{36}", native)
             or ref.get("source") != f"herdr:{harness}"):
         raise ValueError("official full native identity missing")
+    return harness, native
+
+
+def identity(pane, call=rpc):
+    harness, native = official_ref(pane)
     info = call("pane.process_info", pane_id=pane["pane_id"])["process_info"]
     processes = [p for p in info["foreground_processes"]
                  if Path(p.get("name", "")).name == harness]
@@ -174,6 +182,160 @@ def refresh_status(tokens):
                 source="vibe:status", tokens=tokens, seq=time.time_ns(), ttl_ms=15000)
     except (OSError, ValueError, KeyError, TypeError):
         return
+
+
+def project_names():
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "vibe-tools"
+    config = Path(os.environ.get("VIBE_TOOLS_DIR") or config).expanduser()
+    definitions = Path(os.environ.get("VIBE_TERMINAL_BACKENDS") or config / "terminal-backends.json")
+    try:
+        sources = json.loads(definitions.read_text())["project_mappings"]
+    except (OSError, KeyError, ValueError, TypeError):
+        return []
+    mapped = {}
+    home = str(Path.home())
+    for name in sources:
+        file = config / name
+        if not file.is_file():
+            continue
+        for line in file.read_text().splitlines():
+            alias, separator, fields = line.partition("|")
+            if not separator or not alias.strip() or alias.lstrip().startswith("#"):
+                continue
+            root = fields.partition("|")[0].strip().replace("${HOME}", home).replace("$HOME", home)
+            path = Path(root).expanduser()
+            if path.is_absolute():
+                mapped.setdefault(path.resolve(), alias.strip())
+    return sorted(mapped.items(), key=lambda entry: len(entry[0].parts), reverse=True)
+
+
+def sidebar_project(pane, projects):
+    cwd = Path(pane.get("foreground_cwd") or pane.get("cwd") or "/")
+    root = Path(pane["project_root"]) if pane.get("project_root") else cwd
+    return next((name for path, name in projects if cwd.is_relative_to(path) or root.is_relative_to(path)),
+                root.name or "프로젝트 미확인")
+
+
+def short_title(text):
+    return " ".join("".join(" " if unicodedata.category(char).startswith("C") else char
+                            for char in str(text)).split())[:100]
+
+
+def sidebar_queue_path(socket_path, generation, pane_id):
+    if not re.fullmatch(r"[A-Za-z0-9:_-]+", pane_id):
+        raise ValueError("invalid pane ID")
+    return socket_path.with_suffix(f".vibe-sidebar-{generation}-{pane_id}.json")
+
+
+def publish_sidebar_queue(socket_path, generation, parent, harness, native, records):
+    path = sidebar_queue_path(socket_path, generation, parent["pane_id"])
+    owned = [item for item in records if item.get("owner_tool") == harness
+             and item.get("owner_conversation_id") == native and item.get("status") == "running"]
+    task = ""
+    if len(owned) == 1:
+        item = owned[0]
+        metadata = item.get("request_data") or {}
+        wait = (metadata.get("control") or {}).get("wait") or {}
+        state = {"external": "외부 대기", "user": "답변 대기"}.get(wait.get("kind"),
+                  "의존 대기" if wait else "")
+        title = short_title(metadata.get("goal") or item.get("text") or "작업명 미확인")
+        task = " · ".join(part for part in (f"#{item['id']}", title, state) if part)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=path.name + ".",
+                                         delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump({"terminal_id": parent["terminal_id"], "cwd": parent["cwd"],
+                       "agent_session": parent["agent_session"], "at": time.time(), "task": task,
+                       "ambiguous": len(owned) > 1}, handle)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def sidebar_task(pane, module, monitors, socket_path=None, generation=None):
+    fallback = {"idle": "유휴", "blocked": "대기", "done": "응답 완료"}.get(
+        pane.get("agent_status"), "작업 미확인")
+    if not pane.get("foreground_cwd") or pane["foreground_cwd"] != pane["cwd"]:
+        return fallback
+    try:
+        harness, native = official_ref(pane)
+    except ValueError:
+        return fallback
+    if socket_path is not None:
+        try:
+            path = sidebar_queue_path(socket_path, generation, pane["pane_id"])
+            with path.open("rb") as source:
+                cached = json.loads(source.read(8192))
+            if (0 <= time.time() - cached["at"] <= 15
+                    and all(cached[key] == pane[key] for key in ("terminal_id", "cwd", "agent_session"))):
+                if cached.get("task") or cached.get("ambiguous"):
+                    return cached.get("task") or fallback
+        except (OSError, KeyError, ValueError, TypeError):
+            pass
+    if module is None:
+        return fallback
+    directory = module.state_directory(os.environ)
+    digest = hashlib.sha256(native.encode()).hexdigest()
+    matches = set()
+    for scope in ("work", "personal"):
+        try:
+            relay = module.read_json(directory / "requests" / f"{harness}-{digest}-{scope}.json")
+            age = (datetime.now().astimezone() - datetime.fromisoformat(relay["updated_at"])).total_seconds()
+            if (relay.get("schema"), relay.get("scope"), relay.get("harness"), relay.get("session_id"),
+                relay.get("observation_status")) != (1, scope, harness, native, "watching") or not 0 <= age <= 30:
+                continue
+            current = relay["current"]
+            if not isinstance(current, list) or not current:
+                continue
+            if scope not in monitors:
+                monitors[scope] = None
+                monitors[scope] = module.read_json(directory.parent / "tracking" / scope / "monitor.json")
+            monitor = monitors.get(scope)
+            if not monitor or monitor.get("scope") != scope or monitor.get("revision") != relay.get("revision"):
+                continue
+            for task in monitor["tasks"]:
+                for assignment in task.get("assignments", []):
+                    rid = assignment.get("current_request_id")
+                    if (assignment.get("session_id"), assignment.get("harness")) != (native, harness) or rid not in current:
+                        continue
+                    request = task["requests"].get(rid)
+                    if not request or request.get("status") in ("done", "withdrawn"):
+                        continue
+                    title = short_title(task.get("title") or "작업명 미확인")
+                    matches.add((task["task_id"], rid, title, request.get("status")))
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+    if len(matches) != 1:
+        return fallback
+    task_id, _, title, state = matches.pop()
+    return " · ".join(part for part in (task_id, title, "대기" if state in ("waiting", "blocked") else "") if part)
+
+
+def refresh_sidebar(snapshot):
+    socket_path = Path(os.environ["HERDR_SOCKET_PATH"])
+    generation = snapshot["generation"]
+    projects = project_names()
+    monitors = {}
+    workspace = os.environ.get("HERDR_ACTIVE_WORKSPACE_ID")
+    panes = snapshot["panes"]
+    try:
+        module = dashboard() if any(pane.get("agent_session") for pane in panes) else None
+    except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError):
+        module = None
+    for pane in panes:
+        tokens = {"project_name": sidebar_project(pane, projects),
+                  "sidebar_task": sidebar_task(pane, module, monitors, socket_path, generation)}
+        if pane["workspace_id"] == workspace:
+            try:
+                tokens["hud"] = (label(pane, module) if module else "HUD 연결 미확인") if pane.get("agent_session") else "HUD 미연결"
+            except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError, subprocess.SubprocessError):
+                tokens["hud"] = "HUD 연결 미확인"
+        if socket_path.stat().st_ino != generation:
+            return
+        rpc("pane.report_metadata", pane_id=pane["pane_id"], source="vibe:display", agent=pane["agent"],
+            tokens=tokens, seq=time.time_ns(), ttl_ms=15000)
 
 
 def refresh():
@@ -341,7 +503,7 @@ def current_task(scope):
     context = bound_parent(scope)
     if isinstance(context, dict):
         return context
-    _, _, _, parent, _, native, pid, _, binding = context
+    socket_path, generation, _, parent, harness, native, pid, _, binding = context
     info = rpc("pane.process_info", pane_id=scope["parent_pane"])["process_info"]
     processes = [process for process in info["foreground_processes"] if process.get("pid") == pid]
     cwd = parent.get("cwd")
@@ -403,6 +565,10 @@ def current_task(scope):
         record = task_record(full, execution, common_definition if full.get("kind") == "request" else None)
         records.append(record)
     recheck_parent(scope, context)
+    try:
+        publish_sidebar_queue(socket_path, generation, parent, harness, native, listed)
+    except (OSError, ValueError, TypeError, KeyError):
+        pass  # A display cache failure must not change the queue result.
     return {"state": "observed", "binding": binding, "thread": native,
             "view": "queue", "total": len(listed),
             "queued_count": sum(item.get("status") == "queued" for item in listed),
@@ -537,7 +703,12 @@ def observation_receipt(scope, result, error_type=None, error_module=None):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] in ("--subagents", "--current-task"):
+    if len(sys.argv) == 3 and sys.argv[1] == "--sidebar":
+        try:
+            refresh_sidebar(json.loads(sys.argv[2]))
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    elif len(sys.argv) == 3 and sys.argv[1] in ("--subagents", "--current-task"):
         scope = {}
         error_type = None
         error_module = None

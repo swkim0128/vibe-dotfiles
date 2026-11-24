@@ -69,9 +69,10 @@ tab_bar_right = [
 
 [ui.sidebar.agents]
 rows = [
+  ["$project_name"],
+  ["$sidebar_task"],
   ["state_icon", "agent", "state_text"],
   ["workspace", "tab", "pane"],
-  ["$project_path"],
   ["$hud"],
 ]
 

@@ -1,12 +1,14 @@
 """Herdr status failures must stay unknown and native HUD must fail closed."""
 
 import json
+import hashlib
 import os
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -15,6 +17,62 @@ HERDR = Path(__file__).resolve().parents[1] / "herdr"
 sys.path.insert(0, str(HERDR))
 import hud
 import status
+
+
+class SidebarTests(unittest.TestCase):
+    def test_project_alias_prefers_longest_match_and_accepts_linked_worktree(self):
+        mappings = [(Path("/repo/shop/ashop"), "ashop"), (Path("/repo/shop"), "shop")]
+        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop/src"}, mappings), "ashop")
+        self.assertEqual(hud.sidebar_project({"cwd": "/worktree/feature", "project_root": "/repo/shop/ashop"}, mappings), "ashop")
+        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop-extra"}, mappings), "shop")
+
+    def test_current_task_matches_official_session_and_rejects_stale_or_ambiguous_state(self):
+        for age, watching, count, expected in ((0, True, 1, "T-A · 첫째 작업"),
+                                               (45, True, 1, "유휴"),
+                                               (0, False, 1, "유휴"),
+                                               (0, True, 2, "유휴")):
+            with self.subTest(age=age, watching=watching, count=count):
+                native = "11000000-0000-0000-0000-000000000000"
+                pane = {"agent": "codex", "agent_status": "idle", "cwd": "/repo",
+                        "foreground_cwd": "/repo", "agent_session":
+                        {"agent": "codex", "kind": "id", "source": "herdr:codex", "value": native}}
+                digest = hashlib.sha256(native.encode()).hexdigest()
+                relay = {"schema": 1, "scope": "work", "harness": "codex", "session_id": native,
+                         "observation_status": "watching" if watching else "unknown", "revision": 7,
+                         "updated_at": (datetime.now().astimezone() - timedelta(seconds=age)).isoformat(),
+                         "current": ["r1", "r2"][:count]}
+                tasks = [{"task_id": f"T-{letter}", "title": title,
+                          "assignments": [{"session_id": native, "harness": "codex", "current_request_id": rid}],
+                          "requests": {rid: {"status": "in-progress"}}}
+                         for letter, rid, title in (("A", "r1", "첫째 작업"), ("B", "r2", "둘째 작업"))]
+                monitor = {"scope": "work", "revision": 7, "tasks": tasks}
+                paths = {f"/state/hud/requests/codex-{digest}-work.json": relay,
+                         "/state/tracking/work/monitor.json": monitor}
+                def read(path):
+                    if str(path) not in paths:
+                        raise FileNotFoundError(path)
+                    return paths[str(path)]
+                module = SimpleNamespace(read_json=read, state_directory=lambda _: Path("/state/hud"))
+                self.assertEqual(hud.sidebar_task(pane, module, {}), expected)
+
+    def test_queue_relay_uses_exact_owner_wait_and_terminal_generation(self):
+        native = "22000000-0000-0000-0000-000000000000"
+        pane = {"pane_id": "w1:p2", "agent": "codex", "agent_status": "working", "cwd": "/repo",
+                "foreground_cwd": "/repo", "terminal_id": "term_1", "agent_session":
+                {"agent": "codex", "kind": "id", "source": "herdr:codex", "value": native}}
+        records = [{"id": 83, "owner_tool": "codex", "owner_conversation_id": native,
+                    "status": "running", "request_data":
+                    {"goal": "EP URL", "control": {"wait": {"kind": "external"}}}}]
+        with tempfile.TemporaryDirectory() as directory:
+            socket_path = Path(directory) / "herdr.sock"
+            hud.publish_sidebar_queue(socket_path, 1, pane, "codex", native, records)
+            self.assertEqual(hud.sidebar_task(pane, None, {}, socket_path, 1), "#83 · EP URL · 외부 대기")
+            self.assertEqual(hud.sidebar_task({**pane, "terminal_id": "term_2"}, None, {}, socket_path, 1), "작업 미확인")
+            self.assertEqual(hud.sidebar_task(pane, None, {}, socket_path, 2), "작업 미확인")
+            hud.publish_sidebar_queue(socket_path, 1, pane, "codex", native, records + [{**records[0], "id": 84}])
+            self.assertEqual(hud.sidebar_task(pane, None, {}, socket_path, 1), "작업 미확인")
+            hud.publish_sidebar_queue(socket_path, 1, pane, "codex", native, [])
+            self.assertEqual(hud.sidebar_task(pane, None, {}, socket_path, 1), "작업 미확인")
 
 
 class DisplayTests(unittest.TestCase):

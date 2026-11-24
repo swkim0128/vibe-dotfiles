@@ -200,9 +200,9 @@ fn refresh_status(tokens: &Value) -> Result<()> {
 }
 
 fn refresh_paths() -> Result<Value> {
-    let result = rpc("pane.list", json!({}))?;
+    let mut result = rpc("pane.list", json!({}))?;
     let home = home().to_string_lossy().into_owned();
-    for pane in result["panes"].as_array().ok_or("missing panes")? {
+    for pane in result["panes"].as_array_mut().ok_or("missing panes")? {
         let agent = string(pane, "agent");
         if agent.is_empty() {
             continue;
@@ -221,7 +221,9 @@ fn refresh_paths() -> Result<Value> {
             cwd.into()
         };
         let title = if agent == "codex" {
-            let branch = quick("git", &["-C", cwd, "branch", "--show-current"]).unwrap_or_default();
+            let git = quick("git", &["-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir", "--abbrev-ref", "HEAD"]).unwrap_or_default();
+            let (common, branch) = git.split_once('\n').unwrap_or(("", ""));
+            let branch = if branch == "HEAD" { "" } else { branch };
             let native = pane["terminal_title_stripped"]
                 .as_str()
                 .filter(|s| !s.is_empty())
@@ -236,9 +238,9 @@ fn refresh_paths() -> Result<Value> {
                     .unwrap_or(details)
             };
             let (model, task) = details.split_once(" | ").unwrap_or((details, ""));
-            format!(
+            let title = format!(
                 "{path} | {} | {} | {}",
-                if branch.is_empty() { "-" } else { &branch },
+                if branch.is_empty() { "-" } else { branch },
                 if model.is_empty() {
                     "모델 미확인"
                 } else {
@@ -249,7 +251,11 @@ fn refresh_paths() -> Result<Value> {
                 } else {
                     task
                 }
-            )
+            );
+            if let Some(root) = Path::new(common).parent().filter(|_| Path::new(common).file_name().is_some_and(|name| name == ".git")) {
+                pane["project_root"] = json!(root);
+            }
+            title
         } else {
             format!("{agent} · {path}")
         };
@@ -263,41 +269,21 @@ fn refresh_paths() -> Result<Value> {
 }
 
 fn hud(panes: Option<&Value>, generation: Option<u64>) {
-    let Ok(workspace) = env::var("HERDR_ACTIVE_WORKSPACE_ID") else {
-        return;
-    };
-    if let Some(panes) = panes.and_then(|result| result["panes"].as_array()) {
-        let active = panes
-            .iter()
-            .filter(|pane| {
-                pane["workspace_id"] == workspace
-                    && pane["agent"].as_str().is_some_and(|s| !s.is_empty())
-            })
-            .collect::<Vec<_>>();
-        if active.iter().all(|pane| pane["agent_session"].is_null()) {
-            for pane in active {
-                let current_generation = env::var("HERDR_SOCKET_PATH")
-                    .ok()
-                    .and_then(|path| fs::metadata(path).ok())
-                    .map(|meta| meta.ino());
-                if generation.is_none() || current_generation != generation {
-                    return;
-                }
-                let _ = metadata(
-                    "pane.report_metadata",
-                    json!({"pane_id":pane["pane_id"],"source":"vibe:display","tokens":{"hud":"HUD 미연결"}}),
-                );
-            }
-            return;
-        }
-    }
+    let (Some(panes), Some(generation)) = (panes.and_then(|result| result["panes"].as_array()), generation) else { return; };
+    let agents: Vec<_> = panes.iter().filter(|pane| pane["agent"].as_str().is_some_and(|agent| !agent.is_empty()))
+        .map(|pane| json!({"pane_id":pane["pane_id"], "workspace_id":pane["workspace_id"],
+            "terminal_id":pane["terminal_id"], "agent":pane["agent"], "agent_session":pane["agent_session"],
+            "agent_status":pane["agent_status"], "cwd":pane["cwd"], "foreground_cwd":pane["foreground_cwd"],
+            "project_root":pane["project_root"]})).collect();
+    if agents.is_empty() { return; }
     // The dashboard exposes its configured storage contract as a Python API.
     // Keep its exact identity checks there; no legacy-file fallback in Rust.
     let script = env::var_os("VIBE_HERDR_HUD_ADAPTER")
         .map(PathBuf::from)
         .unwrap_or(home().join(".config/herdr/hud.py"));
     if let Some(path) = script.to_str() {
-        let _ = run("python3", &["-B", path], Duration::from_secs(2));
+        let snapshot = json!({"generation":generation,"panes":agents}).to_string();
+        let _ = run("python3", &["-B", path, "--sidebar", &snapshot], Duration::from_secs(2));
     }
 }
 
