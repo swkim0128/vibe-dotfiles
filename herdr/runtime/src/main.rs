@@ -19,6 +19,7 @@ mod bar;
 mod dock;
 mod actions;
 mod slack_mentions;
+mod ace_inbox;
 
 fn run(program: &str, args: &[&str], timeout: Duration) -> Result<String> {
     let mut child = Command::new(program)
@@ -1290,6 +1291,7 @@ fn view(args: &[String]) -> Result<()> {
     let cache = env::var_os("VIBE_CACHE_DIR")
         .map(PathBuf::from)
         .unwrap_or(home().join(".cache/vibe"));
+    let mut ace_inbox = ace_inbox::AceInbox::default();
     loop {
         if scope.is_none() && options.is_none() {
             if let Some(path) = &scope_file {
@@ -1324,12 +1326,12 @@ fn view(args: &[String]) -> Result<()> {
         if opted_in && scope.is_none() { task["reason"] = json!("저장된 scope/현재 TUI 검증 실패"); }
         let values = metrics();
         let notifications = dock(&cache);
-        let notifications = if let Some(latest) = slack_mentions::latest_notice() {
-            format!("{latest} · {notifications}")
-        } else if notifications.starts_with("알림") {
-            notifications
-        } else {
-            format!("알림 {notifications}")
+        let notifications = match (slack_mentions::latest_notice(), ace_inbox.notice(&cache)) {
+            (Some(slack), Some(ace)) => format!("{slack} · {ace} · {notifications}"),
+            (Some(slack), None) => format!("{slack} · {notifications}"),
+            (None, Some(ace)) => format!("{ace} · {notifications}"),
+            (None, None) if !notifications.starts_with("알림") => format!("알림 {notifications}"),
+            (None, None) => notifications,
         };
         let date = quick("date", &["+%Y-%m-%d %H:%M:%S"]).unwrap_or("시각 미확인".into());
         let notices = if actions.message.is_empty() { notifications.clone() }

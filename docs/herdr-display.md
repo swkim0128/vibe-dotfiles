@@ -14,6 +14,8 @@
 
 시스템 지표·Dock 알림·시각은 하단 상태 TUI에서 확인하고, AI pane 제목에는 경로·브랜치·모델·작업 제목을 보고한다. workspace·tab·pane 이름과 agent의 `working/blocked/done/idle/unknown` 상태는 sidebar에서 확인한다. workspace마다 반복되던 시스템 지표 행은 제거했으며 공용 sys_* metadata 갱신은 유지한다. `done`은 Herdr의 관측 상태이며 요청 큐의 완료 상태를 뜻하지 않는다.
 
+Ace가 기존 Codex MCP에 등록돼 있으면 하단 알림에 미읽음 여부를 표시한다. 조회는 화면 렌더링과 분리해 여러 TUI가 공유하는 캐시를 최대 1분에 한 번 갱신한다. 캐시에는 조회 시각과 상태만 저장하고 알림 내용과 읽음 상태는 변경하지 않는다. 성공한 0건은 `Ace 미읽음 없음`, 조회 오류는 `Ace 조회 실패`로 표시한다.
+
 - 시스템 지표와 HUD는 5초마다 갱신한다. `CPU~`는 `ps %cpu`의 프로세스 평균 합을 논리 CPU 수로 나눈 근삿값이며 순간 CPU 측정치와 다르다. RAM은 active+wired+compressor 페이지의 GiB, 배터리는 `pmset` 값을 표시한다.
 - Dock은 기존 5초 갱신에서 원샷 수집기를 필요할 때만 호출한다. Herdr 전용 캐시는 `~/.cache/vibe/herdr/`이며 같은 Herdr의 여러 TUI·상태 갱신은 잠금과 5초 TTL을 공유한다. 상주 수집기나 tmux 명령을 실행하지 않는다. 상태 JSON의 `ok`·수집 시각·마지막 성공 시각으로 성공한 빈 결과(`알림 0건`), 수집 실패, 미수집, 30초 이상 오래된 성공 값을 구분한다. 실패할 때 이전 성공 데이터를 보존하되 현재 성공처럼 표시하지 않는다.
 - CodexBar는 `vibe-herdr usage`를 명시적으로 실행할 때 공식 앱의 `Contents/Helpers/CodexBarCLI usage --provider codex --source cli`를 사용한다. 60초 캐시와 최대 8초 제한을 적용하며 중복 조회는 파일 잠금으로 막는다. 캐시는 표시 문자열과 시각만 저장한다. 조회 실패 시 최근 성공 값을 최대 5분 동안 `~나이s`와 함께 표시하고, 이후 `CB 오래됨`으로 바꾼다. 성공 이력이 없으면 미설치·시간초과·조회실패를 표시한다. `CODEXBAR_CLI`로 설치 경로를 지정할 수 있다. 5초 주기 명령에서는 조회하지 않는다.
