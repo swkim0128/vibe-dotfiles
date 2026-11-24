@@ -44,15 +44,19 @@ description = "사용자 용어·호출 표현 트리 지도"
 
 [[keys.command]]
 key = "prefix+i"
-type = "plugin_action"
-command = "vibe.top-alert.bar"
-description = "하단 상태 TUI 고정"
+type = "popup"
+command = 'bash "$HOME/.config/herdr/bar-control.sh"'
+width = "40%"
+height = "25%"
+description = "TUI 재시작·닫기"
 
 [[keys.command]]
 key = "prefix+ㅑ"
-type = "plugin_action"
-command = "vibe.top-alert.bar"
-description = "하단 상태 TUI 고정"
+type = "popup"
+command = 'bash "$HOME/.config/herdr/bar-control.sh"'
+width = "40%"
+height = "25%"
+description = "TUI 재시작·닫기"
 
 [experimental]
 switch_ascii_input_source_in_prefix = true
