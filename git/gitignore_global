@@ -17,3 +17,5 @@ openspec/
 sgconfig.yml
 # 고정 Prettier PHP 도구의 설치 의존성
 vibe-tools/php-format/node_modules/
+
+**/.claude/settings.local.json
