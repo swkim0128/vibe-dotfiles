@@ -81,4 +81,17 @@ codex sandbox -P vibe-workspace --include-managed-config -C <dotfiles> -- mise e
 
 - 별도 실행 탭에서 `mise exec -- cargo build --locked --manifest-path herdr/runtime/Cargo.toml` 및 `python3 -B tests/test_herdr_display.py`가 통과했다. Python 검사는 24건이다. Herdr 0.9.5의 `herdr config check`는 격리 설정 전후 모두 통과했다.
 - Unix 소켓 대역으로 Rust 실행기와 Python 어댑터를 호출했다. 변경 전 어댑터에 위 표본을 넣어 기존 역할·작업을 확인하고, 변경 후에는 대화 ID 구분과 작업 값 보존을 확인했다. 탭·상태를 바꾼 표본은 같은 표시를 유지했고, 대화 ID를 빼거나 다른 pane을 제거하면 다음 갱신에서 표시가 바뀌었다. 전송은 표시 metadata와 15초 만료값으로 제한됐다.
-- 독립 Herdr 서버에서 fixture를 agent로 등록하지 못해 실제 탭 이동, 주기 갱신 및 색상 렌더링은 미확인이다. 업무 기기의 실행 중 설정·바이너리·대화에는 배포하지 않았다. 개인 기기의 이번 판본 실행 상태는 미확인이다.
+
+#### 독립 Herdr 서버 검증
+
+업무 기기의 Herdr 0.9.5에서 `wB:pD`가 `/private/tmp/vibe-sidebar-independent.sh`를 실행해 다섯 단언을 모두 통과했다. 별도 홈과 소켓에서 상태는 `custom:test`로 보고하고, 공식 대화 참조는 별도 `pane report-agent-session` 호출로 주입했다. 변경 전 Python 어댑터와 설정은 `03c48f0`의 부모 판본과, 변경 후 설정은 `03c48f0`과 각각 파일 해시가 일치한다.
+
+| 표본 | 실제 Herdr API 관측 |
+|---|---|
+| `before.json` | 기존 역할 `명시 역할`과 프로젝트명 `project`를 확인했다. |
+| `single.json` | Codex 하나의 제목이 `project`로 표시됐다. |
+| `multiple.json` | `명시 역할`, `review-alias`, `기존 제목`과 서로 다른 대화 ID 끝 12자리를 확인했다. 미지정 항목의 상태는 `blocked`였다. |
+| `moved.json` | CLI로 검토 탭에 포커스를 준 뒤 미지정 pane을 `w1:t3`에서 `w1:t1`으로 옮겼다. 검토 탭의 포커스와 이동한 pane의 terminal ID·대화 참조·`blocked` 상태·제목이 유지됐다. |
+| `closed.json` | 다른 pane과 탭을 닫고 수동으로 갱신하자 남은 항목의 제목이 `project`로 돌아갔다. |
+
+원본 표본은 `/private/tmp/herdr-sidebar.G6IeaT/`에 있다. 이 실행에서 확인한 색상 근거는 변경 전후의 `herdr config check` 통과까지다. ANSI 색상 렌더링, 사이드바 마우스 클릭, 5초 자동 갱신은 미확인이다. 검증은 독립 서버에서 수행했다. 업무 기기의 운영 Herdr에는 배포하거나 재시작하지 않았고, 개인 기기의 이번 판본 실행 상태는 미확인이다.
