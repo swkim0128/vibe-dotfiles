@@ -871,6 +871,27 @@ fn task_page(task: &Value, selected: Option<i64>, body_height: u16) -> usize {
     position / page_size * page_size
 }
 
+fn classification_label(record: &Value) -> &str {
+    match record["classification"].as_str() {
+        Some("personal") => "개인",
+        Some("work") => "업무",
+        _ => "미설정",
+    }
+}
+
+fn queue_row(request: &str, classification: &str, goal: &str, width: usize) -> String {
+    if width < 24 {
+        return plain(&format!("{request} | {classification} | {goal}"), width);
+    }
+    let request_width = ((width - 16) / 2).min(48);
+    let goal_width = width - request_width - 16;
+    let cell = |value: &str, size: usize| {
+        let text = plain(value, size);
+        format!("{text}{}", " ".repeat(size.saturating_sub(text.width())))
+    };
+    format!("│ {} │ {} │ {} │", cell(request, request_width), cell(classification, 6), cell(goal, goal_width))
+}
+
 #[cfg(test)]
 mod queue_display_tests {
     use super::*;
@@ -887,6 +908,45 @@ mod queue_display_tests {
         assert!(list_stage_diagram(&record, 18).starts_with("[Ⅱ 요청자 확인]"));
         assert!(stage_diagram(&record, false).contains("[✓ 배포 완료]"));
         assert!(stage_diagram(&record, false).contains("[Ⅱ 요청자 확인 대기]"));
+    }
+
+    #[test]
+    fn scn_32_03_explicit_classification_and_long_rows_fit_terminal_cells() {
+        for (value, expected) in [(json!("personal"), "개인"), (json!("work"), "업무"), (Value::Null, "미설정")] {
+            let record = json!({"classification":value});
+            assert_eq!(classification_label(&record), expected);
+            for width in [0, 1, 23, 24, 32, 63, 64, 80, 120, 240] {
+                let line = queue_row("#123 요청 원문", expected, &"긴 목표🙂 ".repeat(100), width);
+                assert!(line.width() <= width, "width={width}: {line}");
+                if width >= 24 {
+                    assert!(line.contains(expected));
+                    assert!(line.contains('…'));
+                }
+            }
+        }
+        assert_eq!(classification_label(&json!({"text":"개인 업무"})), "미설정");
+    }
+
+    #[test]
+    fn scn_32_04_paging_selection_and_read_only_permissions_remain_separate() -> Result<()> {
+        let task = json!({"state":"observed","read_only":true,"total":3,"records":[
+            {"id":9,"text":"첫 요청","classification":"personal","goal":"별도 목표"},
+            {"id":7,"text":"둘째 요청","classification":"work","goal":"다른 목표"},
+            {"id":5,"text":"셋째 요청","goal":"이전 API"}
+        ]});
+        let mut output = vec![Vec::new(); 4];
+        task_list(&mut output, 80, 4, &task, Some(7))?;
+        let header = String::from_utf8(output[1].clone())?;
+        assert!(header.contains("요청") && header.contains("분류") && header.contains("작업 목표"));
+        let first = String::from_utf8(output[2].clone())?;
+        let selected = String::from_utf8(output[3].clone())?;
+        assert!(first.contains("#9 첫 요청"));
+        assert!(first.contains("개인") && first.contains("별도 목표"));
+        assert!(selected.starts_with("\x1b[7m") && selected.contains("#7 둘째 요청"));
+        assert_eq!(task_page(&task, Some(5), 4), 2);
+        assert!(!selection_owned(&task, Some(7)));
+        assert!(completed_selection(&task, Some(7)).is_none());
+        Ok(())
     }
 }
 
@@ -908,53 +968,13 @@ fn task_list(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, sele
         if height > 1 { write!(output[1], "{}", plain(empty, columns))?; }
         return Ok(());
     }
-    let goal_width = (columns / 4).min(50);
-    let diagram_width = columns.saturating_sub(goal_width + 37);
-    let cell = |value: &str, size: usize| {
-        let text = plain(value, size);
-        format!("{text}{}", " ".repeat(size.saturating_sub(unicode_width::UnicodeWidthStr::width(text.as_str()))))
-    };
-    let row = |id: &str, goal: &str, status: &str, diagram: &str| {
-        let status_color = match status {
-            "검증완료·확인대기" | "완료·확인됨" => "92",
-            "실패 기록" | "수정 요청" => "91",
-            "실행 기록" | "검증 중" | "검증 완료" | "단계 결과 있음" => "96",
-            "단계 진행" | "단계 기록" => "94",
-            "대기 기록" | "외부 대기" | "의존 대기" | "Question 대기" | "요청자 확인 대기" => "93",
-            "검토 보류" => "95",
-            _ => "39",
-        };
-        if columns < 64 {
-            let prefix = plain(&format!("{id} "), columns);
-            let remaining = columns.saturating_sub(prefix.width());
-            let state = plain(status, remaining);
-            let rest = plain(&format!(" · {diagram} · {goal}"), remaining.saturating_sub(state.width()));
-            return format!("{prefix}\x1b[{status_color}m{state}\x1b[39m{rest}");
-        }
-        let diagram = cell(diagram, diagram_width)
-            .replace("[✓", "\x1b[32m[✓").replace("[●", "\x1b[36m[●").replace("[◇", "\x1b[94m[◇")
-            .replace("[○", "\x1b[90m[○").replace("[Ⅱ", "\x1b[33m[Ⅱ")
-            .replace("[!", "\x1b[31m[!").replace("[?", "\x1b[90m[?").replace("[—", "\x1b[90m[—")
-            .replace(']', "]\x1b[39m");
-        format!("│ {} │ {} │ \x1b[{status_color}m{}\x1b[39m │ \x1b[90m{diagram}\x1b[39m │", cell(id, 5), cell(goal, goal_width), cell(status, 19))
-    };
-    if height > 1 { write!(output[1], "{}", row("요청", "작업 목표", "큐 상태", "단계 흐름"))?; }
+    if height > 1 { write!(output[1], "{}", queue_row("요청", "분류", "작업 목표", columns))?; }
     let first = task_page(task, selected, height);
     for (index, record) in task["records"].as_array().into_iter().flatten().skip(first).take(usize::from(height.saturating_sub(2))).enumerate() {
         let output = &mut output[index + 2];
-        let status = match record["queue_status"].as_str() {
-            Some("done") if record["completion_confirmed"] == true => "완료·확인됨",
-            Some("done") if record["review_decision"] == "deferred" => "검토 보류",
-            Some("done") if record["review_decision"] == "changes_requested" => "수정 요청",
-            Some("done") if record["verify_complete"] == true && record["needs_review"] != true => "완료·검증됨",
-            Some("done") if record["needs_review"] != true => "완료·검증 미확인",
-            Some("failed") => "실패 기록",
-            Some("queued") if record["state"] == "큐 대기" => "대기 기록",
-            Some("running" | "queued" | "done") => record["state"].as_str().unwrap_or("미확인"),
-            _ => "미확인" };
-        let detail = list_stage_diagram(record, if columns < 64 { 0 } else { diagram_width });
         if record["id"].as_i64() == selected { write!(output, "\x1b[7m")?; }
-        write!(output, "{}\x1b[0m", row(&format!("#{}", record["id"]), &string(record, "goal"), status, &detail))?;
+        write!(output, "{}\x1b[0m", queue_row(&format!("#{} {}", record["id"], string(record, "text")),
+            classification_label(record), &string(record, "goal"), columns))?;
     }
     Ok(())
 }
@@ -994,7 +1014,8 @@ fn task_overlay(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, o
             home().join(".config/herdr/vibe-herdr").display()));
     }
     for record in task["records"].as_array().into_iter().flatten().filter(|record| record["id"].as_i64() == selected) {
-        lines.extend([format!("요청 #{} 목표: {}", record["id"], string(record, "goal")),
+        lines.extend([format!("요청 #{}: {}", record["id"], string(record, "text")),
+            format!("분류: {} · 작업 목표: {}", classification_label(record), string(record, "goal")),
             format!("요청 배정: {} / {}", record["owner_tool"].as_str().unwrap_or("미배정"), record["owner_thread"].as_str().unwrap_or("미배정")),
             format!("단계 흐름: {}", stage_diagram(record, false)),
             format!("현재 단계: {} · 큐 상태: {} · 저장 상태: {}", record["stage"].as_str().map(stage_label).unwrap_or("세부단계 미기록"), string(record, "state"), string(record, "queue_status")),
@@ -1023,7 +1044,8 @@ fn task_overlay(output: &mut [Vec<u8>], width: u16, height: u16, task: &Value, o
                 else if record["review_decision"] == "changes_requested" { "수정 요청 보완 후 다시 결과 확인" }
                 else if record["queue_status"] == "done" { "결과 확인 후 대화 또는 c로 완료 확인" }
                 else { record["next_action"].as_str().filter(|v| !v.is_empty()).unwrap_or("미기록") };
-            lines = vec![format!("#{} · 큐 상태 {} · {}{}", record["id"], string(record, "state"), string(record, "goal"),
+            lines = vec![format!("#{} · 큐 상태 {} · {} · {}{}", record["id"], string(record, "state"),
+                    list_stage_diagram(record, usize::from(width) / 3), string(record, "goal"),
                     if task["stale"] == true { " · 갱신 실패" } else { "" }),
                 format!("결과: {brief}"),
                 format!("배정: {} / {} · {} · 다음: {next}", record["owner_tool"].as_str().unwrap_or("미배정"),

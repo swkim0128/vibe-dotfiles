@@ -192,33 +192,33 @@ class QueueDisplayTests(unittest.TestCase):
         self.item["request_data"] = {}
         self.item["status"] = "queued"
         record = hud.task_record(self.item, None, self.definition)
-        self.assertTrue(record["goal"].startswith("[개인]"))
+        self.assertIsNone(record["classification"])
+        self.assertEqual(record["goal"], "")
         self.assertEqual([stage["state"] for stage in record["stages"]], ["unknown", "unknown"])
 
-    def test_company_slack_origin_requires_request_key_and_matching_permalink(self):
-        item = {"kind": "request", "key": "slack-C123ABC-1794460950000000"}
-        origin = "https://cowavecc.slack.com/archives/C123ABC/p1794460950000000"
-        item["text"] = f"Slack 요청 <{origin}?thread_ts=1794460000.000000>"
-        self.assertEqual(hud.queue_category(item, {}), "회사")
-        for unexpected in (
-            origin.replace("cowavecc.slack.com", "other.slack.com"),
-            origin.replace("cowavecc.slack.com", "cowavecc.slack.com.example.org"),
-            origin.replace("C123ABC", "C123XYZ"),
-            origin[:-1] + "1",
-            origin + "1",
-        ):
-            with self.subTest(origin=unexpected):
-                self.assertEqual(hud.queue_category({**item, "text": unexpected}, {}), "미분류")
-        self.assertEqual(hud.queue_category({**item, "kind": "command"}, {}), "미분류")
+    def test_scn_32_01_classification_is_independent_of_request_and_goal(self):
+        # Given: three explicit API values, independent text and a long goal.
+        goal = "개인이라는 단어가 있는 업무 목표 " * 100
+        self.item.update(text="요청 원문", request_data={"goal": goal})
+        for value in ("personal", "work", None):
+            with self.subTest(classification=value):
+                self.item["classification"] = value
+                # When: the public queue row becomes a TUI record.
+                record = hud.task_record(self.item, None)
+                # Then: no inferred prefix, text fallback or pre-display truncation.
+                self.assertEqual((record["text"], record["classification"], record["goal"]),
+                                 ("요청 원문", value, goal))
 
-    def test_vault_and_explicit_key_classification_still_take_precedence(self):
-        item = {"kind": "request", "key": "slack-C123ABC-1794460950000000",
-                "text": "https://cowavecc.slack.com/archives/C123ABC/p1794460950000000"}
-        personal = Path.home() / "Project" / "personal" / "PARA"
-        with patch.dict(os.environ, {"PERSONAL_PARA_ROOT": str(personal)}):
-            self.assertEqual(hud.queue_category(item, {"note_path": str(personal / "note.md")}), "개인")
-        self.assertEqual(hud.queue_category({**item, "key": "personal-example"}, {}), "개인")
-        self.assertEqual(hud.queue_category({**item, "key": "DWDEV-1000"}, {}), "회사")
+    def test_scn_32_02_missing_classification_never_uses_key_note_or_title(self):
+        for key in ("personal-example", "DWDEV-1000", "slack-C123ABC-1794460950000000"):
+            with self.subTest(key=key):
+                # Given: old API data with several formerly inferred signals.
+                self.item.update(key=key, text="업무·개인 요청", request_data={
+                    "note_path": str(Path.home() / "Project" / "para" / "note.md")})
+                # When / Then: missing fields stay unset and goals stay separate.
+                record = hud.task_record(self.item, None)
+                self.assertEqual((record["classification"], record["text"], record["goal"]),
+                                 (None, "업무·개인 요청", ""))
 
     def test_verify_requires_current_completion_evidence_before_review_priority(self):
         self.item.update(status="done", completion_token="v1", completion_confirmed=False)
