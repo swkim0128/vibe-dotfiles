@@ -67,3 +67,18 @@ codex sandbox -P vibe-workspace --include-managed-config -C <dotfiles> -- mise e
 구현 판본 `81dd4e5`는 origin 확인·fetch·일반 push 후 원격 차이 `0/0`을 확인했다. 이는 소스 Git 동기화 결과이며 운영 배포 완료를 뜻하지 않는다. 공식 큐 #30은 verify의 verification 대기이고 완료·확인값은 미기록이다. 관련 후속 #32는 queued/intake이며 classification API 계약 회신 요청만 공식 내장 큐에 접수했고 실제 계약 회수·구현은 미완료다.
 
 사용자 최신 지시로 오늘의 새 작업·다음 큐 착수·차단 재시도·추가 배포를 중지한다. 다음 행동은 사용자의 재개 지시 후 기존 근거를 이어가는 것이며, 보고서 검토·배포 승인 전 운영 반영하지 않는다. 기존 대화·세션·패널을 종료하지 않는다. 이 절을 포함한 마무리 커밋은 구현을 바꾸지 않는 기록 판본이다.
+
+### 후속 검증 — 프로젝트별 Codex 제목과 색상
+
+업무 기기 Herdr 0.9.5에서 `81dd4e5`의 역할·작업 metadata를 재사용했다. 같은 실제 경로의 Codex가 한 개면 프로젝트명, 여러 개면 명시 역할이나 기존 제목을 표시한다. 공식 대화 ID의 끝 12자리로 복수 항목을 구분하고, ID 미연결 시 기존 pane ID를 표시한다.
+
+| 표본 | 기존 역할 행 | 변경 후 제목 |
+|---|---|---|
+| 단일 또는 다른 항목 종료 후 갱신 | 명시 역할 | project |
+| 같은 프로젝트의 명시 pane label과 agent 별칭 | 명시 역할 | 명시 역할 |
+| 같은 프로젝트의 agent 별칭 | review-alias | review-alias |
+| 같은 프로젝트의 미지정과 기존 제목 | 역할 미지정 | 기존 제목 3 |
+
+- 별도 실행 탭에서 `mise exec -- cargo build --locked --manifest-path herdr/runtime/Cargo.toml` 및 `python3 -B tests/test_herdr_display.py`가 통과했다. Python 검사는 24건이다. Herdr 0.9.5의 `herdr config check`는 격리 설정 전후 모두 통과했다.
+- Unix 소켓 대역으로 Rust 실행기와 Python 어댑터를 호출했다. 변경 전 어댑터에 위 표본을 넣어 기존 역할·작업을 확인하고, 변경 후에는 대화 ID 구분과 작업 값 보존을 확인했다. 탭·상태를 바꾼 표본은 같은 표시를 유지했고, 대화 ID를 빼거나 다른 pane을 제거하면 다음 갱신에서 표시가 바뀌었다. 전송은 표시 metadata와 15초 만료값으로 제한됐다.
+- 독립 Herdr 서버에서 fixture를 agent로 등록하지 못해 실제 탭 이동, 주기 갱신 및 색상 렌더링은 미확인이다. 업무 기기의 실행 중 설정·바이너리·대화에는 배포하지 않았다. 개인 기기의 이번 판본 실행 상태는 미확인이다.

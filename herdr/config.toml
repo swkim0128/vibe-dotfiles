@@ -73,8 +73,8 @@ tab_bar_right = [
 
 [ui.sidebar.agents]
 rows = [
-  ["$sidebar_role"],
-  ["$project_name"],
+  [{ token = "$sidebar_title", fg = "#cdd6f4", bold = true }],
+  ["$sidebar_context"],
   ["$sidebar_task"],
   ["state_icon", "agent", "state_text"],
   ["workspace", "tab", "pane"],
@@ -96,3 +96,8 @@ enabled = false
 [theme]
 name = "catppuccin"
 auto_switch = false
+
+[theme.custom]
+sidebar_bg = "#181825"
+active_row_bg = "#313244"
+selection_bg = "#45475a"

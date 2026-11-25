@@ -233,7 +233,8 @@ fn refresh_paths() -> Result<Value> {
             .or_else(|| named["agents"].as_array()?.iter().find(|entry|
                 entry["pane_id"] == pane["pane_id"] && entry["terminal_id"] == pane["terminal_id"]
                 && entry["agent"] == pane["agent"])?["name"].as_str())
-            .filter(|value| !value.trim().is_empty()).unwrap_or("역할 미지정").to_owned();
+            .filter(|value| !value.trim().is_empty()).map(str::to_owned);
+        pane["sidebar_role"] = json!(role);
         let cwd = pane["foreground_cwd"]
             .as_str()
             .filter(|s| !s.is_empty())
@@ -289,7 +290,8 @@ fn refresh_paths() -> Result<Value> {
         metadata(
             "pane.report_metadata",
             json!({"pane_id":pane["pane_id"],"source":"vibe:project",
-            "agent":agent,"title":title,"tokens":{"project_path":path,"sidebar_role":role}}),
+            "agent":agent,"title":title,"tokens":{"project_path":path,
+            "sidebar_role":role.as_deref().unwrap_or("역할 미지정")}}),
         )?;
     }
     Ok(result)
@@ -302,7 +304,8 @@ fn hud(panes: Option<&Value>, generation: Option<u64>) {
             "terminal_id":pane["terminal_id"], "agent":pane["agent"], "agent_session":pane["agent_session"],
             "agent_status":pane["agent_status"], "cwd":pane["cwd"], "foreground_cwd":pane["foreground_cwd"],
             "terminal_title_stripped":pane["terminal_title_stripped"], "terminal_title":pane["terminal_title"],
-            "project_root":pane["project_root"]})).collect();
+            "project_root":pane["project_root"], "sidebar_role":pane["sidebar_role"],
+            "title":pane["title"]})).collect();
     if agents.is_empty() { return; }
     // The dashboard exposes its configured storage contract as a Python API.
     // Keep its exact identity checks there; no legacy-file fallback in Rust.

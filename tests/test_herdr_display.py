@@ -31,9 +31,63 @@ class SidebarTests(unittest.TestCase):
 
     def test_project_alias_prefers_longest_match_and_accepts_linked_worktree(self):
         mappings = [(Path("/repo/shop/ashop"), "ashop"), (Path("/repo/shop"), "shop")]
-        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop/src"}, mappings), "ashop")
-        self.assertEqual(hud.sidebar_project({"cwd": "/worktree/feature", "project_root": "/repo/shop/ashop"}, mappings), "ashop")
-        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop-extra"}, mappings), "shop")
+        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop/src"}, mappings), mappings[0])
+        self.assertEqual(hud.sidebar_project({"cwd": "/worktree/feature", "project_root": "/repo/shop/ashop"}, mappings), mappings[0])
+        self.assertEqual(hud.sidebar_project({"cwd": "/repo/shop/ashop-extra"}, mappings), mappings[1])
+
+    def test_sidebar_titles_follow_project_membership_at_each_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            project = root / "repo"
+            project.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(project, target_is_directory=True)
+            socket_path = root / "socket"
+            socket_path.touch()
+            first = {"agent": "codex", "pane_id": "w1:p1", "terminal_id": "term_1",
+                     "workspace_id": "w1", "tab_id": "w1:t1", "cwd": str(project),
+                     "agent_status": "working", "sidebar_role": "검토", "terminal_title_stripped": "기존 첫 제목",
+                     "agent_session": {"agent": "codex", "kind": "id", "source": "herdr:codex",
+                                       "value": "00000000-0000-0000-0000-111111111111"}}
+            second = {**first, "pane_id": "w2:p1", "terminal_id": "term_2", "workspace_id": "w2",
+                      "tab_id": "w2:t1", "cwd": str(alias), "sidebar_role": None, "agent_status": "idle",
+                      "terminal_title_stripped": "기존 둘째 제목",
+                      "agent_session": {**first["agent_session"], "value": "00000000-0000-0000-0000-222222222222"}}
+            other = {**second, "pane_id": "w3:p1", "cwd": str(root / "other" / "repo"),
+                     "agent_session": None}
+            generation = socket_path.stat().st_ino
+            with patch.dict(os.environ, {"HERDR_SOCKET_PATH": str(socket_path),
+                                         "HERDR_ACTIVE_WORKSPACE_ID": ""}), patch.object(
+                    hud, "project_names", return_value=[]), patch.object(
+                    hud, "dashboard", side_effect=ImportError), patch.object(hud, "rpc") as call:
+                def refresh(*panes):
+                    call.reset_mock()
+                    before = json.dumps(panes)
+                    hud.refresh_sidebar({"generation": generation, "panes": panes})
+                    self.assertEqual(json.dumps(panes), before)
+                    self.assertEqual(len(call.mock_calls), len(panes))
+                    tokens_by_pane = {}
+                    for report in call.mock_calls:
+                        self.assertEqual(report.args, ("pane.report_metadata",))
+                        self.assertEqual(set(report.kwargs),
+                                         {"pane_id", "source", "agent", "tokens", "seq", "ttl_ms"})
+                        self.assertEqual(report.kwargs["ttl_ms"], 15000)
+                        tokens_by_pane[report.kwargs["pane_id"]] = report.kwargs["tokens"]
+                    return tokens_by_pane
+
+                single = {"project_name": "repo", "sidebar_task": "작업 미확인",
+                          "sidebar_title": "repo", "sidebar_context": ""}
+                self.assertEqual(refresh(first)[first["pane_id"]], single)
+                multiple = refresh(first, second, other)
+                self.assertEqual(multiple[first["pane_id"]],
+                                 {**single, "sidebar_title": "검토", "sidebar_context": "111111111111 · repo"})
+                self.assertEqual(multiple[second["pane_id"]],
+                                 {**single, "sidebar_title": "기존 둘째 제목", "sidebar_context": "222222222222 · repo"})
+                self.assertEqual(multiple[other["pane_id"]], single)
+                moved = {**second, "tab_id": "w2:t2", "agent_status": "done", "agent_session": None}
+                self.assertEqual(refresh(first, moved)[second["pane_id"]],
+                                 {**single, "sidebar_title": "기존 둘째 제목", "sidebar_context": "w2:p1 · repo"})
+                self.assertEqual(refresh(moved)[second["pane_id"]], single)
 
     def test_current_task_matches_official_session_and_rejects_stale_or_ambiguous_state(self):
         for age, watching, count, expected in ((0, True, 1, "T-A · 첫째 작업"),

@@ -33,7 +33,9 @@ HUD는 공식 `agent_session`의 전체 native ID와 실제 전경 CLI PID, pane
 
 ### work/personal 사이드바 반영 확인
 
-두 프로필은 `manifests/common.conf`의 같은 `herdr_config` 단계와 설정 링크를 사용한다. 프로젝트명은 각 기기의 프로젝트 매핑에서 읽으며 역할명은 그 기기의 명시 label/name을 그대로 사용한다. 기기별 경로·pane·PID·thread를 공용 코드에 저장하지 않는다. 다른 기기에 Git 소스가 도착한 것만으로 설정 배포·실행 반영·실기 검증을 완료한 것으로 보지 않는다.
+두 프로필은 `manifests/common.conf`의 같은 `herdr_config` 단계와 설정 링크를 사용한다. 사이드바는 등록된 프로젝트 경로, Git 프로젝트 루트, 현재 경로 순으로 실제 경로를 확인해 Codex를 묶는다. 같은 경로에 Codex가 하나면 프로젝트명을 표시한다. 여러 개면 pane label, 같은 pane·terminal의 agent 별칭, 기존 제목 순으로 표시한다. 두 번째 줄에는 공식 대화 ID의 끝 12자리와 프로젝트명을 표시한다. 공식 ID가 연결되기 전에는 pane ID를 표시한다. 기존 label·별칭·제목과 Herdr의 상태·탭 이동 계약은 그대로 쓴다.
+
+Catppuccin 본문색으로 제목을 강조하고 상태 아이콘에는 Herdr의 기본 색을 적용한다. 포커스와 탐색 모드의 선택 배경은 서로 다른 톤을 사용한다. Git 동기화, 설정 배포, 화면 반영은 각각 실제 결과를 확인한다.
 
 각 기기의 실제 dotfiles 경로에서, Herdr의 보이는 실행 셸로 다음 명령을 각각 실행한다. `<mode>`는 `~/.config/vibe-ai-config/profile`의 `work` 또는 `personal`이다.
 
@@ -47,7 +49,7 @@ herdr pane list
 herdr agent list
 ```
 
-설치기는 release 빌드와 파일별 링크 뒤 현재 세션의 설정을 reload한다. 이미 링크된 소스의 변경만 선택 반영할 때는 `mise exec -- cargo build --locked --release --manifest-path herdr/runtime/Cargo.toml` → `herdr config check` → `herdr server reload-config`를 각각 실행한다. 5초 주기 갱신 전후의 `pane.list`에서 `tokens.sidebar_role`·`project_name`·`sidebar_task`와 원래 label·terminal ID·실제 agent 상태를 비교한다. 역할 미지정은 해당 기기의 기존 `herdr pane rename` 또는 `herdr agent rename` 명령으로 명시하며 다른 기기의 ID를 복사하지 않는다. API가 `agent.list`를 지원하지 않으면 pane label만 사용한다. 화면 표시와 업무컴 실기 확인은 각 기기에서 별도로 기록한다.
+설치기는 release 빌드와 파일별 링크 뒤 현재 세션의 설정을 reload한다. 이미 링크된 소스의 변경만 선택 반영할 때는 `mise exec -- cargo build --locked --release --manifest-path herdr/runtime/Cargo.toml` → `herdr config check` → `herdr server reload-config`를 각각 실행한다. 5초 주기 갱신 전후의 `pane.list`에서 `sidebar_title`·`sidebar_context`·`sidebar_task`와 원래 label·terminal ID·실제 agent 상태를 비교한다. 역할 지정에는 해당 기기의 `herdr pane rename` 또는 `herdr agent rename`을 사용한다. API가 `agent.list`를 지원하지 않으면 pane label과 기존 제목을 사용한다. 화면 표시와 실기 확인은 기기별로 기록한다.
 
 ## 개인용 빠른 실행 버튼
 

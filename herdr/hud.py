@@ -15,6 +15,7 @@ import sys
 import unicodedata
 import urllib.parse
 import urllib.request
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -211,10 +212,11 @@ def project_names():
 
 
 def sidebar_project(pane, projects):
-    cwd = Path(pane.get("foreground_cwd") or pane.get("cwd") or "/")
-    root = Path(pane["project_root"]) if pane.get("project_root") else cwd
-    return next((name for path, name in projects if cwd.is_relative_to(path) or root.is_relative_to(path)),
-                root.name or "프로젝트 미확인")
+    cwd = Path(pane.get("foreground_cwd") or pane.get("cwd") or "/").resolve()
+    root = Path(pane.get("project_root") or cwd).resolve()
+    return next(((path, name) for path, name in projects
+                 if cwd.is_relative_to(path) or root.is_relative_to(path)),
+                (root, root.name or "프로젝트 미확인"))
 
 
 def short_title(text):
@@ -324,13 +326,32 @@ def refresh_sidebar(snapshot):
     monitors = {}
     workspace = os.environ.get("HERDR_ACTIVE_WORKSPACE_ID")
     panes = snapshot["panes"]
+    project_by_pane = {pane["pane_id"]: sidebar_project(pane, projects) for pane in panes}
+    codex_count = Counter(project_by_pane[pane["pane_id"]][0] for pane in panes
+                          if pane["agent"] == "codex")
     try:
         module = dashboard() if any(pane.get("agent_session") for pane in panes) else None
     except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError):
         module = None
     for pane in panes:
-        tokens = {"project_name": sidebar_project(pane, projects),
+        project_path, project_name = project_by_pane[pane["pane_id"]]
+        role = pane.get("sidebar_role")
+        tokens = {"project_name": project_name,
                   "sidebar_task": sidebar_task(pane, module, monitors, socket_path, generation)}
+        if pane["agent"] != "codex":
+            tokens.update(sidebar_title=role or "역할 미지정", sidebar_context=project_name)
+        elif codex_count[project_path] == 1:
+            tokens.update(sidebar_title=project_name, sidebar_context="")
+        else:
+            title = (pane.get("terminal_title_stripped") or pane.get("terminal_title")
+                     or pane.get("title") or "")
+            try:
+                _, native = official_ref(pane)
+                identity = native[-12:]
+            except ValueError:
+                identity = pane["pane_id"]
+            tokens.update(sidebar_title=role or short_title(title) or "제목 미확인",
+                          sidebar_context=f"{identity} · {project_name}")
         if pane["workspace_id"] == workspace:
             try:
                 tokens["hud"] = (label(pane, module) if module else "HUD 연결 미확인") if pane.get("agent_session") else "HUD 미연결"
